@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Vocatim</string>
+
+    <string name="debug_title">Vocatim Debug</string>
+    <string name="debug_section_model">Model</string>
+    <string name="debug_section_language">Bahasa</string>
+    <string name="debug_model_not_downloaded">%1$s belum diunduh (±%2$d MB)</string>
+    <string name="debug_download">Unduh</string>
+    <string name="debug_downloading">Mengunduh… %1$d / %2$d MB</string>
+    <string name="debug_cancel">Batal</string>
+    <string name="debug_retry">Coba lagi</string>
+    <string name="debug_model_ready">%1$s siap dipakai</string>
+    <string name="debug_delete_model">Hapus model</string>
+    <string name="debug_download_failed">Unduhan gagal: %1$s</string>
+    <string name="debug_pick_wav">Pilih file WAV untuk ditranskrip</string>
+    <string name="debug_preparing">Membaca dan mendekode audio…</string>
+    <string name="debug_transcribing">Mentranskrip audio %1$s…</string>
+    <string name="debug_result_stats">Audio %1$s · diproses dalam %2$s · %3$s× realtime</string>
+    <string name="debug_result_empty">(tidak ada ucapan terdeteksi)</string>
+    <string name="debug_error_no_model">Unduh model terlebih dahulu.</string>
+    <string name="debug_error">Error: %1$s</string>
+</resources>

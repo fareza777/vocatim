@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Vocatim</string>
+
+    <string name="debug_title">Vocatim Debug</string>
+    <string name="debug_section_model">Model</string>
+    <string name="debug_section_language">Language</string>
+    <string name="debug_model_not_downloaded">%1$s is not downloaded yet (±%2$d MB)</string>
+    <string name="debug_download">Download</string>
+    <string name="debug_downloading">Downloading… %1$d / %2$d MB</string>
+    <string name="debug_cancel">Cancel</string>
+    <string name="debug_retry">Retry</string>
+    <string name="debug_model_ready">%1$s is ready</string>
+    <string name="debug_delete_model">Delete model</string>
+    <string name="debug_download_failed">Download failed: %1$s</string>
+    <string name="debug_pick_wav">Pick a WAV file to transcribe</string>
+    <string name="debug_preparing">Reading and decoding audio…</string>
+    <string name="debug_transcribing">Transcribing %1$s of audio…</string>
+    <string name="debug_result_stats">Audio %1$s · processed in %2$s · %3$s× realtime</string>
+    <string name="debug_result_empty">(no speech detected)</string>
+    <string name="debug_error_no_model">Download the model first.</string>
+    <string name="debug_error">Error: %1$s</string>
+</resources>
