@@ -14,7 +14,7 @@ class RtfStore(private val context: Context) {
 
     suspend fun rtfFor(model: WhisperModel): Float {
         val stored = context.prefsDataStore.data.first()[key(model)]
-        return stored ?: DEFAULT_RTF.getValue(model)
+        return stored ?: DEFAULT_RTF[model] ?: FALLBACK_RTF
     }
 
     /** Blends the new measurement into the stored value (EMA) to damp outliers. */
@@ -36,6 +36,9 @@ class RtfStore(private val context: Context) {
         val DEFAULT_RTF = mapOf(
             WhisperModel.TINY to 0.6f,
             WhisperModel.BASE to 1.4f,
+            WhisperModel.SMALL to 2.5f,
         )
+        // A model missing from the map must never fail the job.
+        const val FALLBACK_RTF = 1.5f
     }
 }
