@@ -218,31 +218,6 @@ fun RecordScreen(
 
                     AmplitudeBars(amplitudes, paused = s.paused)
 
-                    if (s.partialText.isNotBlank()) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            shape = MaterialTheme.shapes.large,
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    stringResource(R.string.record_live_preview),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                )
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    s.partialText,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 5,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(28.dp),
                         verticalAlignment = Alignment.CenterVertically,
