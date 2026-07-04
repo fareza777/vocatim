@@ -15,6 +15,14 @@ android {
             // 32-bit ARM is too slow and memory-constrained for Whisper inference.
             abiFilters += "arm64-v8a"
         }
+
+        externalNativeBuild {
+            cmake {
+                // ggml without -O3 is 50-100x slower; unusable even in debug
+                // builds. Force an optimized native build for every variant.
+                arguments += "-DCMAKE_BUILD_TYPE=Release"
+            }
+        }
     }
 
     externalNativeBuild {
