@@ -20,4 +20,57 @@
     <string name="debug_result_empty">(tidak ada ucapan terdeteksi)</string>
     <string name="debug_error_no_model">Unduh model terlebih dahulu.</string>
     <string name="debug_error">Error: %1$s</string>
+
+    <string name="channel_recording">Perekaman</string>
+    <string name="channel_transcription">Transkripsi</string>
+    <string name="notif_recording">Merekam…</string>
+    <string name="notif_recording_paused">Rekaman dijeda</string>
+    <string name="notif_transcription_title">Transkripsi Vocatim</string>
+    <string name="notif_transcribing_starting">Menyiapkan…</string>
+    <string name="notif_transcribing_progress">%1$d%% — sekitar %2$s lagi</string>
+    <string name="notif_converting">Mengonversi audio… %1$d%%</string>
+    <string name="eta_under_minute">kurang dari semenit</string>
+    <string name="eta_minutes">%1$d mnt</string>
+
+    <string name="home_import">Impor file audio</string>
+    <string name="home_record">Rekam</string>
+    <string name="home_debug">Debug</string>
+    <string name="home_empty_title">Belum ada transkrip</string>
+    <string name="home_empty_body">Ketuk mikrofon untuk merekam, atau + untuk impor audio</string>
+    <string name="status_queued">Menunggu…</string>
+    <string name="status_converting">Mengonversi audio…</string>
+    <string name="status_transcribing">Mentranskrip…</string>
+    <string name="status_failed">Transkripsi gagal</string>
+
+    <string name="record_title">Rekam</string>
+    <string name="record_hint">Rekaman tetap berjalan saat layar mati</string>
+    <string name="record_start">Mulai merekam</string>
+    <string name="record_pause">Jeda</string>
+    <string name="record_resume">Lanjut</string>
+    <string name="record_stop">Berhenti</string>
+    <string name="record_paused">Dijeda</string>
+    <string name="record_error">Gangguan rekaman: %1$s</string>
+    <string name="record_error_mic">Tidak bisa mengakses mikrofon</string>
+    <string name="record_error_generic">Perekaman gagal</string>
+    <string name="record_default_title">Rekaman %1$s</string>
+
+    <string name="action_back">Kembali</string>
+    <string name="action_delete">Hapus</string>
+    <string name="action_cancel">Batal</string>
+    <string name="action_save">Simpan</string>
+    <string name="action_discard">Buang</string>
+    <string name="action_copy">Salin</string>
+    <string name="action_share">Bagikan</string>
+    <string name="action_retry">Coba lagi</string>
+    <string name="action_export_txt">Ekspor TXT</string>
+    <string name="action_export_srt">Ekspor SRT</string>
+    <string name="copied">Disalin ke clipboard</string>
+    <string name="export_success">Berhasil diekspor</string>
+    <string name="export_failed">Ekspor gagal: %1$s</string>
+    <string name="delete_title">Hapus transkrip?</string>
+    <string name="delete_body">Transkrip dan file audionya akan dihapus permanen.</string>
+    <string name="detail_empty_text">(tidak ada ucapan terdeteksi)</string>
+    <string name="detail_eta">Sekitar %1$s lagi</string>
+    <string name="detail_failed">Transkripsi gagal: %1$s</string>
+    <string name="detail_cancelled">Transkripsi terputus. Ketuk coba lagi untuk mengulang.</string>
 </resources>

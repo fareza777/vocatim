@@ -4,8 +4,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [TranscriptEntity::class],
-    version = 1,
+    entities = [TranscriptEntity::class, SegmentEntity::class],
+    version = 2,
     exportSchema = false,
 )
 abstract class VocatimDatabase : RoomDatabase() {

@@ -53,6 +53,7 @@ class DebugViewModel @Inject constructor(
     private val modelManager: ModelManager,
     private val transcriber: WhisperTranscriber,
     private val transcriptDao: TranscriptDao,
+    private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
 ) : ViewModel() {
 
     val modelStates: StateFlow<Map<WhisperModel, ModelState>> =
@@ -82,12 +83,22 @@ class DebugViewModel @Inject constructor(
     private var downloadJob: Job? = null
     private var transcribeJob: Job? = null
 
+    init {
+        // Restore last-used selections; also what recordings/imports will use.
+        viewModelScope.launch {
+            _selectedModel.value = userPrefs.model()
+            _language.value = userPrefs.language()
+        }
+    }
+
     fun selectModel(model: WhisperModel) {
         _selectedModel.value = model
+        viewModelScope.launch { userPrefs.setModel(model) }
     }
 
     fun selectLanguage(code: String) {
         _language.value = code
+        viewModelScope.launch { userPrefs.setLanguage(code) }
     }
 
     fun downloadSelectedModel() {
@@ -146,6 +157,7 @@ class DebugViewModel @Inject constructor(
                         audioDurationMs = decoded.durationMs,
                         processingTimeMs = result.processingTimeMs,
                         audioPath = null,
+                        status = com.vocatim.app.data.db.TranscriptStatus.DONE,
                     )
                 )
 

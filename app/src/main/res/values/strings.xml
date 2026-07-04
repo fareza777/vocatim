@@ -20,4 +20,57 @@
     <string name="debug_result_empty">(no speech detected)</string>
     <string name="debug_error_no_model">Download the model first.</string>
     <string name="debug_error">Error: %1$s</string>
+
+    <string name="channel_recording">Recording</string>
+    <string name="channel_transcription">Transcription</string>
+    <string name="notif_recording">Recording…</string>
+    <string name="notif_recording_paused">Recording paused</string>
+    <string name="notif_transcription_title">Vocatim transcription</string>
+    <string name="notif_transcribing_starting">Preparing…</string>
+    <string name="notif_transcribing_progress">%1$d%% — about %2$s left</string>
+    <string name="notif_converting">Converting audio… %1$d%%</string>
+    <string name="eta_under_minute">under a minute</string>
+    <string name="eta_minutes">%1$d min</string>
+
+    <string name="home_import">Import audio file</string>
+    <string name="home_record">Record</string>
+    <string name="home_debug">Debug</string>
+    <string name="home_empty_title">No transcripts yet</string>
+    <string name="home_empty_body">Tap the mic to record, or + to import audio</string>
+    <string name="status_queued">Waiting…</string>
+    <string name="status_converting">Converting audio…</string>
+    <string name="status_transcribing">Transcribing…</string>
+    <string name="status_failed">Transcription failed</string>
+
+    <string name="record_title">Record</string>
+    <string name="record_hint">Recording keeps running with the screen off</string>
+    <string name="record_start">Start recording</string>
+    <string name="record_pause">Pause</string>
+    <string name="record_resume">Resume</string>
+    <string name="record_stop">Stop</string>
+    <string name="record_paused">Paused</string>
+    <string name="record_error">Recording error: %1$s</string>
+    <string name="record_error_mic">Couldn\'t access the microphone</string>
+    <string name="record_error_generic">Recording failed</string>
+    <string name="record_default_title">Recording %1$s</string>
+
+    <string name="action_back">Back</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_discard">Discard</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_share">Share</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_export_txt">Export TXT</string>
+    <string name="action_export_srt">Export SRT</string>
+    <string name="copied">Copied to clipboard</string>
+    <string name="export_success">Exported</string>
+    <string name="export_failed">Export failed: %1$s</string>
+    <string name="delete_title">Delete transcript?</string>
+    <string name="delete_body">The transcript and its audio file will be removed permanently.</string>
+    <string name="detail_empty_text">(no speech detected)</string>
+    <string name="detail_eta">About %1$s remaining</string>
+    <string name="detail_failed">Transcription failed: %1$s</string>
+    <string name="detail_cancelled">Transcription was interrupted. Tap retry to run it again.</string>
 </resources>

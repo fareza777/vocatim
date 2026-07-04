@@ -2,10 +2,18 @@ package com.vocatim.app.di
 
 import android.content.Context
 import androidx.room.Room
+import com.vocatim.app.data.audio.AudioImporter
 import com.vocatim.app.data.db.TranscriptDao
 import com.vocatim.app.data.db.VocatimDatabase
 import com.vocatim.app.data.model.ModelManager
+import com.vocatim.app.data.prefs.RtfStore
+import com.vocatim.app.data.prefs.UserPrefs
+import com.vocatim.app.data.repository.ImportCoordinator
+import com.vocatim.app.data.repository.TranscriptRepository
+import com.vocatim.app.data.transcribe.TranscriptionProgressHolder
+import com.vocatim.app.data.transcribe.TranscriptionRunner
 import com.vocatim.app.data.transcribe.WhisperTranscriber
+import com.vocatim.app.service.RecordingStateHolder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,10 +31,18 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VocatimDatabase =
-        Room.databaseBuilder(context, VocatimDatabase::class.java, "vocatim.db").build()
+        Room.databaseBuilder(context, VocatimDatabase::class.java, "vocatim.db")
+            // Pre-release: schema changes wipe local debug data instead of migrating.
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun provideTranscriptDao(db: VocatimDatabase): TranscriptDao = db.transcriptDao()
+
+    @Provides
+    @Singleton
+    fun provideTranscriptRepository(dao: TranscriptDao): TranscriptRepository =
+        TranscriptRepository(dao)
 
     @Provides
     @Singleton
@@ -51,4 +67,52 @@ object AppModule {
     @Singleton
     fun provideWhisperTranscriber(modelManager: ModelManager): WhisperTranscriber =
         WhisperTranscriber(modelManager)
+
+    @Provides
+    @Singleton
+    fun provideRtfStore(@ApplicationContext context: Context): RtfStore = RtfStore(context)
+
+    @Provides
+    @Singleton
+    fun provideUserPrefs(@ApplicationContext context: Context): UserPrefs = UserPrefs(context)
+
+    @Provides
+    @Singleton
+    fun provideAudioImporter(@ApplicationContext context: Context): AudioImporter =
+        AudioImporter(context)
+
+    @Provides
+    @Singleton
+    fun provideImportCoordinator(
+        @ApplicationContext context: Context,
+        repository: TranscriptRepository,
+        userPrefs: UserPrefs,
+    ): ImportCoordinator = ImportCoordinator(context, repository, userPrefs)
+
+    @Provides
+    @Singleton
+    fun provideRecordingStateHolder(): RecordingStateHolder = RecordingStateHolder()
+
+    @Provides
+    @Singleton
+    fun provideTranscriptionProgressHolder(): TranscriptionProgressHolder =
+        TranscriptionProgressHolder()
+
+    @Provides
+    @Singleton
+    fun provideTranscriptionRunner(
+        @ApplicationContext context: Context,
+        repository: TranscriptRepository,
+        transcriber: WhisperTranscriber,
+        importer: AudioImporter,
+        rtfStore: RtfStore,
+        progressHolder: TranscriptionProgressHolder,
+    ): TranscriptionRunner = TranscriptionRunner(
+        repository = repository,
+        transcriber = transcriber,
+        importer = importer,
+        rtfStore = rtfStore,
+        progressHolder = progressHolder,
+        importDir = File(context.filesDir, "imports"),
+    )
 }
