@@ -1,9 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+// Upload-key signing from key.properties (gitignored); falls back to the
+// debug key so clean clones still build a runnable release variant.
+val keyProps = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
@@ -14,11 +23,22 @@ android {
         applicationId = "com.vocatim.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.6.0"
+        versionCode = 9
+        versionName = "1.0.0"
 
         ndk {
             abiFilters += "arm64-v8a"
+        }
+    }
+
+    signingConfigs {
+        if (keyProps.isNotEmpty()) {
+            create("upload") {
+                storeFile = rootProject.file(keyProps.getProperty("storeFile"))
+                storePassword = keyProps.getProperty("storePassword")
+                keyAlias = keyProps.getProperty("keyAlias")
+                keyPassword = keyProps.getProperty("keyPassword")
+            }
         }
     }
 
@@ -30,6 +50,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = if (keyProps.isNotEmpty()) {
+                signingConfigs.getByName("upload")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
     compileOptions {
@@ -79,6 +104,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.splashscreen)
+    implementation(libs.billing.ktx)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

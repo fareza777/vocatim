@@ -81,6 +81,7 @@ import java.util.Locale
 @Composable
 fun DetailScreen(
     onBack: () -> Unit,
+    onUpgrade: () -> Unit = {},
     viewModel: DetailViewModel = hiltViewModel(),
 ) {
     val transcript by viewModel.transcript.collectAsStateWithLifecycle()
@@ -247,17 +248,43 @@ fun DetailScreen(
                 }
                 TranscriptStatus.FAILED -> {
                     StatusCard {
-                        Text(
-                            if (t.errorMessage == "CANCELLED") {
-                                stringResource(R.string.detail_cancelled)
-                            } else {
-                                stringResource(R.string.detail_failed, t.errorMessage ?: "?")
-                            },
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Button(onClick = viewModel::retry, enabled = t.audioPath != null) {
-                            Text(stringResource(R.string.action_retry))
+                        when (t.errorMessage) {
+                            "QUOTA_EXCEEDED" -> {
+                                Text(
+                                    stringResource(R.string.detail_quota_exceeded),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Button(onClick = onUpgrade) {
+                                    Text(stringResource(R.string.quota_banner_cta))
+                                }
+                                if (t.audioPath != null) {
+                                    Text(
+                                        stringResource(R.string.detail_quota_audio_kept),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            "CANCELLED" -> {
+                                Text(
+                                    stringResource(R.string.detail_cancelled),
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Button(onClick = viewModel::retry, enabled = t.audioPath != null) {
+                                    Text(stringResource(R.string.action_retry))
+                                }
+                            }
+                            else -> {
+                                Text(
+                                    stringResource(R.string.detail_failed, t.errorMessage ?: "?"),
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Button(onClick = viewModel::retry, enabled = t.audioPath != null) {
+                                    Text(stringResource(R.string.action_retry))
+                                }
+                            }
                         }
                     }
                     if (t.text.isNotBlank()) {

@@ -25,6 +25,7 @@ data class UserSettings(
     val themeMode: String,
     /** Multiplier for the transcript reading text size. */
     val textScale: Float,
+    val onboardingDone: Boolean,
 )
 
 /** User settings applied to new recordings and imports. */
@@ -40,6 +41,7 @@ class UserPrefs(private val context: Context) {
             blockScreenshots = prefs[BLOCK_SCREENSHOTS_KEY] ?: false,
             themeMode = prefs[THEME_MODE_KEY] ?: THEME_SYSTEM,
             textScale = prefs[TEXT_SCALE_KEY] ?: 1.0f,
+            onboardingDone = prefs[ONBOARDING_KEY] ?: false,
         )
     }
 
@@ -81,6 +83,10 @@ class UserPrefs(private val context: Context) {
         context.prefsDataStore.edit { it[TEXT_SCALE_KEY] = scale }
     }
 
+    suspend fun setOnboardingDone() {
+        context.prefsDataStore.edit { it[ONBOARDING_KEY] = true }
+    }
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
@@ -94,5 +100,6 @@ class UserPrefs(private val context: Context) {
         private val BLOCK_SCREENSHOTS_KEY = booleanPreferencesKey("block_screenshots")
         private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         private val TEXT_SCALE_KEY = androidx.datastore.preferences.core.floatPreferencesKey("text_scale")
+        private val ONBOARDING_KEY = booleanPreferencesKey("onboarding_done")
     }
 }

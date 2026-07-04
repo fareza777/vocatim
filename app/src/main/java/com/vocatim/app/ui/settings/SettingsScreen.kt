@@ -1,5 +1,6 @@
 package com.vocatim.app.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -54,6 +55,7 @@ private val LANGUAGES = listOf(
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onUpgradeClick: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -84,6 +86,32 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            val isPro by viewModel.isPro.collectAsStateWithLifecycle()
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !isPro, onClick = onUpgradeClick),
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            stringResource(R.string.settings_unlimited_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                        Text(
+                            if (isPro) stringResource(R.string.settings_unlimited_active)
+                            else stringResource(R.string.settings_unlimited_upsell),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
             Text(stringResource(R.string.settings_model), style = MaterialTheme.typography.titleMedium)
             if (viewModel.isLowRamDevice) {
                 Text(

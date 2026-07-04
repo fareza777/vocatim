@@ -111,6 +111,7 @@ object AppModule {
         rtfStore: RtfStore,
         progressHolder: TranscriptionProgressHolder,
         userPrefs: UserPrefs,
+        quotaStore: com.vocatim.app.data.billing.QuotaStore,
     ): TranscriptionRunner = TranscriptionRunner(
         repository = repository,
         transcriber = transcriber,
@@ -119,8 +120,28 @@ object AppModule {
         progressHolder = progressHolder,
         userPrefs = userPrefs,
         threadPolicy = ThreadPolicy(context),
+        quotaStore = quotaStore,
         importDir = File(context.filesDir, "imports"),
     )
+
+    @Provides
+    @Singleton
+    fun provideQuotaStore(@ApplicationContext context: Context): com.vocatim.app.data.billing.QuotaStore =
+        com.vocatim.app.data.billing.QuotaStore(context)
+
+    @Provides
+    @Singleton
+    fun provideBillingManager(
+        @ApplicationContext context: Context,
+        quotaStore: com.vocatim.app.data.billing.QuotaStore,
+    ): com.vocatim.app.data.billing.BillingManager =
+        com.vocatim.app.data.billing.BillingManager(
+            context = context,
+            quotaStore = quotaStore,
+            scope = kotlinx.coroutines.CoroutineScope(
+                kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default
+            ),
+        )
 
     @Provides
     @Singleton

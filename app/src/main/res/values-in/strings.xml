@@ -124,4 +124,41 @@
     <string name="theme_dark">Gelap</string>
     <string name="settings_text_size">Ukuran teks transkrip</string>
     <string name="tile_record">Rekam dengan Vocatim</string>
+
+    <string name="paywall_title">Vocatim Unlimited</string>
+    <string name="paywall_already_pro">Unlimited aktif. Terima kasih!</string>
+    <string name="paywall_quota_status">Paket gratis: sisa %1$d menit transkripsi</string>
+    <string name="paywall_benefit_unlimited">Transkripsi tanpa batas, selamanya</string>
+    <string name="paywall_benefit_offline">Bekerja sepenuhnya offline</string>
+    <string name="paywall_benefit_private">Audio tidak pernah keluar dari HP Anda</string>
+    <string name="paywall_benefit_once">Bayar sekali — tanpa langganan</string>
+    <string name="paywall_buy_with_price">Buka dengan %1$s</string>
+    <string name="paywall_buy">Buka Lifetime Unlimited</string>
+    <string name="paywall_restore">Pulihkan pembelian</string>
+    <string name="paywall_footnote">Pembelian satu kali via Google Play. Paket gratis mencakup 30 menit transkripsi — merekam, mengedit, dan ekspor selalu gratis.</string>
+    <string name="paywall_success">Unlimited terbuka. Selamat menikmati!</string>
+    <string name="paywall_restore_none">Tidak ada pembelian sebelumnya di akun Google ini.</string>
+    <string name="paywall_store_unavailable">Google Play sedang tidak tersedia. Coba lagi sebentar.</string>
+    <string name="paywall_failed">Pembelian tidak selesai. Anda tidak dikenai biaya.</string>
+    <string name="quota_banner">Paket gratis: sisa %1$d mnt transkripsi</string>
+    <string name="quota_banner_exhausted">Waktu transkripsi gratis habis</string>
+    <string name="quota_banner_cta">Upgrade</string>
+    <string name="detail_quota_exceeded">30 menit transkripsi gratis Anda sudah habis. Buka Unlimited untuk mentranskrip rekaman ini.</string>
+    <string name="detail_quota_audio_kept">Audio Anda tersimpan — tidak ada yang hilang.</string>
+    <string name="settings_unlimited_title">Vocatim Unlimited</string>
+    <string name="settings_unlimited_active">Aktif — transkripsi tanpa batas</string>
+    <string name="settings_unlimited_upsell">Transkripsi tanpa batas, bayar sekali</string>
+
+    <string name="onboarding_privacy_title">Privat sejak dirancang</string>
+    <string name="onboarding_privacy_body">Vocatim mengubah suara jadi teks sepenuhnya di HP Anda. Tanpa cloud, tanpa akun, tidak ada data yang keluar dari perangkat.</string>
+    <string name="onboarding_language_title">Bahasa utama Anda</string>
+    <string name="onboarding_language_body">Bahasa apa yang paling sering Anda pakai? Bisa diubah kapan saja di Pengaturan.</string>
+    <string name="onboarding_lang_id">Indonesia</string>
+    <string name="onboarding_lang_en">Inggris</string>
+    <string name="onboarding_model_title">Unduh mesinnya</string>
+    <string name="onboarding_model_body">Vocatim butuh model suara (%1$s, ±%2$d MB) — unduhan satu kali. Setelah ini, semuanya bekerja offline.</string>
+    <string name="onboarding_model_ready">Model siap — semuanya beres!</string>
+    <string name="onboarding_skip">Lewati</string>
+    <string name="onboarding_next">Lanjut</string>
+    <string name="onboarding_start">Mulai</string>
 </resources>

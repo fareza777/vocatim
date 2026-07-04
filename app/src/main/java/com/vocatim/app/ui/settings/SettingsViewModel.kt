@@ -33,7 +33,11 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val modelManager: ModelManager,
     private val userPrefs: UserPrefs,
+    quotaStore: com.vocatim.app.data.billing.QuotaStore,
 ) : ViewModel() {
+
+    val isPro: StateFlow<Boolean> = quotaStore.isProCached
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val settings: StateFlow<UserSettings?> =
         userPrefs.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

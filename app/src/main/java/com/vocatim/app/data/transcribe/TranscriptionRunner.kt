@@ -24,6 +24,8 @@ import java.io.FileNotFoundException
  * kill continues from the last committed chunk), progress reporting,
  * and realtime-factor bookkeeping.
  */
+class QuotaExceededException : Exception("QUOTA_EXCEEDED")
+
 class TranscriptionRunner(
     private val repository: TranscriptRepository,
     private val transcriber: WhisperTranscriber,
@@ -32,6 +34,7 @@ class TranscriptionRunner(
     private val progressHolder: TranscriptionProgressHolder,
     private val userPrefs: UserPrefs,
     private val threadPolicy: ThreadPolicy,
+    private val quotaStore: com.vocatim.app.data.billing.QuotaStore,
     private val importDir: File,
 ) {
 
@@ -46,6 +49,9 @@ class TranscriptionRunner(
             withContext(kotlinx.coroutines.NonCancellable) {
                 markCancelled(transcriptId)
             }
+            throw e
+        } catch (e: QuotaExceededException) {
+            repository.updateStatus(transcriptId, TranscriptStatus.FAILED, "QUOTA_EXCEEDED")
             throw e
         } catch (e: Exception) {
             repository.updateStatus(
@@ -90,6 +96,15 @@ class TranscriptionRunner(
         )
         if (!audioFile.exists()) {
             throw FileNotFoundException("Audio file for this transcript is gone")
+        }
+
+        // Free tier: a job may only START while under the 30-minute total.
+        // Once started it always finishes — no mid-file cutoffs.
+        val isPro = quotaStore.currentIsPro()
+        if (!isPro && entity.completedChunks == 0 &&
+            quotaStore.currentUsedMs() >= com.vocatim.app.data.billing.QuotaStore.FREE_LIMIT_MS
+        ) {
+            throw QuotaExceededException()
         }
 
         val resumeFrom = entity.completedChunks
@@ -167,7 +182,9 @@ class TranscriptionRunner(
                         completedChunks = chunk.index + 1,
                     )
 
-                    processedAudioMs += chunk.sampleCount * 1000L / WavDecoder.WHISPER_SAMPLE_RATE
+                    val chunkMs = chunk.sampleCount * 1000L / WavDecoder.WHISPER_SAMPLE_RATE
+                    if (!isPro) quotaStore.addUsage(chunkMs)
+                    processedAudioMs += chunkMs
                     val elapsed = SystemClock.elapsedRealtime() - startedAt
                     // Live estimate from this run's own pace.
                     val liveRtf = elapsed.toFloat() / processedAudioMs

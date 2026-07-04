@@ -21,12 +21,30 @@ data class HomeItem(
     val progress: TranscriptionProgress?,
 )
 
+data class QuotaBanner(val remainingMinutes: Long, val exhausted: Boolean)
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     repository: TranscriptRepository,
     progressHolder: TranscriptionProgressHolder,
+    quotaStore: com.vocatim.app.data.billing.QuotaStore,
     private val importCoordinator: ImportCoordinator,
 ) : ViewModel() {
+
+    /** null = Pro (no banner). */
+    val quotaBanner: StateFlow<QuotaBanner?> =
+        combine(quotaStore.isProCached, quotaStore.usedMs) { pro, used ->
+            if (pro) null
+            else {
+                val remaining =
+                    (com.vocatim.app.data.billing.QuotaStore.FREE_LIMIT_MS - used)
+                        .coerceAtLeast(0)
+                QuotaBanner(
+                    remainingMinutes = remaining / 60_000,
+                    exhausted = remaining <= 0,
+                )
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _query = kotlinx.coroutines.flow.MutableStateFlow("")
     val query: StateFlow<String> = _query

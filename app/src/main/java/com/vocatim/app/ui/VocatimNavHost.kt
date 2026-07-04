@@ -22,6 +22,7 @@ object Routes {
     const val RECORD = "record?autoStart={autoStart}"
     const val DEBUG = "debug"
     const val SETTINGS = "settings"
+    const val PAYWALL = "paywall"
     const val DETAIL = "detail/{transcriptId}"
     fun record(autoStart: Boolean = false) = "record?autoStart=$autoStart"
     fun detail(id: Long) = "detail/$id"
@@ -60,10 +61,19 @@ fun VocatimNavHost(
                 onTranscriptClick = { id -> navController.navigate(Routes.detail(id)) },
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                 onDebugClick = { navController.navigate(Routes.DEBUG) },
+                onUpgradeClick = { navController.navigate(Routes.PAYWALL) },
             )
         }
         composable(Routes.SETTINGS) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onUpgradeClick = { navController.navigate(Routes.PAYWALL) },
+            )
+        }
+        composable(Routes.PAYWALL) {
+            com.vocatim.app.ui.paywall.PaywallScreen(
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(
             Routes.RECORD,
@@ -88,7 +98,10 @@ fun VocatimNavHost(
             Routes.DETAIL,
             arguments = listOf(navArgument("transcriptId") { type = NavType.LongType }),
         ) {
-            DetailScreen(onBack = { navController.popBackStack() })
+            DetailScreen(
+                onBack = { navController.popBackStack() },
+                onUpgrade = { navController.navigate(Routes.PAYWALL) },
+            )
         }
         composable(Routes.DEBUG) {
             DebugScreen()

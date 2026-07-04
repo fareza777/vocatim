@@ -124,4 +124,41 @@
     <string name="theme_dark">Dark</string>
     <string name="settings_text_size">Transcript text size</string>
     <string name="tile_record">Record with Vocatim</string>
+
+    <string name="paywall_title">Vocatim Unlimited</string>
+    <string name="paywall_already_pro">Unlimited is active. Thank you!</string>
+    <string name="paywall_quota_status">Free plan: %1$d minutes of transcription left</string>
+    <string name="paywall_benefit_unlimited">Unlimited transcription, forever</string>
+    <string name="paywall_benefit_offline">Works fully offline</string>
+    <string name="paywall_benefit_private">Audio never leaves your phone</string>
+    <string name="paywall_benefit_once">Pay once — no subscription</string>
+    <string name="paywall_buy_with_price">Unlock for %1$s</string>
+    <string name="paywall_buy">Unlock Lifetime Unlimited</string>
+    <string name="paywall_restore">Restore purchase</string>
+    <string name="paywall_footnote">One-time purchase via Google Play. The free plan includes 30 minutes of transcription — recording, editing, and export are always free.</string>
+    <string name="paywall_success">Unlimited unlocked. Enjoy!</string>
+    <string name="paywall_restore_none">No previous purchase found for this Google account.</string>
+    <string name="paywall_store_unavailable">Google Play is unavailable right now. Try again shortly.</string>
+    <string name="paywall_failed">Purchase didn\'t complete. You were not charged.</string>
+    <string name="quota_banner">Free plan: %1$d min of transcription left</string>
+    <string name="quota_banner_exhausted">Free transcription time used up</string>
+    <string name="quota_banner_cta">Upgrade</string>
+    <string name="detail_quota_exceeded">Your 30 free minutes of transcription are used up. Unlock Unlimited to transcribe this recording.</string>
+    <string name="detail_quota_audio_kept">Your audio is saved — nothing is lost.</string>
+    <string name="settings_unlimited_title">Vocatim Unlimited</string>
+    <string name="settings_unlimited_active">Active — unlimited transcription</string>
+    <string name="settings_unlimited_upsell">Unlimited transcription, pay once</string>
+
+    <string name="onboarding_privacy_title">Private by design</string>
+    <string name="onboarding_privacy_body">Vocatim transcribes speech to text entirely on your phone. No cloud, no account, no data ever leaves your device.</string>
+    <string name="onboarding_language_title">Your main language</string>
+    <string name="onboarding_language_body">Which language do you speak most? You can change this anytime in Settings.</string>
+    <string name="onboarding_lang_id">Indonesia</string>
+    <string name="onboarding_lang_en">English</string>
+    <string name="onboarding_model_title">Download the engine</string>
+    <string name="onboarding_model_body">Vocatim needs a speech model (%1$s, ±%2$d MB) — a one-time download. After this, everything works offline.</string>
+    <string name="onboarding_model_ready">Model ready — you\'re all set!</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start">Start</string>
 </resources>

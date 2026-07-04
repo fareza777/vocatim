@@ -57,10 +57,12 @@ fun HomeScreen(
     onTranscriptClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     onDebugClick: () -> Unit,
+    onUpgradeClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
+    val quotaBanner by viewModel.quotaBanner.collectAsStateWithLifecycle()
 
     val pickAudio = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -105,6 +107,42 @@ fun HomeScreen(
                 query = query,
                 onQueryChanged = viewModel::onQueryChanged,
             )
+
+            quotaBanner?.let { banner ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable(onClick = onUpgradeClick),
+                    shape = MaterialTheme.shapes.medium,
+                    color = if (banner.exhausted) {
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
+                    } else {
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
+                    },
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            if (banner.exhausted) {
+                                stringResource(R.string.quota_banner_exhausted)
+                            } else {
+                                stringResource(R.string.quota_banner, banner.remainingMinutes)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            stringResource(R.string.quota_banner_cta),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
 
             if (items.isEmpty() && query.isBlank()) {
                 EmptyState()
@@ -208,13 +246,14 @@ private fun HomeHeader(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        // Hidden-ish: long-term this moves behind a version-tap easter egg.
-        IconButton(onClick = onDebug) {
-            Icon(
-                Icons.Default.GraphicEq,
-                contentDescription = stringResource(R.string.home_debug),
-                tint = MaterialTheme.colorScheme.outlineVariant,
-            )
+        if (com.vocatim.app.BuildConfig.DEBUG) {
+            IconButton(onClick = onDebug) {
+                Icon(
+                    Icons.Default.GraphicEq,
+                    contentDescription = stringResource(R.string.home_debug),
+                    tint = MaterialTheme.colorScheme.outlineVariant,
+                )
+            }
         }
     }
 }
