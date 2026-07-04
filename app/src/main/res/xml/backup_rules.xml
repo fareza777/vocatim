@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup has a 25 MB budget; excluding the heavyweight media dirs
+     keeps the valuable small data (Room DB with transcripts, DataStore with
+     settings/quota/entitlement) under it so backup actually runs. -->
+<full-backup-content>
+    <exclude domain="file" path="models" />
+    <exclude domain="file" path="recordings" />
+    <exclude domain="file" path="imports" />
+</full-backup-content>
