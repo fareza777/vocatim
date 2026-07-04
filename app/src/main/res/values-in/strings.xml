@@ -115,4 +115,13 @@
     <string name="home_search_hint">Cari transkrip</string>
     <string name="home_search_empty">Tidak ada transkrip yang cocok</string>
     <string name="player_toggle">Putar atau jeda</string>
+    <string name="rename_title">Ubah nama transkrip</string>
+    <string name="detail_mode_text">Teks</string>
+    <string name="detail_mode_segments">Segmen</string>
+    <string name="settings_appearance">Tampilan</string>
+    <string name="theme_system">Sistem</string>
+    <string name="theme_light">Terang</string>
+    <string name="theme_dark">Gelap</string>
+    <string name="settings_text_size">Ukuran teks transkrip</string>
+    <string name="tile_record">Rekam dengan Vocatim</string>
 </resources>

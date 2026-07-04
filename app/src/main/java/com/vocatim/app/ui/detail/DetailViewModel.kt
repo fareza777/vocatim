@@ -43,9 +43,15 @@ class DetailViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val repository: TranscriptRepository,
     progressHolder: TranscriptionProgressHolder,
+    userPrefs: com.vocatim.app.data.prefs.UserPrefs,
 ) : ViewModel() {
 
     private val transcriptId: Long = checkNotNull(savedStateHandle["transcriptId"])
+
+    /** Reading-comfort multiplier for the transcript text. */
+    val textScale: StateFlow<Float> = userPrefs.settings
+        .map { it.textScale }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1.0f)
 
     val transcript: StateFlow<TranscriptEntity?> =
         repository.observeById(transcriptId)
@@ -67,6 +73,49 @@ class DetailViewModel @Inject constructor(
     private val _playerState = MutableStateFlow<PlayerState?>(null)
     val playerState: StateFlow<PlayerState?> = _playerState.asStateFlow()
 
+    /** Downsampled peaks of the audio file, for the playback waveform. */
+    private val _waveform = MutableStateFlow<FloatArray?>(null)
+    val waveform: StateFlow<FloatArray?> = _waveform.asStateFlow()
+
+    /** Segments for the timestamped view; loaded once the transcript is done. */
+    private val _segments = MutableStateFlow<List<com.vocatim.app.data.db.SegmentEntity>>(emptyList())
+    val segments: StateFlow<List<com.vocatim.app.data.db.SegmentEntity>> = _segments.asStateFlow()
+
+    fun loadSegments() {
+        viewModelScope.launch {
+            _segments.value = repository.getSegments(transcriptId)
+        }
+    }
+
+    fun loadWaveform() {
+        if (_waveform.value != null) return
+        val path = transcript.value?.audioPath ?: return
+        viewModelScope.launch {
+            _waveform.value = withContext(Dispatchers.IO) {
+                runCatching { computeWaveform(java.io.File(path)) }.getOrNull()
+            }
+        }
+    }
+
+    private fun computeWaveform(file: java.io.File, buckets: Int = 64): FloatArray {
+        com.vocatim.app.data.audio.WavStreamReader(file).use { reader ->
+            val total = reader.totalSamples
+            if (total <= 0) return FloatArray(buckets)
+            val bucketSize = total / buckets
+            // Sample a slice per bucket instead of scanning multi-hour files.
+            val probe = minOf(bucketSize, 4_096L).toInt().coerceAtLeast(1)
+            return FloatArray(buckets) { i ->
+                val samples = reader.read(i * bucketSize, probe)
+                var peak = 0f
+                for (s in samples) {
+                    val a = if (s < 0) -s else s
+                    if (a > peak) peak = a
+                }
+                peak
+            }
+        }
+    }
+
     fun togglePlayback() {
         val existing = player
         if (existing == null) {
@@ -81,14 +130,24 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    fun seekTo(fraction: Float) {
-        val p = player ?: return
-        val target = (p.duration * fraction).toInt()
-        p.seekTo(target)
-        _playerState.value = _playerState.value?.copy(positionMs = target)
+    /** Jump to an absolute position, starting playback if needed. */
+    fun playFromMs(ms: Long) {
+        val existing = player
+        if (existing == null) {
+            startPlayback(seekToMs = ms.toInt())
+        } else {
+            existing.seekTo(ms.toInt())
+            if (!existing.isPlaying) existing.start()
+            startPositionUpdates()
+        }
     }
 
-    private fun startPlayback() {
+    fun seekToFraction(fraction: Float) {
+        val duration = transcript.value?.audioDurationMs ?: return
+        playFromMs((duration * fraction.coerceIn(0f, 1f)).toLong())
+    }
+
+    private fun startPlayback(seekToMs: Int = 0) {
         val path = transcript.value?.audioPath ?: return
         viewModelScope.launch {
             try {
@@ -104,6 +163,7 @@ class DetailViewModel @Inject constructor(
                         PlayerState(playing = false, positionMs = 0, durationMs = created.duration)
                 }
                 player = created
+                if (seekToMs > 0) created.seekTo(seekToMs)
                 created.start()
                 startPositionUpdates()
             } catch (e: Exception) {
@@ -152,6 +212,14 @@ class DetailViewModel @Inject constructor(
 
     /** Current text: unsaved edits win over the stored value. */
     fun currentText(): String = _editedText.value ?: transcript.value?.text.orEmpty()
+
+    fun rename(title: String) {
+        val trimmed = title.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            repository.updateTitle(transcriptId, trimmed)
+        }
+    }
 
     fun retry() {
         viewModelScope.launch {

@@ -12,6 +12,8 @@ import java.io.FileNotFoundException
 data class TranscriptionResult(
     val segments: List<WhisperSegment>,
     val processingTimeMs: Long,
+    /** ISO 639-1 code Whisper detected/used, or null when unavailable. */
+    val detectedLanguage: String? = null,
 ) {
     val text: String get() = segments.joinToString("") { it.text }.trim()
 }
@@ -37,10 +39,11 @@ class WhisperTranscriber(
     ): TranscriptionResult = mutex.withLock {
         val ctx = loadContextLocked(model)
         val startedAt = SystemClock.elapsedRealtime()
-        val segments = ctx.transcribe(samples, language, translate, numThreads)
+        val result = ctx.transcribe(samples, language, translate, numThreads)
         TranscriptionResult(
-            segments = segments,
+            segments = result.segments,
             processingTimeMs = SystemClock.elapsedRealtime() - startedAt,
+            detectedLanguage = result.detectedLanguage,
         )
     }
 

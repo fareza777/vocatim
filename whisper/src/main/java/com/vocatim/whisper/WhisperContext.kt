@@ -6,6 +6,12 @@ import java.util.concurrent.Executors
 
 class WhisperException(message: String) : Exception(message)
 
+data class WhisperResult(
+    val segments: List<WhisperSegment>,
+    /** ISO 639-1 code Whisper detected/used, or null when unavailable. */
+    val detectedLanguage: String?,
+)
+
 /**
  * Safe Kotlin wrapper around a native whisper_context.
  *
@@ -26,13 +32,13 @@ class WhisperContext private constructor(private var ptr: Long) {
         language: String = "auto",
         translate: Boolean = false,
         numThreads: Int = WhisperCpuConfig.preferredThreadCount,
-    ): List<WhisperSegment> = withContext(dispatcher) {
+    ): WhisperResult = withContext(dispatcher) {
         if (ptr == 0L) throw WhisperException("Whisper context already released")
         val result = WhisperLib.fullTranscribe(ptr, numThreads, language, translate, audioData)
         if (result != 0) throw WhisperException("whisper_full failed with code $result")
 
         val count = WhisperLib.getTextSegmentCount(ptr)
-        (0 until count).map { i ->
+        val segments = (0 until count).map { i ->
             WhisperSegment(
                 // Native timestamps are in units of 10 ms.
                 startMs = WhisperLib.getTextSegmentT0(ptr, i) * 10,
@@ -40,6 +46,7 @@ class WhisperContext private constructor(private var ptr: Long) {
                 text = WhisperLib.getTextSegment(ptr, i),
             )
         }
+        WhisperResult(segments, WhisperLib.getDetectedLanguage(ptr))
     }
 
     suspend fun release() = withContext(dispatcher) {

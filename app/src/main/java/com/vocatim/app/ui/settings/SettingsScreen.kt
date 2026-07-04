@@ -24,6 +24,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -146,6 +149,45 @@ fun SettingsScreen(
                     valueRange = 0f..8f,
                     steps = 7,
                 )
+            }
+
+            Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                val modes = listOf(
+                    com.vocatim.app.data.prefs.UserPrefs.THEME_SYSTEM to R.string.theme_system,
+                    com.vocatim.app.data.prefs.UserPrefs.THEME_LIGHT to R.string.theme_light,
+                    com.vocatim.app.data.prefs.UserPrefs.THEME_DARK to R.string.theme_dark,
+                )
+                modes.forEachIndexed { index, (mode, label) ->
+                    SegmentedButton(
+                        selected = s.themeMode == mode,
+                        onClick = { viewModel.setThemeMode(mode) },
+                        shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                    ) { Text(stringResource(label)) }
+                }
+            }
+            Text(
+                stringResource(R.string.settings_text_size),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                val scales = listOf(1.0f, 1.15f, 1.3f)
+                scales.forEachIndexed { index, scale ->
+                    SegmentedButton(
+                        selected = kotlin.math.abs(s.textScale - scale) < 0.01f,
+                        onClick = { viewModel.setTextScale(scale) },
+                        shape = SegmentedButtonDefaults.itemShape(index, scales.size),
+                    ) {
+                        Text(
+                            "A",
+                            style = when (index) {
+                                0 -> MaterialTheme.typography.bodySmall
+                                1 -> MaterialTheme.typography.bodyMedium
+                                else -> MaterialTheme.typography.bodyLarge
+                            },
+                        )
+                    }
+                }
             }
 
             Text(stringResource(R.string.settings_privacy), style = MaterialTheme.typography.titleMedium)

@@ -115,4 +115,13 @@
     <string name="home_search_hint">Search transcripts</string>
     <string name="home_search_empty">No transcripts match your search</string>
     <string name="player_toggle">Play or pause</string>
+    <string name="rename_title">Rename transcript</string>
+    <string name="detail_mode_text">Text</string>
+    <string name="detail_mode_segments">Segments</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_text_size">Transcript text size</string>
+    <string name="tile_record">Record with Vocatim</string>
 </resources>

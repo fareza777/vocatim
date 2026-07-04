@@ -90,6 +90,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPrefs.setBlockScreenshots(enabled) }
     }
 
+    fun setThemeMode(mode: String) {
+        viewModelScope.launch { userPrefs.setThemeMode(mode) }
+    }
+
+    fun setTextScale(scale: Float) {
+        viewModelScope.launch { userPrefs.setTextScale(scale) }
+    }
+
     fun download(model: WhisperModel) {
         if (downloadJobs[model]?.isActive == true) return
         downloadJobs[model] = viewModelScope.launch {

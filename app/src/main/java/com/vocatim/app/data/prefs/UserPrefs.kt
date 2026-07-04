@@ -21,6 +21,10 @@ data class UserSettings(
     val appLock: Boolean,
     /** Apply FLAG_SECURE: block screenshots and recents preview. */
     val blockScreenshots: Boolean,
+    /** "system", "light", or "dark". */
+    val themeMode: String,
+    /** Multiplier for the transcript reading text size. */
+    val textScale: Float,
 )
 
 /** User settings applied to new recordings and imports. */
@@ -34,6 +38,8 @@ class UserPrefs(private val context: Context) {
             threads = prefs[THREADS_KEY] ?: 0,
             appLock = prefs[APP_LOCK_KEY] ?: false,
             blockScreenshots = prefs[BLOCK_SCREENSHOTS_KEY] ?: false,
+            themeMode = prefs[THEME_MODE_KEY] ?: THEME_SYSTEM,
+            textScale = prefs[TEXT_SCALE_KEY] ?: 1.0f,
         )
     }
 
@@ -67,12 +73,26 @@ class UserPrefs(private val context: Context) {
         context.prefsDataStore.edit { it[BLOCK_SCREENSHOTS_KEY] = enabled }
     }
 
-    private companion object {
-        val MODEL_KEY = stringPreferencesKey("default_model")
-        val LANGUAGE_KEY = stringPreferencesKey("default_language")
-        val TRANSLATE_KEY = booleanPreferencesKey("translate_to_english")
-        val THREADS_KEY = intPreferencesKey("num_threads")
-        val APP_LOCK_KEY = booleanPreferencesKey("app_lock")
-        val BLOCK_SCREENSHOTS_KEY = booleanPreferencesKey("block_screenshots")
+    suspend fun setThemeMode(mode: String) {
+        context.prefsDataStore.edit { it[THEME_MODE_KEY] = mode }
+    }
+
+    suspend fun setTextScale(scale: Float) {
+        context.prefsDataStore.edit { it[TEXT_SCALE_KEY] = scale }
+    }
+
+    companion object {
+        const val THEME_SYSTEM = "system"
+        const val THEME_LIGHT = "light"
+        const val THEME_DARK = "dark"
+
+        private val MODEL_KEY = stringPreferencesKey("default_model")
+        private val LANGUAGE_KEY = stringPreferencesKey("default_language")
+        private val TRANSLATE_KEY = booleanPreferencesKey("translate_to_english")
+        private val THREADS_KEY = intPreferencesKey("num_threads")
+        private val APP_LOCK_KEY = booleanPreferencesKey("app_lock")
+        private val BLOCK_SCREENSHOTS_KEY = booleanPreferencesKey("block_screenshots")
+        private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
+        private val TEXT_SCALE_KEY = androidx.datastore.preferences.core.floatPreferencesKey("text_scale")
     }
 }

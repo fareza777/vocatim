@@ -14,8 +14,8 @@ android {
         applicationId = "com.vocatim.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.5.0"
+        versionCode = 8
+        versionName = "0.6.0"
 
         ndk {
             abiFilters += "arm64-v8a"
@@ -78,6 +78,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.biometric)
+    implementation(libs.androidx.splashscreen)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

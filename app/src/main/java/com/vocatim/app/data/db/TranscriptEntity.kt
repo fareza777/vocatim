@@ -40,5 +40,9 @@ data class TranscriptEntity(
     val translate: Boolean = false,
     /** Checkpoint: chunks fully persisted; resume continues from here. */
     val completedChunks: Int = 0,
+    /** True once the user renames; blocks auto-titling from content. */
+    val customTitle: Boolean = false,
+    /** Language Whisper detected when the user chose "auto". */
+    val detectedLanguage: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

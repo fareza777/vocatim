@@ -34,7 +34,8 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VocatimDatabase =
         Room.databaseBuilder(context, VocatimDatabase::class.java, "vocatim.db")
-            // Pre-release: schema changes wipe local debug data instead of migrating.
+            .addMigrations(VocatimDatabase.MIGRATION_3_4)
+            // Only for pre-v3 leftovers; from v3 on, real migrations apply.
             .fallbackToDestructiveMigration()
             .build()
 

@@ -7,7 +7,11 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +43,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,7 +59,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -79,6 +89,7 @@ fun DetailScreen(
     val exportEvent by viewModel.exportEvent.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var renameDraft by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(exportEvent) {
         exportEvent?.let { event ->
@@ -109,6 +120,9 @@ fun DetailScreen(
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.clickable {
+                            renameDraft = transcript?.title ?: ""
+                        },
                     )
                 },
                 navigationIcon = {
@@ -145,30 +159,59 @@ fun DetailScreen(
 
             when (t.status) {
                 TranscriptStatus.DONE -> {
+                    val playerState by viewModel.playerState.collectAsStateWithLifecycle()
                     if (t.audioPath != null) {
-                        val playerState by viewModel.playerState.collectAsStateWithLifecycle()
+                        val waveform by viewModel.waveform.collectAsStateWithLifecycle()
+                        LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
                         PlayerCard(
                             state = playerState,
+                            waveform = waveform,
+                            durationMs = t.audioDurationMs,
                             onToggle = viewModel::togglePlayback,
-                            onSeek = viewModel::seekTo,
+                            onSeek = viewModel::seekToFraction,
                         )
                     }
-                    OutlinedTextField(
-                        value = editedText ?: t.text,
-                        onValueChange = viewModel::onTextChanged,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 240.dp),
-                        placeholder = { Text(stringResource(R.string.detail_empty_text)) },
-                        shape = MaterialTheme.shapes.large,
-                        textStyle = MaterialTheme.typography.bodyLarge,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        ),
+
+                    var segmentMode by remember { mutableStateOf(false) }
+                    ViewModeToggle(
+                        segmentMode = segmentMode,
+                        onChange = { mode ->
+                            segmentMode = mode
+                            if (mode) viewModel.loadSegments()
+                        },
                     )
+
+                    val textScale by viewModel.textScale.collectAsStateWithLifecycle()
+                    if (segmentMode) {
+                        val segments by viewModel.segments.collectAsStateWithLifecycle()
+                        SegmentList(
+                            segments = segments,
+                            positionMs = playerState?.positionMs?.toLong() ?: -1L,
+                            canSeek = t.audioPath != null,
+                            textScale = textScale,
+                            onSegmentClick = { viewModel.playFromMs(it) },
+                        )
+                    } else {
+                        OutlinedTextField(
+                            value = editedText ?: t.text,
+                            onValueChange = viewModel::onTextChanged,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 240.dp),
+                            placeholder = { Text(stringResource(R.string.detail_empty_text)) },
+                            shape = MaterialTheme.shapes.large,
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = MaterialTheme.typography.bodyLarge.fontSize * textScale,
+                                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * textScale,
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ),
+                        )
+                    }
                     if (editedText != null && editedText != t.text) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = viewModel::saveEdits) {
@@ -266,6 +309,33 @@ fun DetailScreen(
         }
     }
 
+    renameDraft?.let { draft ->
+        AlertDialog(
+            onDismissRequest = { renameDraft = null },
+            title = { Text(stringResource(R.string.rename_title)) },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { renameDraft = it },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.rename(draft)
+                    renameDraft = null
+                }) {
+                    Text(stringResource(R.string.action_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameDraft = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -294,6 +364,8 @@ fun DetailScreen(
 @Composable
 private fun PlayerCard(
     state: PlayerState?,
+    waveform: FloatArray?,
+    durationMs: Long,
     onToggle: () -> Unit,
     onSeek: (Float) -> Unit,
 ) {
@@ -303,7 +375,7 @@ private fun PlayerCard(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -314,19 +386,119 @@ private fun PlayerCard(
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
-            androidx.compose.material3.Slider(
-                value = if (state != null && state.durationMs > 0) {
+            PlaybackWaveform(
+                waveform = waveform,
+                progress = if (state != null && state.durationMs > 0) {
                     state.positionMs.toFloat() / state.durationMs
                 } else 0f,
-                onValueChange = onSeek,
-                modifier = Modifier.weight(1f),
-                enabled = state != null,
+                onSeek = onSeek,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp),
             )
             Text(
-                formatClock(state?.positionMs?.toLong() ?: 0L),
+                formatClock(state?.positionMs?.toLong() ?: durationMs),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun PlaybackWaveform(
+    waveform: FloatArray?,
+    progress: Float,
+    onSeek: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val played = MaterialTheme.colorScheme.primary
+    val remaining = MaterialTheme.colorScheme.outlineVariant
+    Canvas(
+        modifier = modifier.pointerInput(Unit) {
+            detectTapGestures { offset ->
+                onSeek(offset.x / size.width)
+            }
+        }
+    ) {
+        val bars = waveform ?: FloatArray(64) { 0.4f }
+        // Normalize so quiet recordings still show shape.
+        val max = bars.maxOrNull()?.takeIf { it > 0f } ?: 1f
+        val barWidth = size.width / bars.size
+        val center = size.height / 2
+        bars.forEachIndexed { i, raw ->
+            val amp = (raw / max).coerceIn(0.08f, 1f)
+            val h = amp * size.height
+            val x = i * barWidth + barWidth / 2
+            drawLine(
+                color = if (i.toFloat() / bars.size <= progress) played else remaining,
+                start = Offset(x, center - h / 2),
+                end = Offset(x, center + h / 2),
+                strokeWidth = barWidth * 0.55f,
+                cap = StrokeCap.Round,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ViewModeToggle(segmentMode: Boolean, onChange: (Boolean) -> Unit) {
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        SegmentedButton(
+            selected = !segmentMode,
+            onClick = { onChange(false) },
+            shape = SegmentedButtonDefaults.itemShape(0, 2),
+        ) { Text(stringResource(R.string.detail_mode_text)) }
+        SegmentedButton(
+            selected = segmentMode,
+            onClick = { onChange(true) },
+            shape = SegmentedButtonDefaults.itemShape(1, 2),
+        ) { Text(stringResource(R.string.detail_mode_segments)) }
+    }
+}
+
+@Composable
+private fun SegmentList(
+    segments: List<com.vocatim.app.data.db.SegmentEntity>,
+    positionMs: Long,
+    canSeek: Boolean,
+    textScale: Float,
+    onSegmentClick: (Long) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        segments.forEach { segment ->
+            val active = positionMs in segment.startMs until segment.endMs
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = canSeek) { onSegmentClick(segment.startMs) },
+                shape = MaterialTheme.shapes.medium,
+                color = if (active) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        formatClock(segment.startMs),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (active) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        segment.text.trim(),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = MaterialTheme.typography.bodyMedium.fontSize * textScale,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * textScale,
+                        ),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
         }
     }
 }
@@ -353,6 +525,16 @@ private fun MetaRow(t: TranscriptEntity) {
         Pill(formatDate(t.createdAt))
         if (t.audioDurationMs > 0) Pill(formatClock(t.audioDurationMs))
         Pill(t.modelId)
+        if (t.language == "auto" && t.detectedLanguage != null) {
+            Pill(
+                java.util.Locale(t.detectedLanguage).let { locale ->
+                    locale.getDisplayLanguage(locale)
+                        .replaceFirstChar { it.uppercase() }
+                },
+                color = MaterialTheme.colorScheme.secondary,
+                background = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
+            )
+        }
         if (t.status == TranscriptStatus.DONE && t.audioDurationMs > 0 && t.processingTimeMs > 0) {
             Pill(
                 String.format(

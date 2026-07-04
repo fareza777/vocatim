@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.vocatim.app.data.prefs.UserPrefs
@@ -35,15 +36,21 @@ class MainActivity : FragmentActivity() {
     /** null = prefs not loaded yet (render nothing to avoid content flash). */
     private var locked by mutableStateOf<Boolean?>(null)
     private var appLockEnabled = false
+    private var themeMode by mutableStateOf(UserPrefs.THEME_SYSTEM)
+    /** Set by the Quick Settings tile: jump straight into recording. */
+    private var startRecordRequest by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handleAudioIntent(intent)
+        handleRecordIntent(intent)
 
         lifecycleScope.launch {
             userPrefs.settings.collect { settings ->
                 appLockEnabled = settings.appLock
+                themeMode = settings.themeMode
                 if (locked == null) {
                     locked = settings.appLock
                     if (settings.appLock) authenticate()
@@ -57,13 +64,28 @@ class MainActivity : FragmentActivity() {
         }
 
         setContent {
-            VocatimTheme {
+            val darkTheme = when (themeMode) {
+                UserPrefs.THEME_LIGHT -> false
+                UserPrefs.THEME_DARK -> true
+                else -> androidx.compose.foundation.isSystemInDarkTheme()
+            }
+            VocatimTheme(darkTheme = darkTheme) {
                 when (locked) {
                     null -> Unit // waiting for prefs; background only
                     true -> LockScreen(onUnlockClick = ::authenticate)
-                    false -> VocatimNavHost()
+                    false -> VocatimNavHost(
+                        startRecord = startRecordRequest,
+                        onStartRecordConsumed = { startRecordRequest = false },
+                    )
                 }
             }
+        }
+    }
+
+    private fun handleRecordIntent(intent: Intent?) {
+        if (intent?.action == ACTION_START_RECORD) {
+            intent.action = null
+            startRecordRequest = true
         }
     }
 
@@ -110,6 +132,7 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleAudioIntent(intent)
+        handleRecordIntent(intent)
     }
 
     /** Audio shared or opened from another app goes straight to import. */
@@ -128,5 +151,9 @@ class MainActivity : FragmentActivity() {
                 runCatching { importCoordinator.startImport(uri) }
             }
         }
+    }
+
+    companion object {
+        const val ACTION_START_RECORD = "com.vocatim.app.START_RECORD"
     }
 }

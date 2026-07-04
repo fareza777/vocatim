@@ -134,6 +134,7 @@ class TranscriptionRunner(
                 )
 
                 var processedAudioMs = 0L
+                var detectedLanguage: String? = null
                 for (chunk in chunks) {
                     if (chunk.index < resumeFrom) continue
 
@@ -147,6 +148,9 @@ class TranscriptionRunner(
                         numThreads = threadPolicy.threadsFor(settings.threads),
                     )
 
+                    if (detectedLanguage == null) {
+                        detectedLanguage = result.detectedLanguage
+                    }
                     val accepted = SegmentMerger.acceptSegments(chunk, result.segments)
                     allSegments.addAll(accepted)
                     repository.commitChunk(
@@ -180,12 +184,20 @@ class TranscriptionRunner(
 
                 val elapsed = SystemClock.elapsedRealtime() - startedAt
                 val finished = repository.getById(transcriptId) ?: return@use
+                // Recordings get a title from their content; imports keep the
+                // file name and renamed items are never touched.
+                val autoTitle =
+                    if (!finished.customTitle && finished.sourceName == null) {
+                        TitleGenerator.fromText(finished.text)
+                    } else null
                 repository.update(
                     finished.copy(
                         status = TranscriptStatus.DONE,
                         // Accumulates across resumed runs.
                         processingTimeMs = finished.processingTimeMs + elapsed,
                         errorMessage = null,
+                        title = autoTitle ?: finished.title,
+                        detectedLanguage = detectedLanguage ?: finished.detectedLanguage,
                     )
                 )
                 if (processedAudioMs > 0) {

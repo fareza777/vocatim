@@ -63,9 +63,9 @@ fun HomeScreen(
     val query by viewModel.query.collectAsStateWithLifecycle()
 
     val pickAudio = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let { viewModel.importAudio(it) }
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        uris.forEach { viewModel.importAudio(it) }
     }
 
     Scaffold(

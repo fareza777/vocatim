@@ -33,7 +33,7 @@ interface TranscriptDao {
     @Query("UPDATE transcripts SET status = :status, errorMessage = :error WHERE id = :id")
     suspend fun updateStatus(id: Long, status: String, error: String? = null)
 
-    @Query("UPDATE transcripts SET title = :title WHERE id = :id")
+    @Query("UPDATE transcripts SET title = :title, customTitle = 1 WHERE id = :id")
     suspend fun updateTitle(id: Long, title: String)
 
     @Query("UPDATE transcripts SET completedChunks = :completedChunks WHERE id = :id")

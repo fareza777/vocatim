@@ -70,11 +70,13 @@ private const val AMPLITUDE_BARS = 40
 fun RecordScreen(
     onFinished: (Long) -> Unit,
     onBack: () -> Unit,
+    autoStart: Boolean = false,
     viewModel: RecordViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val storageStatus by viewModel.storageStatus.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val amplitudes = remember { mutableStateListOf<Float>() }
 
     LaunchedEffect(Unit) {
@@ -98,6 +100,7 @@ fun RecordScreen(
     }
 
     fun startWithPermission() {
+        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
         val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= 33) {
             needed.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -107,6 +110,13 @@ fun RecordScreen(
         }
         if (missing.isEmpty()) viewModel.start()
         else permissionLauncher.launch(needed.toTypedArray())
+    }
+
+    // Quick Settings tile arrives with autoStart: begin immediately.
+    LaunchedEffect(Unit) {
+        if (autoStart && state is RecordingState.Idle) {
+            startWithPermission()
+        }
     }
 
     Scaffold(
@@ -233,7 +243,12 @@ fun RecordScreen(
                             recording = !s.paused,
                             icon = Icons.Default.Stop,
                             contentDescription = stringResource(R.string.record_stop),
-                            onClick = { viewModel.stop() },
+                            onClick = {
+                                haptic.performHapticFeedback(
+                                    androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
+                                )
+                                viewModel.stop()
+                            },
                         )
                     }
                 }
