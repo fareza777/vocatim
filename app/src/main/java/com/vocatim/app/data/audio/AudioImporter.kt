@@ -29,12 +29,29 @@ class AudioImporter(private val context: Context) {
         outFile: File,
         onProgress: (Float) -> Unit = {},
     ): ImportResult = withContext(Dispatchers.Default) {
+        // Cloud providers (Drive, Gmail, ...) serve non-seekable streams that
+        // MediaExtractor can't handle. Stage the source into a local temp
+        // file first; openInputStream works for all providers.
+        val staged = File(context.cacheDir, "import_staging_${System.currentTimeMillis()}")
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         var writer: WavFileWriter? = null
         try {
             try {
-                extractor.setDataSource(context, uri, null)
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    staged.outputStream().use { output -> input.copyTo(output) }
+                } ?: throw IOException("Content provider returned no stream")
+            } catch (e: Exception) {
+                throw AudioImportException(
+                    "Couldn't read the selected file (cloud files need a connection)", e
+                )
+            }
+            if (staged.length() == 0L) {
+                throw AudioImportException("The selected file is empty")
+            }
+
+            try {
+                extractor.setDataSource(staged.absolutePath)
             } catch (e: IOException) {
                 throw AudioImportException("Couldn't open the selected file", e)
             }
@@ -78,6 +95,7 @@ class AudioImporter(private val context: Context) {
             runCatching { codec?.stop() }
             runCatching { codec?.release() }
             runCatching { extractor.release() }
+            staged.delete()
         }
     }
 
