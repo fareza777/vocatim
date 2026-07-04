@@ -89,9 +89,18 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.tertiary,
                 )
             }
+            // Full small is hidden: q5_1 matches its quality at 2.4x less
+            // download. Still listed while present on disk so it can be
+            // deleted or kept in use.
+            val visibleModels = WhisperModel.entries.filter { model ->
+                model != WhisperModel.SMALL ||
+                    modelStates[model] is ModelState.Downloaded ||
+                    modelStates[model] is ModelState.Downloading ||
+                    s.model == model
+            }
             Card {
                 Column(modifier = Modifier.padding(8.dp)) {
-                    WhisperModel.entries.forEachIndexed { index, model ->
+                    visibleModels.forEachIndexed { index, model ->
                         ModelRow(
                             model = model,
                             state = modelStates[model] ?: ModelState.NotDownloaded,
@@ -101,7 +110,7 @@ fun SettingsScreen(
                             onCancel = { viewModel.cancelDownload(model) },
                             onDelete = { viewModel.delete(model) },
                         )
-                        if (index < WhisperModel.entries.size - 1) HorizontalDivider()
+                        if (index < visibleModels.size - 1) HorizontalDivider()
                     }
                 }
             }

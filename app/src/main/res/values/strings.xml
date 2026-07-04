@@ -98,4 +98,7 @@
     <string name="debug_benchmark_run">Measure RTF of downloaded models</string>
     <string name="debug_benchmark_running">%1$s: measuring…</string>
     <string name="debug_benchmark_result">%1$s: %2$s× realtime</string>
+    <string name="home_tagline">Offline. Private. Yours.</string>
+    <string name="record_title_idle">Ready to record</string>
+    <string name="record_live">Recording</string>
 </resources>

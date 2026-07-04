@@ -98,4 +98,7 @@
     <string name="debug_benchmark_run">Ukur RTF model yang terunduh</string>
     <string name="debug_benchmark_running">%1$s: mengukur…</string>
     <string name="debug_benchmark_result">%1$s: %2$s× realtime</string>
+    <string name="home_tagline">Offline. Privat. Milik Anda.</string>
+    <string name="record_title_idle">Siap merekam</string>
+    <string name="record_live">Merekam</string>
 </resources>

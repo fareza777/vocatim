@@ -2,37 +2,41 @@ package com.vocatim.app.ui.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,10 +44,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vocatim.app.R
 import com.vocatim.app.data.db.TranscriptStatus
+import com.vocatim.app.ui.common.Pill
 import com.vocatim.app.ui.common.formatClock
 import com.vocatim.app.ui.common.formatDate
+import com.vocatim.app.ui.theme.BrandGradient
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onRecordClick: () -> Unit,
@@ -61,61 +66,51 @@ fun HomeScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    IconButton(onClick = {
-                        pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg"))
-                    }) {
-                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_import))
-                    }
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
-                    }
-                    IconButton(onClick = onDebugClick) {
-                        Icon(Icons.Default.BugReport, contentDescription = stringResource(R.string.home_debug))
-                    }
-                },
-            )
-        },
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            FloatingActionButton(onClick = onRecordClick) {
-                Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.home_record))
+            // Hero action: gradient record button.
+            Box(
+                modifier = Modifier
+                    .size(68.dp)
+                    .clip(CircleShape)
+                    .background(BrandGradient)
+                    .clickable(onClick = onRecordClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Mic,
+                    contentDescription = stringResource(R.string.home_record),
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp),
+                )
             }
         },
     ) { padding ->
-        if (items.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        stringResource(R.string.home_empty_title),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        stringResource(R.string.home_empty_body),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(items, key = { it.transcript.id }) { item ->
-                    TranscriptCard(item, onClick = { onTranscriptClick(item.transcript.id) })
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .statusBarsPadding()
+        ) {
+            HomeHeader(
+                onImport = { pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg")) },
+                onSettings = onSettingsClick,
+                onDebug = onDebugClick,
+            )
+
+            if (items.isEmpty()) {
+                EmptyState()
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 20.dp, end = 20.dp, top = 4.dp, bottom = 100.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(items, key = { it.transcript.id }) { item ->
+                        TranscriptCard(item, onClick = { onTranscriptClick(item.transcript.id) })
+                    }
                 }
             }
         }
@@ -123,62 +118,169 @@ fun HomeScreen(
 }
 
 @Composable
+private fun HomeHeader(
+    onImport: () -> Unit,
+    onSettings: () -> Unit,
+    onDebug: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, end = 8.dp, top = 16.dp, bottom = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                stringResource(R.string.app_name),
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            Text(
+                stringResource(R.string.home_tagline),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onImport) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = stringResource(R.string.home_import),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onSettings) {
+            Icon(
+                Icons.Default.Settings,
+                contentDescription = stringResource(R.string.settings_title),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // Hidden-ish: long-term this moves behind a version-tap easter egg.
+        IconButton(onClick = onDebug) {
+            Icon(
+                Icons.Default.GraphicEq,
+                contentDescription = stringResource(R.string.home_debug),
+                tint = MaterialTheme.colorScheme.outlineVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyState() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(88.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Mic,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(40.dp),
+                )
+            }
+            Text(
+                stringResource(R.string.home_empty_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                stringResource(R.string.home_empty_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
     val t = item.transcript
-    Card(modifier = Modifier
-        .fillMaxWidth()
-        .clickable(onClick = onClick)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(t.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    formatDate(t.createdAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    t.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
                 if (t.audioDurationMs > 0) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        formatClock(t.audioDurationMs),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Spacer(Modifier.size(8.dp))
+                    Pill(formatClock(t.audioDurationMs))
                 }
             }
+            Text(
+                formatDate(t.createdAt),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             when (t.status) {
                 TranscriptStatus.DONE -> {
                     if (t.text.isNotBlank()) {
                         Text(
                             t.text,
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
                 TranscriptStatus.FAILED -> {
-                    Text(
+                    Pill(
                         stringResource(R.string.status_failed),
-                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error,
+                        background = MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
+                        dot = true,
                     )
                 }
                 else -> {
                     val p = item.progress
-                    val label = when {
-                        p == null -> stringResource(R.string.status_queued)
-                        p.converting -> stringResource(R.string.status_converting)
-                        else -> stringResource(R.string.status_transcribing)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Pill(
+                            when {
+                                p == null -> stringResource(R.string.status_queued)
+                                p.converting -> stringResource(R.string.status_converting)
+                                else -> stringResource(R.string.status_transcribing)
+                            },
+                            color = MaterialTheme.colorScheme.secondary,
+                            background = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
+                            dot = true,
+                        )
                     }
-                    Text(label, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(2.dp))
                     if (p != null && p.fraction > 0f) {
                         LinearProgressIndicator(
                             progress = { p.fraction },
                             modifier = Modifier.fillMaxWidth(),
+                            trackColor = MaterialTheme.colorScheme.outlineVariant,
                         )
                     } else {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            trackColor = MaterialTheme.colorScheme.outlineVariant,
+                        )
                     }
                 }
             }
