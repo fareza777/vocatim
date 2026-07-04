@@ -41,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vocatim.app.BuildConfig
 import com.vocatim.app.R
 import com.vocatim.app.data.model.ModelState
 import com.vocatim.app.data.model.WhisperModel
@@ -62,8 +63,14 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
         uri?.let { viewModel.transcribeWav(it) }
     }
 
+    val systemInfo by viewModel.systemInfo.collectAsStateWithLifecycle()
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.debug_title)) }) },
+        topBar = {
+            TopAppBar(title = {
+                Text(stringResource(R.string.debug_title) + " v" + BuildConfig.VERSION_NAME)
+            })
+        },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -118,6 +125,14 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
             }
 
             TranscriptionResult(transcription)
+
+            if (systemInfo.isNotEmpty()) {
+                Text(
+                    text = systemInfo,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
         }
     }
 }

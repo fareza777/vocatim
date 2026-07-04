@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -71,6 +72,12 @@ class DebugViewModel @Inject constructor(
 
     private val _transcription = MutableStateFlow<TranscriptionUiState>(TranscriptionUiState.Idle)
     val transcription: StateFlow<TranscriptionUiState> = _transcription.asStateFlow()
+
+    /** Native runtime diagnostics (SIMD features, thread count) for the debug screen. */
+    val systemInfo: StateFlow<String> = kotlinx.coroutines.flow.flow {
+        emit("threads=${com.vocatim.whisper.WhisperCpuConfig.preferredThreadCount} | " +
+            com.vocatim.whisper.WhisperContext.getSystemInfo())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Lazily, "")
 
     private var downloadJob: Job? = null
     private var transcribeJob: Job? = null
