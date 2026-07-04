@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
@@ -19,12 +18,13 @@ import java.security.MessageDigest
  *
  * - Streams to a `.part` file and resumes interrupted downloads via HTTP Range.
  * - Verifies the finished file: exact size, ggml magic number, and SHA-256
- *   against the Hugging Face LFS ETag when the server provides one.
+ *   against the checksum pinned in [WhisperModel].
  */
 class ModelManager(
     private val modelsDir: File,
     private val client: OkHttpClient,
     private val urlResolver: (WhisperModel) -> String = { it.url },
+    private val sha256Resolver: (WhisperModel) -> String? = { it.sha256 },
 ) {
     private val states: Map<WhisperModel, MutableStateFlow<ModelState>> =
         WhisperModel.entries.associateWith { model ->
@@ -93,7 +93,7 @@ class ModelManager(
                         "Incomplete download: got ${part.length()} of $totalBytes bytes"
                     )
                 }
-                verify(part, expectedSha256 = sha256FromEtag(response))
+                verify(part, expectedSha256 = sha256Resolver(model))
             }
 
             if (!part.renameTo(modelFile(model))) {
@@ -144,22 +144,6 @@ class ModelManager(
         }
     }
 
-    /**
-     * Hugging Face serves LFS files with the SHA-256 as the ETag
-     * (on the redirect as x-linked-etag). Returns null when unavailable.
-     */
-    private fun sha256FromEtag(response: Response): String? {
-        var current: Response? = response
-        while (current != null) {
-            for (name in listOf("x-linked-etag", "etag")) {
-                val value = current.header(name)?.trim('"', 'W', '/')
-                if (value != null && SHA256_HEX.matches(value)) return value
-            }
-            current = current.priorResponse
-        }
-        return null
-    }
-
     private fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->
@@ -175,6 +159,5 @@ class ModelManager(
 
     private companion object {
         const val DEFAULT_BUFFER_SIZE = 64 * 1024
-        val SHA256_HEX = Regex("^[0-9a-fA-F]{64}$")
     }
 }

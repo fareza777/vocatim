@@ -35,12 +35,19 @@ class ModelManagerTest {
     fun setUp() {
         server = MockWebServer()
         server.start()
-        manager = ModelManager(
-            modelsDir = tempDir.newFolder("models"),
+        manager = newManager(sha256Resolver = { null })
+    }
+
+    private fun newManager(sha256Resolver: (WhisperModel) -> String?): ModelManager =
+        ModelManager(
+            modelsDir = modelsDir(),
             client = OkHttpClient(),
             urlResolver = { server.url("/models/${it.fileName}").toString() },
+            sha256Resolver = sha256Resolver,
         )
-    }
+
+    private fun modelsDir(): java.io.File =
+        java.io.File(tempDir.root, "models").apply { mkdirs() }
 
     @After
     fun tearDown() {
@@ -114,27 +121,28 @@ class ModelManagerTest {
     }
 
     @Test
-    fun `verifies sha256 from etag when present`() = runTest {
+    fun `verifies pinned sha256`() = runTest {
         val sha = MessageDigest.getInstance("SHA-256").digest(validModelBytes)
             .joinToString("") { "%02x".format(it) }
-        server.enqueue(bodyResponse(validModelBytes).setHeader("ETag", "\"$sha\""))
+        val verifyingManager = newManager(sha256Resolver = { sha })
+        server.enqueue(bodyResponse(validModelBytes))
 
-        manager.download(WhisperModel.TINY)
+        verifyingManager.download(WhisperModel.TINY)
 
-        assertEquals(ModelState.Downloaded, manager.state(WhisperModel.TINY).value)
+        assertEquals(ModelState.Downloaded, verifyingManager.state(WhisperModel.TINY).value)
     }
 
     @Test
     fun `fails on sha256 mismatch and deletes file`() = runTest {
-        val wrongSha = "0".repeat(64)
-        server.enqueue(bodyResponse(validModelBytes).setHeader("ETag", "\"$wrongSha\""))
+        val verifyingManager = newManager(sha256Resolver = { "0".repeat(64) })
+        server.enqueue(bodyResponse(validModelBytes))
 
         assertThrows(IOException::class.java) {
-            kotlinx.coroutines.runBlocking { manager.download(WhisperModel.TINY) }
+            kotlinx.coroutines.runBlocking { verifyingManager.download(WhisperModel.TINY) }
         }
 
-        assertTrue(manager.state(WhisperModel.TINY).value is ModelState.Failed)
-        assertFalse(manager.modelFile(WhisperModel.TINY).exists())
+        assertTrue(verifyingManager.state(WhisperModel.TINY).value is ModelState.Failed)
+        assertFalse(verifyingManager.modelFile(WhisperModel.TINY).exists())
     }
 
     @Test
