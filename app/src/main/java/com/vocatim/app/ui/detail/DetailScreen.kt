@@ -158,6 +158,11 @@ fun DetailScreen(
                         onExportTxt = { exportTxtLauncher.launch(t.title + ".txt") },
                         onExportSrt = { exportSrtLauncher.launch(t.title + ".srt") },
                     )
+                    if (t.audioPath != null) {
+                        OutlinedButton(onClick = viewModel::deleteAudioOnly) {
+                            Text(stringResource(R.string.action_delete_audio))
+                        }
+                    }
                 }
                 TranscriptStatus.FAILED -> {
                     Card(modifier = Modifier.fillMaxWidth()) {
@@ -212,6 +217,9 @@ fun DetailScreen(
                                     stringResource(R.string.detail_eta, formatClock(eta)),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
+                            }
+                            OutlinedButton(onClick = viewModel::cancel) {
+                                Text(stringResource(R.string.action_cancel))
                             }
                         }
                     }

@@ -54,6 +54,7 @@ class DebugViewModel @Inject constructor(
     private val transcriber: WhisperTranscriber,
     private val transcriptDao: TranscriptDao,
     private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
+    private val rtfStore: com.vocatim.app.data.prefs.RtfStore,
 ) : ViewModel() {
 
     val modelStates: StateFlow<Map<WhisperModel, ModelState>> =
@@ -79,6 +80,39 @@ class DebugViewModel @Inject constructor(
         emit("threads=${com.vocatim.whisper.WhisperCpuConfig.preferredThreadCount} | " +
             com.vocatim.whisper.WhisperContext.getSystemInfo())
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Lazily, "")
+
+    /** Model id -> measured RTF, or null while a benchmark is running. */
+    private val _benchmarkResults = MutableStateFlow<Map<String, Float?>>(emptyMap())
+    val benchmarkResults: StateFlow<Map<String, Float?>> = _benchmarkResults.asStateFlow()
+
+    /**
+     * Measures the realtime factor of every downloaded model against the
+     * bundled 11s sample and feeds the results into the ETA estimator.
+     */
+    fun runBenchmark() {
+        if (_benchmarkResults.value.values.any { it == null }) return
+        viewModelScope.launch {
+            val models = WhisperModel.entries.filter { modelManager.isDownloaded(it) }
+            for (model in models) {
+                _benchmarkResults.value += (model.id to null)
+                try {
+                    val decoded = withContext(Dispatchers.IO) {
+                        appContext.assets.open("bench.wav").use { input ->
+                            WavDecoder.decode(input.readBytes())
+                        }
+                    }
+                    val result = transcriber.transcribe(model, decoded.samples, language = "en")
+                    val rtf = result.processingTimeMs.toFloat() / decoded.durationMs
+                    rtfStore.recordMeasurement(model, rtf)
+                    _benchmarkResults.value += (model.id to rtf)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _benchmarkResults.value -= model.id
+                }
+            }
+        }
+    }
 
     private var downloadJob: Job? = null
     private var transcribeJob: Job? = null

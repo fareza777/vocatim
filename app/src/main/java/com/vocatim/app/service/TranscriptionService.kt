@@ -41,6 +41,8 @@ class TranscriptionService : Service() {
     private val queue = ConcurrentLinkedQueue<JobSpec>()
     private var workerJob: Job? = null
     private var notifierJob: Job? = null
+    private var currentJob: Job? = null
+    @Volatile private var currentTranscriptId: Long = -1
     private var wakeLock: PowerManager.WakeLock? = null
 
     private data class JobSpec(val transcriptId: Long, val sourceUri: Uri?)
@@ -49,14 +51,29 @@ class TranscriptionService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val id = intent?.getLongExtra(EXTRA_TRANSCRIPT_ID, -1) ?: -1
-        if (id > 0) {
-            // Source URI travels in intent.data so the read grant from the
-            // sharing app propagates to this service.
-            queue.add(JobSpec(id, intent?.data))
-            ensureForeground()
-            ensureWorker()
+        when (intent?.action) {
+            ACTION_CANCEL -> if (id > 0) cancelJob(id)
+            else -> if (id > 0) {
+                // Source URI travels in intent.data so the read grant from the
+                // sharing app propagates to this service.
+                queue.add(JobSpec(id, intent?.data))
+                ensureForeground()
+                ensureWorker()
+            }
         }
         return START_NOT_STICKY
+    }
+
+    private fun cancelJob(transcriptId: Long) {
+        queue.removeIf { it.transcriptId == transcriptId }
+        if (currentTranscriptId == transcriptId) {
+            currentJob?.cancel()
+        } else {
+            // Queued but not started: mark cancelled so retry is offered.
+            scope.launch {
+                runner.markCancelled(transcriptId)
+            }
+        }
     }
 
     private fun ensureForeground() {
@@ -79,11 +96,19 @@ class TranscriptionService : Service() {
             while (true) {
                 val job = queue.poll() ?: break
                 startNotifier(job.transcriptId)
-                try {
-                    runner.run(job.transcriptId, job.sourceUri)
-                } catch (e: Exception) {
-                    // Failure state is persisted by the runner; keep draining.
+                currentTranscriptId = job.transcriptId
+                // Child job so a per-transcript cancel doesn't kill the queue.
+                val child = launch {
+                    try {
+                        runner.run(job.transcriptId, job.sourceUri)
+                    } catch (e: Exception) {
+                        // Failure state is persisted by the runner; keep draining.
+                    }
                 }
+                currentJob = child
+                child.join()
+                currentJob = null
+                currentTranscriptId = -1
                 stopNotifier()
             }
             wakeLock?.let { if (it.isHeld) it.release() }
@@ -117,7 +142,13 @@ class TranscriptionService : Service() {
                 }
                 getSystemService<android.app.NotificationManager>()?.notify(
                     Notifications.NOTIFICATION_ID_TRANSCRIPTION,
-                    buildNotification(text, progressPercent = (p.fraction * 100).toInt()),
+                    buildNotification(
+                        text,
+                        progressPercent = (p.fraction * 100).toInt(),
+                        // Long job ahead: suggest plugging the phone in.
+                        chargeHint = (p.etaMs ?: 0) > CHARGE_HINT_ETA_MS,
+                        cancelId = transcriptId,
+                    ),
                 )
             }
         }
@@ -134,7 +165,12 @@ class TranscriptionService : Service() {
         else getString(R.string.eta_minutes, totalMinutes)
     }
 
-    private fun buildNotification(text: String, progressPercent: Int? = null): Notification {
+    private fun buildNotification(
+        text: String,
+        progressPercent: Int? = null,
+        chargeHint: Boolean = false,
+        cancelId: Long? = null,
+    ): Notification {
         val openIntent = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),
@@ -149,6 +185,18 @@ class TranscriptionService : Service() {
             .apply {
                 if (progressPercent != null) setProgress(100, progressPercent, false)
                 else setProgress(0, 0, true)
+                if (chargeHint) setSubText(getString(R.string.notif_charge_hint))
+                if (cancelId != null) {
+                    val cancelIntent = PendingIntent.getService(
+                        this@TranscriptionService,
+                        cancelId.toInt(),
+                        Intent(this@TranscriptionService, TranscriptionService::class.java)
+                            .setAction(ACTION_CANCEL)
+                            .putExtra(EXTRA_TRANSCRIPT_ID, cancelId),
+                        PendingIntent.FLAG_IMMUTABLE,
+                    )
+                    addAction(0, getString(R.string.action_cancel), cancelIntent)
+                }
             }
             .build()
     }
@@ -162,7 +210,9 @@ class TranscriptionService : Service() {
 
     companion object {
         private const val EXTRA_TRANSCRIPT_ID = "transcript_id"
+        private const val ACTION_CANCEL = "com.vocatim.app.transcribe.CANCEL"
         private const val NOTIFICATION_THROTTLE_MS = 1_000L
+        private const val CHARGE_HINT_ETA_MS = 30L * 60 * 1000
         /** 12h cap: covers 2-3h audio on slow devices with margin. */
         private const val MAX_WAKELOCK_MS = 12L * 60 * 60 * 1000
 
@@ -174,6 +224,14 @@ class TranscriptionService : Service() {
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             context.startForegroundService(intent)
+        }
+
+        fun cancel(context: Context, transcriptId: Long) {
+            context.startService(
+                Intent(context, TranscriptionService::class.java)
+                    .setAction(ACTION_CANCEL)
+                    .putExtra(EXTRA_TRANSCRIPT_ID, transcriptId)
+            )
         }
     }
 }

@@ -73,4 +73,28 @@
     <string name="detail_eta">About %1$s remaining</string>
     <string name="detail_failed">Transcription failed: %1$s</string>
     <string name="detail_cancelled">Transcription was interrupted. Tap retry to run it again.</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_model">Model</string>
+    <string name="settings_low_ram_hint">This device has limited memory — the tiny model is recommended.</string>
+    <string name="settings_language">Transcription language</string>
+    <string name="settings_change">Change</string>
+    <string name="settings_translate">Translate to English</string>
+    <string name="settings_translate_desc">Whisper built-in: output in English regardless of spoken language</string>
+    <string name="settings_threads">CPU threads</string>
+    <string name="settings_threads_auto">Automatic</string>
+    <string name="settings_storage">Storage</string>
+    <string name="settings_storage_usage">Models: %1$s · Audio: %2$s</string>
+    <string name="lang_auto">Auto-detect</string>
+    <string name="model_speed_tiny">Fastest, lowest accuracy</string>
+    <string name="model_speed_base">Balanced</string>
+    <string name="model_speed_small">Most accurate, slower</string>
+    <string name="action_delete_audio">Delete audio, keep text</string>
+    <string name="record_storage_low">Storage is getting low — long recordings may not fit.</string>
+    <string name="record_storage_full">Not enough storage to record. Free up space first.</string>
+    <string name="notif_charge_hint">Long job — consider plugging in your phone</string>
+    <string name="debug_benchmark_title">Benchmark</string>
+    <string name="debug_benchmark_run">Measure RTF of downloaded models</string>
+    <string name="debug_benchmark_running">%1$s: measuring…</string>
+    <string name="debug_benchmark_result">%1$s: %2$s× realtime</string>
 </resources>

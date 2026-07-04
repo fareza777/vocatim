@@ -82,6 +82,17 @@ class DetailViewModel @Inject constructor(
         }
     }
 
+    fun cancel() {
+        TranscriptionService.cancel(appContext, transcriptId)
+    }
+
+    /** Frees disk space but keeps the transcript text and segments. */
+    fun deleteAudioOnly() {
+        viewModelScope.launch {
+            repository.deleteAudioFile(transcriptId)
+        }
+    }
+
     fun delete(onDeleted: () -> Unit) {
         viewModelScope.launch {
             repository.delete(transcriptId)

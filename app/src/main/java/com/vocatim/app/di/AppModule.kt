@@ -9,7 +9,9 @@ import com.vocatim.app.data.model.ModelManager
 import com.vocatim.app.data.prefs.RtfStore
 import com.vocatim.app.data.prefs.UserPrefs
 import com.vocatim.app.data.repository.ImportCoordinator
+import com.vocatim.app.data.repository.StartupRecovery
 import com.vocatim.app.data.repository.TranscriptRepository
+import com.vocatim.app.data.transcribe.ThreadPolicy
 import com.vocatim.app.data.transcribe.TranscriptionProgressHolder
 import com.vocatim.app.data.transcribe.TranscriptionRunner
 import com.vocatim.app.data.transcribe.WhisperTranscriber
@@ -107,12 +109,22 @@ object AppModule {
         importer: AudioImporter,
         rtfStore: RtfStore,
         progressHolder: TranscriptionProgressHolder,
+        userPrefs: UserPrefs,
     ): TranscriptionRunner = TranscriptionRunner(
         repository = repository,
         transcriber = transcriber,
         importer = importer,
         rtfStore = rtfStore,
         progressHolder = progressHolder,
+        userPrefs = userPrefs,
+        threadPolicy = ThreadPolicy(context),
         importDir = File(context.filesDir, "imports"),
     )
+
+    @Provides
+    @Singleton
+    fun provideStartupRecovery(
+        @ApplicationContext context: Context,
+        repository: TranscriptRepository,
+    ): StartupRecovery = StartupRecovery(context, repository)
 }

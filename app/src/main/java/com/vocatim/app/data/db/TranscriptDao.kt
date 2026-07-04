@@ -3,6 +3,7 @@ package com.vocatim.app.data.db
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -35,8 +36,31 @@ interface TranscriptDao {
     @Query("UPDATE transcripts SET title = :title WHERE id = :id")
     suspend fun updateTitle(id: Long, title: String)
 
+    @Query("UPDATE transcripts SET completedChunks = :completedChunks WHERE id = :id")
+    suspend fun updateCheckpoint(id: Long, completedChunks: Int)
+
+    @Query("SELECT * FROM transcripts WHERE status IN (:statuses)")
+    suspend fun getByStatuses(statuses: List<String>): List<TranscriptEntity>
+
     @Insert
     suspend fun insertSegments(segments: List<SegmentEntity>)
+
+    /**
+     * Atomic per-chunk checkpoint: segments, merged text, and the resume
+     * cursor land together, so a kill mid-write can't cause duplicated
+     * segments on resume.
+     */
+    @Transaction
+    suspend fun commitChunk(
+        id: Long,
+        segments: List<SegmentEntity>,
+        text: String,
+        completedChunks: Int,
+    ) {
+        insertSegments(segments)
+        updateText(id, text)
+        updateCheckpoint(id, completedChunks)
+    }
 
     @Query("SELECT * FROM segments WHERE transcriptId = :transcriptId ORDER BY startMs")
     suspend fun getSegments(transcriptId: Long): List<SegmentEntity>

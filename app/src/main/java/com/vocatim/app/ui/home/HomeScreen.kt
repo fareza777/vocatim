@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -47,6 +48,7 @@ import com.vocatim.app.ui.common.formatDate
 fun HomeScreen(
     onRecordClick: () -> Unit,
     onTranscriptClick: (Long) -> Unit,
+    onSettingsClick: () -> Unit,
     onDebugClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -67,6 +69,9 @@ fun HomeScreen(
                         pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg"))
                     }) {
                         Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_import))
+                    }
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                     IconButton(onClick = onDebugClick) {
                         Icon(Icons.Default.BugReport, contentDescription = stringResource(R.string.home_debug))

@@ -56,6 +56,7 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
     val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
     val language by viewModel.language.collectAsStateWithLifecycle()
     val transcription by viewModel.transcription.collectAsStateWithLifecycle()
+    val benchmarkResults by viewModel.benchmarkResults.collectAsStateWithLifecycle()
 
     val pickWav = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -126,6 +127,11 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
 
             TranscriptionResult(transcription)
 
+            BenchmarkSection(
+                results = benchmarkResults,
+                onRun = viewModel::runBenchmark,
+            )
+
             if (systemInfo.isNotEmpty()) {
                 Text(
                     text = systemInfo,
@@ -133,6 +139,36 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.outline,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun BenchmarkSection(
+    results: Map<String, Float?>,
+    onRun: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(R.string.debug_benchmark_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        OutlinedButton(onClick = onRun) {
+            Text(stringResource(R.string.debug_benchmark_run))
+        }
+        results.forEach { (modelId, rtf) ->
+            Text(
+                if (rtf == null) {
+                    stringResource(R.string.debug_benchmark_running, modelId)
+                } else {
+                    stringResource(
+                        R.string.debug_benchmark_result,
+                        modelId,
+                        String.format(Locale.US, "%.2f", rtf),
+                    )
+                },
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }

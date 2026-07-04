@@ -33,10 +33,11 @@ class WhisperTranscriber(
         samples: FloatArray,
         language: String,
         translate: Boolean = false,
+        numThreads: Int = com.vocatim.whisper.WhisperCpuConfig.preferredThreadCount,
     ): TranscriptionResult = mutex.withLock {
         val ctx = loadContextLocked(model)
         val startedAt = SystemClock.elapsedRealtime()
-        val segments = ctx.transcribe(samples, language, translate)
+        val segments = ctx.transcribe(samples, language, translate, numThreads)
         TranscriptionResult(
             segments = segments,
             processingTimeMs = SystemClock.elapsedRealtime() - startedAt,

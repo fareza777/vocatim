@@ -172,14 +172,16 @@ class RecordingService : Service() {
                 R.string.record_default_title,
                 SimpleDateFormat("dd MMM HH:mm", Locale.getDefault()).format(Date()),
             )
+            val settings = userPrefs.current()
             val id = repository.create(
                 TranscriptEntity(
                     title = title,
-                    language = userPrefs.language(),
-                    modelId = userPrefs.model().id,
+                    language = settings.language,
+                    modelId = settings.model.id,
                     audioDurationMs = durationMs,
                     audioPath = file.absolutePath,
                     status = TranscriptStatus.PENDING,
+                    translate = settings.translate,
                 )
             )
             TranscriptionService.enqueue(this, id, sourceUri = null)

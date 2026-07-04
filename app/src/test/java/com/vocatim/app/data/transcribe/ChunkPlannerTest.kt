@@ -69,4 +69,17 @@ class ChunkPlannerTest {
         val chunks = ChunkPlanner.plan(75 * rate)
         assertEquals(75 * rate, chunks.last().endSample)
     }
+
+    @Test
+    fun `remaining audio for resume`() {
+        val chunks = ChunkPlanner.plan(90 * rate)
+        val durationMs = 90_000L
+
+        // From the start, everything remains.
+        assertEquals(90_000L, ChunkPlanner.remainingAudioMs(chunks, 0, durationMs))
+        // Chunk 1 starts at 28s (30s chunk - 2s overlap).
+        assertEquals(62_000L, ChunkPlanner.remainingAudioMs(chunks, 1, durationMs))
+        // Past the end: nothing remains.
+        assertEquals(0L, ChunkPlanner.remainingAudioMs(chunks, chunks.size, durationMs))
+    }
 }

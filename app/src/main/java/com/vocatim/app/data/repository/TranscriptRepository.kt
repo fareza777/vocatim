@@ -27,8 +27,21 @@ class TranscriptRepository(private val dao: TranscriptDao) {
     suspend fun updateStatus(id: Long, status: String, error: String? = null) =
         dao.updateStatus(id, status, error)
 
+    suspend fun updateCheckpoint(id: Long, completedChunks: Int) =
+        dao.updateCheckpoint(id, completedChunks)
+
+    suspend fun getByStatuses(statuses: List<String>): List<TranscriptEntity> =
+        dao.getByStatuses(statuses)
+
     suspend fun appendSegments(transcriptId: Long, segments: List<SegmentEntity>) =
         dao.insertSegments(segments)
+
+    suspend fun commitChunk(
+        transcriptId: Long,
+        segments: List<SegmentEntity>,
+        text: String,
+        completedChunks: Int,
+    ) = dao.commitChunk(transcriptId, segments, text, completedChunks)
 
     suspend fun getSegments(transcriptId: Long): List<SegmentEntity> =
         dao.getSegments(transcriptId)

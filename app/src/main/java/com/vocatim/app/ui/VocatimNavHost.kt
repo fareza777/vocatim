@@ -10,11 +10,13 @@ import com.vocatim.app.ui.debug.DebugScreen
 import com.vocatim.app.ui.detail.DetailScreen
 import com.vocatim.app.ui.home.HomeScreen
 import com.vocatim.app.ui.record.RecordScreen
+import com.vocatim.app.ui.settings.SettingsScreen
 
 object Routes {
     const val HOME = "home"
     const val RECORD = "record"
     const val DEBUG = "debug"
+    const val SETTINGS = "settings"
     const val DETAIL = "detail/{transcriptId}"
     fun detail(id: Long) = "detail/$id"
 }
@@ -27,8 +29,12 @@ fun VocatimNavHost() {
             HomeScreen(
                 onRecordClick = { navController.navigate(Routes.RECORD) },
                 onTranscriptClick = { id -> navController.navigate(Routes.detail(id)) },
+                onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                 onDebugClick = { navController.navigate(Routes.DEBUG) },
             )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.RECORD) {
             RecordScreen(

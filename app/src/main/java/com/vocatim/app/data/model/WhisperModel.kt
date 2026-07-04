@@ -27,6 +27,13 @@ enum class WhisperModel(
         url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
         approxSizeBytes = 147_951_465L,
         sha256 = "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
+    ),
+    SMALL(
+        id = "small",
+        fileName = "ggml-small.bin",
+        url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
+        approxSizeBytes = 487_601_967L,
+        sha256 = "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
     );
 
     companion object {

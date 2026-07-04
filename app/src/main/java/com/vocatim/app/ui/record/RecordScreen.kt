@@ -58,6 +58,7 @@ fun RecordScreen(
     viewModel: RecordViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val storageStatus by viewModel.storageStatus.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val amplitudes = remember { mutableStateListOf<Float>() }
 
@@ -118,6 +119,17 @@ fun RecordScreen(
         ) {
             when (val s = state) {
                 is RecordingState.Idle -> {
+                    when (storageStatus) {
+                        StorageStatus.FULL -> Text(
+                            stringResource(R.string.record_storage_full),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        StorageStatus.LOW -> Text(
+                            stringResource(R.string.record_storage_low),
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                        StorageStatus.OK -> Unit
+                    }
                     Text(
                         stringResource(R.string.record_hint),
                         style = MaterialTheme.typography.bodyLarge,

@@ -34,5 +34,11 @@ data class TranscriptEntity(
     val errorMessage: String? = null,
     /** Original file name for imported audio; null for recordings. */
     val sourceName: String? = null,
+    /** Content URI of the original import, for conversion retry after restart. */
+    val sourceUri: String? = null,
+    /** Whisper translate-to-English mode captured at creation time. */
+    val translate: Boolean = false,
+    /** Checkpoint: chunks fully persisted; resume continues from here. */
+    val completedChunks: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
 )

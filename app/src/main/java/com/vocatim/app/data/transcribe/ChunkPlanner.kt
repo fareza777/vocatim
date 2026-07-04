@@ -60,4 +60,10 @@ object ChunkPlanner {
         }
         return chunks
     }
+
+    /** Audio not yet covered when resuming from [fromChunk] (for ETA). */
+    fun remainingAudioMs(chunks: List<Chunk>, fromChunk: Int, audioDurationMs: Long): Long {
+        if (fromChunk >= chunks.size) return 0
+        return audioDurationMs - chunks[fromChunk].startMs
+    }
 }
