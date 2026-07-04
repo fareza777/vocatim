@@ -37,6 +37,7 @@ class RtfStore(private val context: Context) {
             WhisperModel.TINY to 0.6f,
             WhisperModel.BASE to 1.4f,
             WhisperModel.SMALL to 2.5f,
+            WhisperModel.SMALL_Q5 to 1.7f,
         )
         // A model missing from the map must never fail the job.
         const val FALLBACK_RTF = 1.5f

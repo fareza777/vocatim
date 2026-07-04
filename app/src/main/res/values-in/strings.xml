@@ -89,6 +89,7 @@
     <string name="model_speed_tiny">Tercepat, akurasi terendah</string>
     <string name="model_speed_base">Seimbang</string>
     <string name="model_speed_small">Paling akurat, lebih lambat</string>
+    <string name="model_speed_small_q5">Akurasi mendekati small, lebih cepat &amp; kecil</string>
     <string name="action_delete_audio">Hapus audio, simpan teks</string>
     <string name="record_storage_low">Penyimpanan menipis — rekaman panjang mungkin tidak muat.</string>
     <string name="record_storage_full">Penyimpanan tidak cukup untuk merekam. Kosongkan dulu.</string>

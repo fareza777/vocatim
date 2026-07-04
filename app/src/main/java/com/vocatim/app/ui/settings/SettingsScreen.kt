@@ -266,6 +266,7 @@ private fun speedLabel(model: WhisperModel): Int = when (model) {
     WhisperModel.TINY -> R.string.model_speed_tiny
     WhisperModel.BASE -> R.string.model_speed_base
     WhisperModel.SMALL -> R.string.model_speed_small
+    WhisperModel.SMALL_Q5 -> R.string.model_speed_small_q5
 }
 
 private fun formatMb(bytes: Long): String = "${bytes / (1024 * 1024)} MB"

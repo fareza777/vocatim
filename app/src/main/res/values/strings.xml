@@ -89,6 +89,7 @@
     <string name="model_speed_tiny">Fastest, lowest accuracy</string>
     <string name="model_speed_base">Balanced</string>
     <string name="model_speed_small">Most accurate, slower</string>
+    <string name="model_speed_small_q5">Near-small accuracy, faster &amp; smaller</string>
     <string name="action_delete_audio">Delete audio, keep text</string>
     <string name="record_storage_low">Storage is getting low — long recordings may not fit.</string>
     <string name="record_storage_full">Not enough storage to record. Free up space first.</string>
