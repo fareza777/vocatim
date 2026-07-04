@@ -155,8 +155,7 @@ fun PaywallScreen(
 
             Spacer(Modifier.height(4.dp))
 
-            Benefit(Icons.Default.AllInclusive, stringResource(R.string.paywall_benefit_unlimited))
-            Benefit(Icons.Default.CloudOff, stringResource(R.string.paywall_benefit_offline))
+            // Only what the table doesn't already say.
             Benefit(Icons.Default.Lock, stringResource(R.string.paywall_benefit_private))
             Benefit(Icons.Default.Payments, stringResource(R.string.paywall_benefit_once))
 
@@ -216,10 +215,49 @@ private fun ComparisonTable() {
                 )
             }
             Spacer(Modifier.height(10.dp))
-            CompareRow(stringResource(R.string.paywall_row_transcription), true, true)
+            // The one row people pay for leads with explicit values;
+            // identical checkmarks in both columns sell nothing.
+            CompareValueRow(
+                label = stringResource(R.string.paywall_row_transcription),
+                freeValue = stringResource(R.string.paywall_value_free_minutes),
+                proValue = stringResource(R.string.paywall_value_unlimited),
+            )
             CompareRow(stringResource(R.string.paywall_row_record), true, true)
             CompareRow(stringResource(R.string.paywall_row_export), true, true)
             CompareRow(stringResource(R.string.paywall_row_offline), true, true)
+        }
+    }
+}
+
+@Composable
+private fun CompareValueRow(label: String, freeValue: String, proValue: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodyMedium)
+        Text(
+            freeValue,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            Surface(
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+            ) {
+                Text(
+                    proValue,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }

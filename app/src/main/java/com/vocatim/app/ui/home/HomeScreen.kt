@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,11 +33,11 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -87,7 +86,6 @@ fun HomeScreen(
     val query by viewModel.query.collectAsStateWithLifecycle()
     val quotaBanner by viewModel.quotaBanner.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
-    val filter by viewModel.filter.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
     var sortMenuOpen by remember { mutableStateOf(false) }
 
@@ -133,32 +131,26 @@ fun HomeScreen(
                 StatsBar(stats)
             }
 
-            SearchField(
-                query = query,
-                onQueryChanged = viewModel::onQueryChanged,
-            )
-
+            // Search + sort share one row; status filters were dropped —
+            // every card already wears its status pill.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 4.dp),
+                    .padding(end = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                FlowRow(
+                SearchField(
+                    query = query,
+                    onQueryChanged = viewModel::onQueryChanged,
                     modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    HomeFilter.entries.forEach { f ->
-                        FilterChip(
-                            selected = filter == f,
-                            onClick = { viewModel.setFilter(f) },
-                            label = { Text(homeFilterLabel(f)) },
-                        )
-                    }
-                }
+                )
                 Box {
                     IconButton(onClick = { sortMenuOpen = true }) {
-                        Icon(Icons.Default.Sort, contentDescription = stringResource(R.string.home_sort))
+                        Icon(
+                            Icons.Default.Sort,
+                            contentDescription = stringResource(R.string.home_sort),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                     DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
                         HomeSort.entries.forEach { s ->
@@ -168,9 +160,13 @@ fun HomeScreen(
                                     viewModel.setSort(s)
                                     sortMenuOpen = false
                                 },
-                                leadingIcon = {
+                                trailingIcon = {
                                     if (sort == s) {
-                                        Icon(Icons.Default.Sort, contentDescription = null)
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
                                     }
                                 },
                             )
@@ -215,7 +211,7 @@ fun HomeScreen(
                 }
             }
 
-            if (items.isEmpty() && query.isBlank() && filter == HomeFilter.ALL) {
+            if (items.isEmpty() && query.isBlank()) {
                 EmptyState(onImport = { pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg")) })
             } else if (items.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -247,13 +243,6 @@ fun HomeScreen(
     }
 }
 
-@Composable
-private fun homeFilterLabel(filter: HomeFilter): String = when (filter) {
-    HomeFilter.ALL -> stringResource(R.string.home_filter_all)
-    HomeFilter.DONE -> stringResource(R.string.home_filter_done)
-    HomeFilter.IN_PROGRESS -> stringResource(R.string.home_filter_progress)
-    HomeFilter.FAILED -> stringResource(R.string.home_filter_failed)
-}
 
 @Composable
 private fun homeSortLabel(sort: HomeSort): String = when (sort) {
@@ -352,13 +341,15 @@ private fun SwipeableTranscriptCard(
 }
 
 @Composable
-private fun SearchField(query: String, onQueryChanged: (String) -> Unit) {
+private fun SearchField(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     androidx.compose.material3.OutlinedTextField(
         value = query,
         onValueChange = onQueryChanged,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 4.dp),
+        modifier = modifier.padding(start = 20.dp, top = 4.dp, bottom = 4.dp),
         placeholder = { Text(stringResource(R.string.home_search_hint)) },
         leadingIcon = {
             Icon(
@@ -440,32 +431,25 @@ private fun HomeHeader(
 
 @Composable
 private fun EmptyState(onImport: () -> Unit) {
-    val pulse = rememberInfiniteTransition(label = "emptyPulse")
-    val scale by pulse.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "emptyScale",
-    )
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.padding(32.dp),
         ) {
+            // Deliberately muted: the one gradient mic on screen is the FAB.
             Box(
                 modifier = Modifier
-                    .size(96.dp)
-                    .scale(scale)
+                    .size(80.dp)
                     .clip(CircleShape)
-                    .background(BrandGradient),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Default.Mic,
                     contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(44.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(36.dp),
                 )
             }
             Text(

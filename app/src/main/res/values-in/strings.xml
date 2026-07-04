@@ -161,6 +161,8 @@
     <string name="onboarding_skip">Lewati</string>
     <string name="onboarding_next">Lanjut</string>
     <string name="onboarding_start">Mulai</string>
+    <string name="paywall_value_free_minutes">30 menit</string>
+    <string name="paywall_value_unlimited">Tanpa batas</string>
 
     <string name="home_import_cta">Impor audio</string>
     <string name="home_stats">%1$d transkrip · %2$s ditranskripsi · 100%% offline</string>

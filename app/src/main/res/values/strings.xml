@@ -161,6 +161,8 @@
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_start">Start</string>
+    <string name="paywall_value_free_minutes">30 min</string>
+    <string name="paywall_value_unlimited">Unlimited</string>
 
     <!-- Home enhancements -->
     <string name="home_import_cta">Import audio</string>

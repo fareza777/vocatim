@@ -47,7 +47,6 @@ data class QuotaBanner(val remainingMinutes: Long, val exhausted: Boolean)
 
 data class HomeStats(val transcriptCount: Int, val totalDurationMs: Long)
 
-enum class HomeFilter { ALL, DONE, IN_PROGRESS, FAILED }
 
 enum class HomeSort { NEWEST, OLDEST, LONGEST, TITLE }
 
@@ -82,17 +81,14 @@ class HomeViewModel @Inject constructor(
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query
 
-    private val _filter = MutableStateFlow(HomeFilter.ALL)
-    val filter: StateFlow<HomeFilter> = _filter
-
     private val _sort = MutableStateFlow(HomeSort.NEWEST)
     val sort: StateFlow<HomeSort> = _sort
 
     private val _waveforms = MutableStateFlow<Map<Long, FloatArray>>(emptyMap())
     val waveforms: StateFlow<Map<Long, FloatArray>> = _waveforms
 
-    private val queryState = combine(_query, _filter, _sort) { query, filter, sort ->
-        Triple(query, filter, sort)
+    private val queryState = combine(_query, _sort) { query, sort ->
+        query to sort
     }
 
     val items: StateFlow<List<HomeItem>> =
@@ -101,9 +97,8 @@ class HomeViewModel @Inject constructor(
             progressHolder.progress,
             queryState,
             _waveforms,
-        ) { transcripts, progress, (query, filter, sort), waveforms ->
+        ) { transcripts, progress, (query, sort), waveforms ->
             transcripts
-                .filter { matchesFilter(it, filter) }
                 .filter { t ->
                     query.isBlank() ||
                         t.title.contains(query, ignoreCase = true) ||
@@ -124,10 +119,6 @@ class HomeViewModel @Inject constructor(
 
     fun onQueryChanged(query: String) {
         _query.value = query
-    }
-
-    fun setFilter(filter: HomeFilter) {
-        _filter.value = filter
     }
 
     fun setSort(sort: HomeSort) {
@@ -158,17 +149,6 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { importCoordinator.startImport(uri) }
         }
-    }
-
-    private fun matchesFilter(t: TranscriptEntity, filter: HomeFilter): Boolean = when (filter) {
-        HomeFilter.ALL -> true
-        HomeFilter.DONE -> t.status == TranscriptStatus.DONE
-        HomeFilter.IN_PROGRESS -> t.status in listOf(
-            TranscriptStatus.PENDING,
-            TranscriptStatus.CONVERTING,
-            TranscriptStatus.TRANSCRIBING,
-        )
-        HomeFilter.FAILED -> t.status == TranscriptStatus.FAILED
     }
 
     private fun sortList(list: List<TranscriptEntity>, sort: HomeSort): List<TranscriptEntity> =
