@@ -56,7 +56,8 @@ fun OnboardingScreen(
     val pagerState = rememberPagerState(pageCount = { 3 })
     val scope = rememberCoroutineScope()
     val modelState by viewModel.modelState.collectAsStateWithLifecycle()
-    var selectedLanguage by remember { mutableStateOf("id") }
+    val selectedLanguage by viewModel.selectedLanguage.collectAsStateWithLifecycle()
+    val recommendedModel by viewModel.recommendedModel.collectAsStateWithLifecycle()
 
     fun finish() {
         viewModel.finish()
@@ -90,10 +91,7 @@ fun OnboardingScreen(
                         languages.forEachIndexed { index, code ->
                             SegmentedButton(
                                 selected = selectedLanguage == code,
-                                onClick = {
-                                    selectedLanguage = code
-                                    viewModel.selectLanguage(code)
-                                },
+                                onClick = { viewModel.selectLanguage(code) },
                                 shape = SegmentedButtonDefaults.itemShape(index, languages.size),
                             ) {
                                 Text(
@@ -112,8 +110,8 @@ fun OnboardingScreen(
                     title = stringResource(R.string.onboarding_model_title),
                     body = stringResource(
                         R.string.onboarding_model_body,
-                        viewModel.recommendedModel.id,
-                        viewModel.recommendedModel.approxSizeBytes / (1024 * 1024),
+                        recommendedModel.id,
+                        recommendedModel.approxSizeBytes / (1024 * 1024),
                     ),
                 ) {
                     when (val state = modelState) {
