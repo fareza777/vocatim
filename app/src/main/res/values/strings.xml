@@ -101,4 +101,18 @@
     <string name="home_tagline">Offline. Private. Yours.</string>
     <string name="record_title_idle">Ready to record</string>
     <string name="record_live">Recording</string>
+
+    <string name="lock_title">Vocatim is locked</string>
+    <string name="lock_subtitle">Your transcripts stay private</string>
+    <string name="lock_unlock">Unlock</string>
+    <string name="lock_prompt_title">Unlock Vocatim</string>
+    <string name="settings_privacy">Privacy</string>
+    <string name="settings_app_lock">App lock</string>
+    <string name="settings_app_lock_desc">Require fingerprint or device PIN to open</string>
+    <string name="settings_app_lock_unavailable">No screen lock is set up on this device</string>
+    <string name="settings_block_screenshots">Block screenshots</string>
+    <string name="settings_block_screenshots_desc">Hide content from screenshots and recent apps</string>
+    <string name="home_search_hint">Search transcripts</string>
+    <string name="home_search_empty">No transcripts match your search</string>
+    <string name="player_toggle">Play or pause</string>
 </resources>

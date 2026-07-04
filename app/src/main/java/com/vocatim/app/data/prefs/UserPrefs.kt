@@ -17,6 +17,10 @@ data class UserSettings(
     val translate: Boolean,
     /** 0 = automatic (high-performance core count). */
     val threads: Int,
+    /** Require biometric/device credential to open the app. */
+    val appLock: Boolean,
+    /** Apply FLAG_SECURE: block screenshots and recents preview. */
+    val blockScreenshots: Boolean,
 )
 
 /** User settings applied to new recordings and imports. */
@@ -28,6 +32,8 @@ class UserPrefs(private val context: Context) {
             language = prefs[LANGUAGE_KEY] ?: "auto",
             translate = prefs[TRANSLATE_KEY] ?: false,
             threads = prefs[THREADS_KEY] ?: 0,
+            appLock = prefs[APP_LOCK_KEY] ?: false,
+            blockScreenshots = prefs[BLOCK_SCREENSHOTS_KEY] ?: false,
         )
     }
 
@@ -53,10 +59,20 @@ class UserPrefs(private val context: Context) {
         context.prefsDataStore.edit { it[THREADS_KEY] = threads.coerceIn(0, 8) }
     }
 
+    suspend fun setAppLock(enabled: Boolean) {
+        context.prefsDataStore.edit { it[APP_LOCK_KEY] = enabled }
+    }
+
+    suspend fun setBlockScreenshots(enabled: Boolean) {
+        context.prefsDataStore.edit { it[BLOCK_SCREENSHOTS_KEY] = enabled }
+    }
+
     private companion object {
         val MODEL_KEY = stringPreferencesKey("default_model")
         val LANGUAGE_KEY = stringPreferencesKey("default_language")
         val TRANSLATE_KEY = booleanPreferencesKey("translate_to_english")
         val THREADS_KEY = intPreferencesKey("num_threads")
+        val APP_LOCK_KEY = booleanPreferencesKey("app_lock")
+        val BLOCK_SCREENSHOTS_KEY = booleanPreferencesKey("block_screenshots")
     }
 }

@@ -101,4 +101,18 @@
     <string name="home_tagline">Offline. Privat. Milik Anda.</string>
     <string name="record_title_idle">Siap merekam</string>
     <string name="record_live">Merekam</string>
+
+    <string name="lock_title">Vocatim terkunci</string>
+    <string name="lock_subtitle">Transkrip Anda tetap privat</string>
+    <string name="lock_unlock">Buka kunci</string>
+    <string name="lock_prompt_title">Buka Vocatim</string>
+    <string name="settings_privacy">Privasi</string>
+    <string name="settings_app_lock">Kunci aplikasi</string>
+    <string name="settings_app_lock_desc">Wajib sidik jari atau PIN perangkat untuk membuka</string>
+    <string name="settings_app_lock_unavailable">Tidak ada kunci layar yang diatur di perangkat ini</string>
+    <string name="settings_block_screenshots">Blokir tangkapan layar</string>
+    <string name="settings_block_screenshots_desc">Sembunyikan konten dari screenshot dan app terbaru</string>
+    <string name="home_search_hint">Cari transkrip</string>
+    <string name="home_search_empty">Tidak ada transkrip yang cocok</string>
+    <string name="player_toggle">Putar atau jeda</string>
 </resources>

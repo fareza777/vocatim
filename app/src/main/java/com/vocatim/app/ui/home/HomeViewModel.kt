@@ -28,10 +28,27 @@ class HomeViewModel @Inject constructor(
     private val importCoordinator: ImportCoordinator,
 ) : ViewModel() {
 
+    private val _query = kotlinx.coroutines.flow.MutableStateFlow("")
+    val query: StateFlow<String> = _query
+
     val items: StateFlow<List<HomeItem>> =
-        combine(repository.observeAll(), progressHolder.progress) { transcripts, progress ->
-            transcripts.map { HomeItem(it, progress[it.id]) }
+        combine(
+            repository.observeAll(),
+            progressHolder.progress,
+            _query,
+        ) { transcripts, progress, query ->
+            transcripts
+                .filter { t ->
+                    query.isBlank() ||
+                        t.title.contains(query, ignoreCase = true) ||
+                        t.text.contains(query, ignoreCase = true)
+                }
+                .map { HomeItem(it, progress[it.id]) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun onQueryChanged(query: String) {
+        _query.value = query
+    }
 
     fun importAudio(uri: Uri) {
         viewModelScope.launch {

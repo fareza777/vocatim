@@ -31,6 +31,12 @@ sealed interface ExportEvent {
     data class Failure(val message: String) : ExportEvent
 }
 
+data class PlayerState(
+    val playing: Boolean,
+    val positionMs: Int,
+    val durationMs: Int,
+)
+
 @HiltViewModel
 class DetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -55,6 +61,78 @@ class DetailViewModel @Inject constructor(
 
     private val _exportEvent = MutableStateFlow<ExportEvent?>(null)
     val exportEvent: StateFlow<ExportEvent?> = _exportEvent.asStateFlow()
+
+    private var player: android.media.MediaPlayer? = null
+    private var positionJob: kotlinx.coroutines.Job? = null
+    private val _playerState = MutableStateFlow<PlayerState?>(null)
+    val playerState: StateFlow<PlayerState?> = _playerState.asStateFlow()
+
+    fun togglePlayback() {
+        val existing = player
+        if (existing == null) {
+            startPlayback()
+        } else if (existing.isPlaying) {
+            existing.pause()
+            positionJob?.cancel()
+            _playerState.value = _playerState.value?.copy(playing = false)
+        } else {
+            existing.start()
+            startPositionUpdates()
+        }
+    }
+
+    fun seekTo(fraction: Float) {
+        val p = player ?: return
+        val target = (p.duration * fraction).toInt()
+        p.seekTo(target)
+        _playerState.value = _playerState.value?.copy(positionMs = target)
+    }
+
+    private fun startPlayback() {
+        val path = transcript.value?.audioPath ?: return
+        viewModelScope.launch {
+            try {
+                val created = withContext(Dispatchers.IO) {
+                    android.media.MediaPlayer().apply {
+                        setDataSource(path)
+                        prepare()
+                    }
+                }
+                created.setOnCompletionListener {
+                    positionJob?.cancel()
+                    _playerState.value =
+                        PlayerState(playing = false, positionMs = 0, durationMs = created.duration)
+                }
+                player = created
+                created.start()
+                startPositionUpdates()
+            } catch (e: Exception) {
+                _playerState.value = null
+            }
+        }
+    }
+
+    private fun startPositionUpdates() {
+        positionJob?.cancel()
+        positionJob = viewModelScope.launch {
+            while (true) {
+                val p = player ?: break
+                _playerState.value = PlayerState(
+                    playing = p.isPlaying,
+                    positionMs = p.currentPosition,
+                    durationMs = p.duration,
+                )
+                kotlinx.coroutines.delay(200)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        positionJob?.cancel()
+        player?.release()
+        player = null
+    }
 
     fun onTextChanged(text: String) {
         _editedText.value = text

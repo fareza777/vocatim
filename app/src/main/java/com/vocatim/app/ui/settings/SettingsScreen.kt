@@ -148,6 +148,44 @@ fun SettingsScreen(
                 )
             }
 
+            Text(stringResource(R.string.settings_privacy), style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_app_lock))
+                    Text(
+                        if (viewModel.biometricAvailable) {
+                            stringResource(R.string.settings_app_lock_desc)
+                        } else {
+                            stringResource(R.string.settings_app_lock_unavailable)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = s.appLock,
+                    onCheckedChange = viewModel::setAppLock,
+                    enabled = viewModel.biometricAvailable,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_block_screenshots))
+                    Text(
+                        stringResource(R.string.settings_block_screenshots_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = s.blockScreenshots, onCheckedChange = viewModel::setBlockScreenshots)
+            }
+
             Text(stringResource(R.string.settings_storage), style = MaterialTheme.typography.titleMedium)
             storage?.let { usage ->
                 Text(

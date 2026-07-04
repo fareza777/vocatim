@@ -54,6 +54,12 @@ class SettingsViewModel @Inject constructor(
     val isLowRamDevice: Boolean =
         appContext.getSystemService<ActivityManager>()?.isLowRamDevice ?: false
 
+    val biometricAvailable: Boolean =
+        androidx.biometric.BiometricManager.from(appContext).canAuthenticate(
+            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        ) == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
+
     private val downloadJobs = mutableMapOf<WhisperModel, Job>()
 
     init {
@@ -74,6 +80,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setThreads(threads: Int) {
         viewModelScope.launch { userPrefs.setThreads(threads) }
+    }
+
+    fun setAppLock(enabled: Boolean) {
+        viewModelScope.launch { userPrefs.setAppLock(enabled) }
+    }
+
+    fun setBlockScreenshots(enabled: Boolean) {
+        viewModelScope.launch { userPrefs.setBlockScreenshots(enabled) }
     }
 
     fun download(model: WhisperModel) {

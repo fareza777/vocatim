@@ -23,6 +23,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.AlertDialog
@@ -143,6 +145,14 @@ fun DetailScreen(
 
             when (t.status) {
                 TranscriptStatus.DONE -> {
+                    if (t.audioPath != null) {
+                        val playerState by viewModel.playerState.collectAsStateWithLifecycle()
+                        PlayerCard(
+                            state = playerState,
+                            onToggle = viewModel::togglePlayback,
+                            onSeek = viewModel::seekTo,
+                        )
+                    }
                     OutlinedTextField(
                         value = editedText ?: t.text,
                         onValueChange = viewModel::onTextChanged,
@@ -278,6 +288,46 @@ fun DetailScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun PlayerCard(
+    state: PlayerState?,
+    onToggle: () -> Unit,
+    onSeek: (Float) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            IconButton(onClick = onToggle) {
+                Icon(
+                    if (state?.playing == true) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = stringResource(R.string.player_toggle),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            androidx.compose.material3.Slider(
+                value = if (state != null && state.durationMs > 0) {
+                    state.positionMs.toFloat() / state.durationMs
+                } else 0f,
+                onValueChange = onSeek,
+                modifier = Modifier.weight(1f),
+                enabled = state != null,
+            )
+            Text(
+                formatClock(state?.positionMs?.toLong() ?: 0L),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
