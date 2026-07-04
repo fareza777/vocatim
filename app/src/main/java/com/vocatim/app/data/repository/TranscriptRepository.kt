@@ -12,6 +12,10 @@ class TranscriptRepository(private val dao: TranscriptDao) {
 
     fun observeAll(): Flow<List<TranscriptEntity>> = dao.observeAll()
 
+    fun observeTotalDurationMs(): Flow<Long> = dao.observeTotalDurationMs()
+
+    fun observeCount(): Flow<Int> = dao.observeCount()
+
     fun observeById(id: Long): Flow<TranscriptEntity?> = dao.observeById(id)
 
     suspend fun getById(id: Long): TranscriptEntity? = dao.getById(id)
@@ -23,6 +27,10 @@ class TranscriptRepository(private val dao: TranscriptDao) {
     suspend fun updateText(id: Long, text: String) = dao.updateText(id, text)
 
     suspend fun updateTitle(id: Long, title: String) = dao.updateTitle(id, title)
+
+    suspend fun setPinned(id: Long, pinned: Boolean) = dao.updatePinned(id, pinned)
+
+    suspend fun setTag(id: Long, tag: String?) = dao.updateTag(id, tag)
 
     suspend fun updateStatus(id: Long, status: String, error: String? = null) =
         dao.updateStatus(id, status, error)

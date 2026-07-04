@@ -161,4 +161,55 @@
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_start">Start</string>
+
+    <!-- Home enhancements -->
+    <string name="home_import_cta">Import audio</string>
+    <string name="home_stats">%1$d transcripts · %2$s transcribed · 100%% offline</string>
+    <string name="home_stats_hours">%1$dh %2$dm</string>
+    <string name="home_stats_minutes">%1$d min</string>
+    <string name="home_sort">Sort</string>
+    <string name="home_filter_all">All</string>
+    <string name="home_filter_done">Done</string>
+    <string name="home_filter_progress">In progress</string>
+    <string name="home_filter_failed">Failed</string>
+    <string name="home_sort_newest">Newest</string>
+    <string name="home_sort_oldest">Oldest</string>
+    <string name="home_sort_longest">Longest</string>
+    <string name="home_sort_title">A–Z</string>
+    <string name="home_swipe_pin">Pin</string>
+    <string name="home_swipe_delete">Delete</string>
+
+    <!-- Tags -->
+    <string name="tag_none">No tag</string>
+    <string name="tag_work">Work</string>
+    <string name="tag_study">Study</string>
+    <string name="tag_interview">Interview</string>
+    <string name="tag_personal">Personal</string>
+    <string name="tag_other">Other</string>
+
+    <!-- Record live preview -->
+    <string name="record_live_preview">Live preview</string>
+
+    <!-- Detail exports -->
+    <string name="action_copy_timestamps">Copy w/ time</string>
+    <string name="action_copy_segment">Copy segment</string>
+    <string name="action_export_vtt">Export VTT</string>
+    <string name="action_export_md">Export MD</string>
+    <string name="action_export_pdf">Export PDF</string>
+
+    <!-- Paywall comparison -->
+    <string name="paywall_col_free">Free</string>
+    <string name="paywall_col_pro">Unlimited</string>
+    <string name="paywall_row_transcription">Transcription</string>
+    <string name="paywall_row_record">Record &amp; edit</string>
+    <string name="paywall_row_export">Export formats</string>
+    <string name="paywall_row_offline">Fully offline</string>
+
+    <!-- Widget & shortcuts -->
+    <string name="widget_title">Vocatim Record</string>
+    <string name="widget_description">Quick record with Vocatim</string>
+    <string name="widget_tap_record">Tap to record</string>
+    <string name="shortcut_record">Record</string>
+    <string name="shortcut_record_long">Start a new recording</string>
+    <string name="shortcut_latest">Open: %1$s</string>
 </resources>

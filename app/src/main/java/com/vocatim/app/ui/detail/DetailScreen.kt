@@ -20,10 +20,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -88,6 +91,10 @@ fun DetailScreen(
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val editedText by viewModel.editedText.collectAsStateWithLifecycle()
     val exportEvent by viewModel.exportEvent.collectAsStateWithLifecycle()
+    val playerState by viewModel.playerState.collectAsStateWithLifecycle()
+    val waveform by viewModel.waveform.collectAsStateWithLifecycle()
+    val segments by viewModel.segments.collectAsStateWithLifecycle()
+    val textScale by viewModel.textScale.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var renameDraft by remember { mutableStateOf<String?>(null) }
@@ -110,6 +117,15 @@ fun DetailScreen(
     val exportSrtLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/x-subrip")
     ) { uri -> uri?.let(viewModel::exportSrt) }
+    val exportVttLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/vtt")
+    ) { uri -> uri?.let(viewModel::exportVtt) }
+    val exportMdLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/markdown")
+    ) { uri -> uri?.let { viewModel.exportMarkdown(it, withTimestamps = true) } }
+    val exportPdfLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri -> uri?.let(viewModel::exportPdf) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -148,21 +164,21 @@ fun DetailScreen(
         },
     ) { padding ->
         val t = transcript ?: return@Scaffold
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 20.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             MetaRow(t)
+            TagRow(current = t.tag, onSelect = viewModel::setTag)
 
             when (t.status) {
                 TranscriptStatus.DONE -> {
-                    val playerState by viewModel.playerState.collectAsStateWithLifecycle()
                     if (t.audioPath != null) {
-                        val waveform by viewModel.waveform.collectAsStateWithLifecycle()
                         LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
                         PlayerCard(
                             state = playerState,
@@ -182,15 +198,17 @@ fun DetailScreen(
                         },
                     )
 
-                    val textScale by viewModel.textScale.collectAsStateWithLifecycle()
                     if (segmentMode) {
-                        val segments by viewModel.segments.collectAsStateWithLifecycle()
                         SegmentList(
                             segments = segments,
                             positionMs = playerState?.positionMs?.toLong() ?: -1L,
                             canSeek = t.audioPath != null,
                             textScale = textScale,
                             onSegmentClick = { viewModel.playFromMs(it) },
+                            onCopySegment = { text ->
+                                copyToClipboard(context, text)
+                                Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+                            },
                         )
                     } else {
                         OutlinedTextField(
@@ -232,9 +250,22 @@ fun DetailScreen(
                                 Toast.LENGTH_SHORT,
                             ).show()
                         },
+                        onCopyTimestamps = {
+                            viewModel.copyWithTimestampsAsync { text ->
+                                copyToClipboard(context, text)
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.copied),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        },
                         onShare = { shareText(context, viewModel.currentText()) },
                         onExportTxt = { exportTxtLauncher.launch(t.title + ".txt") },
                         onExportSrt = { exportSrtLauncher.launch(t.title + ".srt") },
+                        onExportVtt = { exportVttLauncher.launch(t.title + ".vtt") },
+                        onExportMd = { exportMdLauncher.launch(t.title + ".md") },
+                        onExportPdf = { exportPdfLauncher.launch(t.title + ".pdf") },
                     )
                     if (t.audioPath != null) {
                         TextButton(onClick = viewModel::deleteAudioOnly) {
@@ -484,6 +515,40 @@ private fun ViewModeToggle(segmentMode: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagRow(current: String?, onSelect: (String?) -> Unit) {
+    val tags = listOf(null, "work", "study", "interview", "personal", "other")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        tags.forEach { tag ->
+            androidx.compose.material3.FilterChip(
+                selected = current == tag,
+                onClick = { onSelect(tag) },
+                label = {
+                    Text(
+                        if (tag == null) stringResource(R.string.tag_none)
+                        else tagLabel(tag)
+                    )
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun tagLabel(tag: String): String = when (tag) {
+    "work" -> stringResource(R.string.tag_work)
+    "study" -> stringResource(R.string.tag_study)
+    "interview" -> stringResource(R.string.tag_interview)
+    "personal" -> stringResource(R.string.tag_personal)
+    else -> stringResource(R.string.tag_other)
+}
+
 @Composable
 private fun SegmentList(
     segments: List<com.vocatim.app.data.db.SegmentEntity>,
@@ -491,9 +556,23 @@ private fun SegmentList(
     canSeek: Boolean,
     textScale: Float,
     onSegmentClick: (Long) -> Unit,
+    onCopySegment: (String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        segments.forEach { segment ->
+    val scrollState = rememberScrollState()
+    val activeIndex = segments.indexOfFirst { positionMs in it.startMs until it.endMs }
+    LaunchedEffect(activeIndex, segments.size) {
+        if (activeIndex >= 0 && segments.isNotEmpty()) {
+            scrollState.animateScrollTo((activeIndex * 72).coerceAtMost(scrollState.maxValue))
+        }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 420.dp)
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        segments.forEachIndexed { index, segment ->
             val active = positionMs in segment.startMs until segment.endMs
             Surface(
                 modifier = Modifier
@@ -501,14 +580,21 @@ private fun SegmentList(
                     .clickable(enabled = canSeek) { onSegmentClick(segment.startMs) },
                 shape = MaterialTheme.shapes.medium,
                 color = if (active) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
                 } else {
                     MaterialTheme.colorScheme.surfaceContainerHigh
                 },
+                border = if (active) {
+                    androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                    )
+                } else null,
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         formatClock(segment.startMs),
@@ -521,9 +607,19 @@ private fun SegmentList(
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = MaterialTheme.typography.bodyMedium.fontSize * textScale,
                             lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * textScale,
+                            fontWeight = if (active) androidx.compose.ui.text.font.FontWeight.SemiBold
+                            else androidx.compose.ui.text.font.FontWeight.Medium,
                         ),
                         modifier = Modifier.weight(1f),
                     )
+                    IconButton(onClick = { onCopySegment(segment.text.trim()) }) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = stringResource(R.string.action_copy_segment),
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -575,9 +671,13 @@ private fun MetaRow(t: TranscriptEntity) {
 @Composable
 private fun ActionGrid(
     onCopy: () -> Unit,
+    onCopyTimestamps: () -> Unit,
     onShare: () -> Unit,
     onExportTxt: () -> Unit,
     onExportSrt: () -> Unit,
+    onExportVtt: () -> Unit,
+    onExportMd: () -> Unit,
+    onExportPdf: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -588,7 +688,7 @@ private fun ActionGrid(
             Modifier.weight(1f),
         )
         ActionButton(
-            Icons.Default.Share, stringResource(R.string.action_share), onShare,
+            Icons.Default.Subtitles, stringResource(R.string.action_copy_timestamps), onCopyTimestamps,
             Modifier.weight(1f),
         )
     }
@@ -597,11 +697,37 @@ private fun ActionGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         ActionButton(
-            Icons.Default.Description, stringResource(R.string.action_export_txt), onExportTxt,
+            Icons.Default.Share, stringResource(R.string.action_share), onShare,
             Modifier.weight(1f),
         )
         ActionButton(
+            Icons.Default.Description, stringResource(R.string.action_export_txt), onExportTxt,
+            Modifier.weight(1f),
+        )
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ActionButton(
             Icons.Default.Subtitles, stringResource(R.string.action_export_srt), onExportSrt,
+            Modifier.weight(1f),
+        )
+        ActionButton(
+            Icons.Default.Subtitles, stringResource(R.string.action_export_vtt), onExportVtt,
+            Modifier.weight(1f),
+        )
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ActionButton(
+            Icons.Default.Description, stringResource(R.string.action_export_md), onExportMd,
+            Modifier.weight(1f),
+        )
+        ActionButton(
+            Icons.Default.Description, stringResource(R.string.action_export_pdf), onExportPdf,
             Modifier.weight(1f),
         )
     }

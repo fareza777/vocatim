@@ -7,7 +7,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vocatim.app.data.db.TranscriptEntity
 import com.vocatim.app.data.db.TranscriptStatus
+import com.vocatim.app.data.export.MarkdownFormatter
+import com.vocatim.app.data.export.PdfExporter
 import com.vocatim.app.data.export.SrtFormatter
+import com.vocatim.app.data.export.VttFormatter
 import com.vocatim.app.data.repository.TranscriptRepository
 import com.vocatim.app.data.transcribe.TranscriptionProgress
 import com.vocatim.app.data.transcribe.TranscriptionProgressHolder
@@ -24,6 +27,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import com.vocatim.app.ui.common.formatClock
 import javax.inject.Inject
 
 sealed interface ExportEvent {
@@ -46,7 +50,10 @@ class DetailViewModel @Inject constructor(
     userPrefs: com.vocatim.app.data.prefs.UserPrefs,
 ) : ViewModel() {
 
-    private val transcriptId: Long = checkNotNull(savedStateHandle["transcriptId"])
+    private val transcriptId: Long = savedStateHandle.get<Long>("transcriptId")
+        ?: savedStateHandle.get<String>("transcriptId")?.toLongOrNull()
+        ?: savedStateHandle.get<Int>("transcriptId")?.toLong()
+        ?: error("Detail screen opened without transcriptId")
 
     /** Reading-comfort multiplier for the transcript text. */
     val textScale: StateFlow<Float> = userPrefs.settings
@@ -250,6 +257,62 @@ class DetailViewModel @Inject constructor(
 
     fun exportSrt(uri: Uri) = export(uri) {
         SrtFormatter.format(repository.getSegments(transcriptId))
+    }
+
+    fun exportVtt(uri: Uri) = export(uri) {
+        VttFormatter.format(repository.getSegments(transcriptId))
+    }
+
+    fun exportMarkdown(uri: Uri, withTimestamps: Boolean) = export(uri) {
+        val title = transcript.value?.title ?: "Transcript"
+        if (withTimestamps) {
+            MarkdownFormatter.formatWithTimestamps(title, repository.getSegments(transcriptId))
+        } else {
+            MarkdownFormatter.formatPlain(title, currentText())
+        }
+    }
+
+    fun exportPdf(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val title = transcript.value?.title ?: "Transcript"
+                withContext(Dispatchers.IO) {
+                    PdfExporter.write(appContext, uri, title, currentText())
+                }
+                _exportEvent.value = ExportEvent.Success
+            } catch (e: Exception) {
+                _exportEvent.value = ExportEvent.Failure(e.message ?: "export failed")
+            }
+        }
+    }
+
+    fun copyWithTimestamps(): String {
+        val segments = _segments.value
+        if (segments.isNotEmpty()) {
+            return segments.joinToString("\n") { seg ->
+                "${formatClock(seg.startMs)} ${seg.text.trim()}"
+            }
+        }
+        return currentText()
+    }
+
+    fun copyWithTimestampsAsync(onReady: (String) -> Unit) {
+        viewModelScope.launch {
+            val segments = _segments.value.ifEmpty { repository.getSegments(transcriptId) }
+            _segments.value = segments
+            val text = if (segments.isNotEmpty()) {
+                segments.joinToString("\n") { seg ->
+                    "${formatClock(seg.startMs)} ${seg.text.trim()}"
+                }
+            } else currentText()
+            onReady(text)
+        }
+    }
+
+    fun setTag(tag: String?) {
+        viewModelScope.launch {
+            repository.setTag(transcriptId, tag)
+        }
     }
 
     fun consumeExportEvent() {

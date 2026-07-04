@@ -20,6 +20,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
@@ -29,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -43,6 +46,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -119,6 +124,7 @@ fun PaywallScreen(
             Text(
                 stringResource(R.string.paywall_title),
                 style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center,
             )
 
             if (isPro) {
@@ -130,12 +136,22 @@ fun PaywallScreen(
             } else {
                 val remainingMin =
                     ((QuotaStore.FREE_LIMIT_MS - usedMs).coerceAtLeast(0) / 60_000)
-                Text(
-                    stringResource(R.string.paywall_quota_status, remainingMin),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        stringResource(R.string.paywall_quota_status, remainingMin),
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
+
+            ComparisonTable()
 
             Spacer(Modifier.height(4.dp))
 
@@ -172,6 +188,68 @@ fun PaywallScreen(
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+@Composable
+private fun ComparisonTable() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text("", modifier = Modifier.weight(1.2f))
+                Text(
+                    stringResource(R.string.paywall_col_free),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    stringResource(R.string.paywall_col_pro),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            CompareRow(stringResource(R.string.paywall_row_transcription), true, true)
+            CompareRow(stringResource(R.string.paywall_row_record), true, true)
+            CompareRow(stringResource(R.string.paywall_row_export), true, true)
+            CompareRow(stringResource(R.string.paywall_row_offline), true, true)
+        }
+    }
+}
+
+@Composable
+private fun CompareRow(label: String, free: Boolean, pro: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodyMedium)
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            CompareIcon(free)
+        }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            CompareIcon(pro)
+        }
+    }
+}
+
+@Composable
+private fun CompareIcon(enabled: Boolean) {
+    Icon(
+        if (enabled) Icons.Default.Check else Icons.Default.Close,
+        contentDescription = null,
+        tint = if (enabled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outlineVariant,
+        modifier = Modifier.size(20.dp),
+    )
 }
 
 @Composable

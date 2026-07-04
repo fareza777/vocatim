@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Placeholder launcher icon: a simple microphone glyph. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:scaleX="1.6"
-        android:scaleY="1.6"
-        android:translateX="34.8"
-        android:translateY="34.8">
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M12,14c1.66,0 2.99,-1.34 2.99,-3L15,5c0,-1.66 -1.34,-3 -3,-3S9,3.34 9,5v6c0,1.66 1.34,3 3,3zM17.3,11c0,3 -2.54,5.1 -5.3,5.1S6.7,14 6.7,11L5,11c0,3.41 2.72,6.23 6,6.72L11,21h2v-3.28c3.28,-0.48 6,-3.3 6,-6.72h-1.7z" />
-    </group>
+    <!-- Mic body -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,30c-4.4,0 -8,3.6 -8,8v14c0,4.4 3.6,8 8,8s8,-3.6 8,-8V38c0,-4.4 -3.6,-8 -8,-8z" />
+    <!-- Mic stand arc -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M44,52c0,5.5 4.5,10 10,10s10,-4.5 10,-10h3c0,7.2 -5.5,13.1 -12.5,13.8V72h-5v-6.2C42.5,65.1 37,59.2 37,52h7z" />
+    <!-- Sound wave left -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="0.55"
+        android:pathData="M30,48c-2.2,0 -4,1.8 -4,4v4c0,2.2 1.8,4 4,4s4,-1.8 4,-4v-4c0,-2.2 -1.8,-4 -4,-4z" />
+    <!-- Sound wave right -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="0.55"
+        android:pathData="M78,48c-2.2,0 -4,1.8 -4,4v4c0,2.2 1.8,4 4,4s4,-1.8 4,-4v-4c0,-2.2 -1.8,-4 -4,-4z" />
+    <!-- Outer waves -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="0.3"
+        android:pathData="M22,46c-1.7,0 -3,1.3 -3,3v6c0,1.7 1.3,3 3,3s3,-1.3 3,-3v-6c0,-1.7 -1.3,-3 -3,-3z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="0.3"
+        android:pathData="M86,46c-1.7,0 -3,1.3 -3,3v6c0,1.7 1.3,3 3,3s3,-1.3 3,-3v-6c0,-1.7 -1.3,-3 -3,-3z" />
 </vector>

@@ -145,6 +145,27 @@ fun OnboardingScreen(
         }
 
         Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            repeat(3) { index ->
+                val active = pagerState.currentPage == index
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .size(if (active) 10.dp else 8.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (active) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.outlineVariant
+                        ),
+                )
+            }
+        }
+
+        Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {

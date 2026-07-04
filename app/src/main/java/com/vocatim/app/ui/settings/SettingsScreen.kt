@@ -15,9 +15,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -147,7 +155,7 @@ fun SettingsScreen(
             }
 
             Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.titleMedium)
-            LanguagePicker(current = s.language, onSelect = viewModel::selectLanguage)
+            LanguagePickerSheet(current = s.language, onSelect = viewModel::selectLanguage)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -333,38 +341,53 @@ private fun ModelRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LanguagePicker(current: String, onSelect: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Card {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+private fun LanguagePickerSheet(current: String, onSelect: (String) -> Unit) {
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showSheet = true },
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        ListItem(
+            headlineContent = { Text(languageLabel(current)) },
+            supportingContent = { Text(stringResource(R.string.settings_language)) },
+            leadingContent = {
+                Icon(Icons.Default.Language, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            trailingContent = {
                 Text(
-                    languageLabel(current),
-                    modifier = Modifier.weight(1f).padding(8.dp),
+                    stringResource(R.string.settings_change),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
                 )
-                OutlinedButton(onClick = { expanded = !expanded }) {
-                    Text(stringResource(R.string.settings_change))
-                }
-            }
-            if (expanded) {
-                LANGUAGES.forEach { code ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = current == code,
-                            onClick = {
-                                onSelect(code)
-                                expanded = false
-                            },
-                        )
-                        Text(languageLabel(code))
-                    }
+            },
+        )
+    }
+    if (showSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSheet = false },
+            sheetState = sheetState,
+        ) {
+            LazyColumn(modifier = Modifier.fillMaxHeight(0.6f)) {
+                items(LANGUAGES) { code ->
+                    ListItem(
+                        headlineContent = { Text(languageLabel(code)) },
+                        modifier = Modifier.clickable {
+                            onSelect(code)
+                            showSheet = false
+                        },
+                        trailingContent = {
+                            if (current == code) {
+                                RadioButton(selected = true, onClick = null)
+                            }
+                        },
+                    )
+                    HorizontalDivider()
                 }
             }
         }

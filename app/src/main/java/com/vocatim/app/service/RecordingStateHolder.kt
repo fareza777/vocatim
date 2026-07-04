@@ -14,6 +14,8 @@ sealed interface RecordingState {
         val elapsedMs: Long,
         /** Peak amplitude of the latest buffer, 0..1. */
         val amplitude: Float,
+        /** Grows while recording via [LiveTranscriptionRunner]. */
+        val partialText: String = "",
     ) : RecordingState
     data class Error(val message: String) : RecordingState
 }

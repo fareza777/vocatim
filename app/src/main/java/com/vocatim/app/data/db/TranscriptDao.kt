@@ -15,8 +15,20 @@ interface TranscriptDao {
     @Update
     suspend fun update(transcript: TranscriptEntity)
 
-    @Query("SELECT * FROM transcripts ORDER BY createdAt DESC")
+    @Query("SELECT * FROM transcripts ORDER BY pinned DESC, createdAt DESC")
     fun observeAll(): Flow<List<TranscriptEntity>>
+
+    @Query("SELECT COALESCE(SUM(audioDurationMs), 0) FROM transcripts WHERE status = 'DONE'")
+    fun observeTotalDurationMs(): Flow<Long>
+
+    @Query("SELECT COUNT(*) FROM transcripts")
+    fun observeCount(): Flow<Int>
+
+    @Query("UPDATE transcripts SET pinned = :pinned WHERE id = :id")
+    suspend fun updatePinned(id: Long, pinned: Boolean)
+
+    @Query("UPDATE transcripts SET tag = :tag WHERE id = :id")
+    suspend fun updateTag(id: Long, tag: String?)
 
     @Query("SELECT * FROM transcripts WHERE id = :id")
     suspend fun getById(id: Long): TranscriptEntity?

@@ -51,6 +51,7 @@ class RecordingService : Service() {
     @Inject lateinit var stateHolder: RecordingStateHolder
     @Inject lateinit var repository: TranscriptRepository
     @Inject lateinit var userPrefs: UserPrefs
+    @Inject lateinit var liveTranscription: LiveTranscriptionRunner
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var recordJob: Job? = null
@@ -118,6 +119,7 @@ class RecordingService : Service() {
 
         val dir = File(filesDir, "recordings").apply { mkdirs() }
         val outFile = File(dir, "rec_${System.currentTimeMillis()}.wav")
+        liveTranscription.start(scope, outFile) { paused }
 
         recordJob = scope.launch {
             var writer: WavFileWriter? = null
@@ -143,6 +145,8 @@ class RecordingService : Service() {
                             paused = false,
                             elapsedMs = currentElapsed(),
                             amplitude = peak / 32768f,
+                            partialText = (stateHolder.state.value as? RecordingState.Active)
+                                ?.partialText.orEmpty(),
                         )
                     )
                 }
@@ -198,8 +202,9 @@ class RecordingService : Service() {
         if (recordJob == null || paused) return
         paused = true
         accumulatedMs += SystemClock.elapsedRealtime() - resumedAt
+        val partial = (stateHolder.state.value as? RecordingState.Active)?.partialText.orEmpty()
         stateHolder.set(
-            RecordingState.Active(paused = true, elapsedMs = accumulatedMs, amplitude = 0f)
+            RecordingState.Active(paused = true, elapsedMs = accumulatedMs, amplitude = 0f, partialText = partial)
         )
         updateNotification(buildNotification(paused = true))
     }
@@ -208,8 +213,9 @@ class RecordingService : Service() {
         if (recordJob == null || !paused) return
         paused = false
         resumedAt = SystemClock.elapsedRealtime()
+        val partial = (stateHolder.state.value as? RecordingState.Active)?.partialText.orEmpty()
         stateHolder.set(
-            RecordingState.Active(paused = false, elapsedMs = accumulatedMs, amplitude = 0f)
+            RecordingState.Active(paused = false, elapsedMs = accumulatedMs, amplitude = 0f, partialText = partial)
         )
         updateNotification(buildNotification(paused = false))
     }
@@ -253,6 +259,7 @@ class RecordingService : Service() {
     }
 
     private fun cleanupAndStop() {
+        liveTranscription.stop()
         focusRequest?.let { getSystemService<AudioManager>()?.abandonAudioFocusRequest(it) }
         focusRequest = null
         wakeLock?.let { if (it.isHeld) it.release() }

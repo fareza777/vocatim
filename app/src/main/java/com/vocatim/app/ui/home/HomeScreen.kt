@@ -2,11 +2,18 @@ package com.vocatim.app.ui.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,20 +31,34 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,11 +67,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vocatim.app.R
 import com.vocatim.app.data.db.TranscriptStatus
+import com.vocatim.app.ui.common.MiniWaveform
 import com.vocatim.app.ui.common.Pill
 import com.vocatim.app.ui.common.formatClock
 import com.vocatim.app.ui.common.formatDate
 import com.vocatim.app.ui.theme.BrandGradient
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
     onRecordClick: () -> Unit,
@@ -63,6 +86,10 @@ fun HomeScreen(
     val items by viewModel.items.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
     val quotaBanner by viewModel.quotaBanner.collectAsStateWithLifecycle()
+    val stats by viewModel.stats.collectAsStateWithLifecycle()
+    val filter by viewModel.filter.collectAsStateWithLifecycle()
+    val sort by viewModel.sort.collectAsStateWithLifecycle()
+    var sortMenuOpen by remember { mutableStateOf(false) }
 
     val pickAudio = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -73,7 +100,6 @@ fun HomeScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
-            // Hero action: gradient record button.
             Box(
                 modifier = Modifier
                     .size(68.dp)
@@ -103,10 +129,55 @@ fun HomeScreen(
                 onDebug = onDebugClick,
             )
 
+            if (stats.transcriptCount > 0) {
+                StatsBar(stats)
+            }
+
             SearchField(
                 query = query,
                 onQueryChanged = viewModel::onQueryChanged,
             )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FlowRow(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    HomeFilter.entries.forEach { f ->
+                        FilterChip(
+                            selected = filter == f,
+                            onClick = { viewModel.setFilter(f) },
+                            label = { Text(homeFilterLabel(f)) },
+                        )
+                    }
+                }
+                Box {
+                    IconButton(onClick = { sortMenuOpen = true }) {
+                        Icon(Icons.Default.Sort, contentDescription = stringResource(R.string.home_sort))
+                    }
+                    DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
+                        HomeSort.entries.forEach { s ->
+                            DropdownMenuItem(
+                                text = { Text(homeSortLabel(s)) },
+                                onClick = {
+                                    viewModel.setSort(s)
+                                    sortMenuOpen = false
+                                },
+                                leadingIcon = {
+                                    if (sort == s) {
+                                        Icon(Icons.Default.Sort, contentDescription = null)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
 
             quotaBanner?.let { banner ->
                 Surface(
@@ -144,8 +215,8 @@ fun HomeScreen(
                 }
             }
 
-            if (items.isEmpty() && query.isBlank()) {
-                EmptyState()
+            if (items.isEmpty() && query.isBlank() && filter == HomeFilter.ALL) {
+                EmptyState(onImport = { pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg")) })
             } else if (items.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
@@ -163,11 +234,120 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(items, key = { it.transcript.id }) { item ->
-                        TranscriptCard(item, onClick = { onTranscriptClick(item.transcript.id) })
+                        SwipeableTranscriptCard(
+                            item = item,
+                            onClick = { onTranscriptClick(item.transcript.id) },
+                            onPin = { viewModel.togglePin(item.transcript.id) },
+                            onDelete = { viewModel.delete(item.transcript.id) },
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun homeFilterLabel(filter: HomeFilter): String = when (filter) {
+    HomeFilter.ALL -> stringResource(R.string.home_filter_all)
+    HomeFilter.DONE -> stringResource(R.string.home_filter_done)
+    HomeFilter.IN_PROGRESS -> stringResource(R.string.home_filter_progress)
+    HomeFilter.FAILED -> stringResource(R.string.home_filter_failed)
+}
+
+@Composable
+private fun homeSortLabel(sort: HomeSort): String = when (sort) {
+    HomeSort.NEWEST -> stringResource(R.string.home_sort_newest)
+    HomeSort.OLDEST -> stringResource(R.string.home_sort_oldest)
+    HomeSort.LONGEST -> stringResource(R.string.home_sort_longest)
+    HomeSort.TITLE -> stringResource(R.string.home_sort_title)
+}
+
+@Composable
+private fun StatsBar(stats: HomeStats) {
+    val hours = stats.totalDurationMs / 3_600_000
+    val minutes = (stats.totalDurationMs % 3_600_000) / 60_000
+    val durationLabel = if (hours > 0) {
+        stringResource(R.string.home_stats_hours, hours, minutes)
+    } else {
+        stringResource(R.string.home_stats_minutes, minutes.coerceAtLeast(1))
+    }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+    ) {
+        Text(
+            stringResource(R.string.home_stats, stats.transcriptCount, durationLabel),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeableTranscriptCard(
+    item: HomeItem,
+    onClick: () -> Unit,
+    onPin: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onPin()
+                    false
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onDelete()
+                    true
+                }
+                else -> false
+            }
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            val direction = dismissState.dismissDirection
+            val color = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd ->
+                    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
+                SwipeToDismissBoxValue.EndToStart ->
+                    MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
+                else -> Color.Transparent
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.large)
+                    .background(color)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = when (direction) {
+                    SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                    SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                    else -> Alignment.Center
+                },
+            ) {
+                Text(
+                    when (direction) {
+                        SwipeToDismissBoxValue.StartToEnd -> stringResource(R.string.home_swipe_pin)
+                        SwipeToDismissBoxValue.EndToStart -> stringResource(R.string.home_swipe_delete)
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        },
+    ) {
+        TranscriptCard(item, onClick = onClick)
     }
 }
 
@@ -218,7 +398,7 @@ private fun HomeHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 24.dp, end = 8.dp, top = 16.dp, bottom = 16.dp),
+            .padding(start = 24.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -259,24 +439,33 @@ private fun HomeHeader(
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(onImport: () -> Unit) {
+    val pulse = rememberInfiniteTransition(label = "emptyPulse")
+    val scale by pulse.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "emptyScale",
+    )
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(32.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(88.dp)
+                    .size(96.dp)
+                    .scale(scale)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(BrandGradient),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Default.Mic,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(40.dp),
+                    tint = Color.White,
+                    modifier = Modifier.size(44.dp),
                 )
             }
             Text(
@@ -288,6 +477,11 @@ private fun EmptyState() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            OutlinedButton(onClick = onImport) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text(stringResource(R.string.home_import_cta))
+            }
         }
     }
 }
@@ -308,6 +502,16 @@ private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (t.pinned) {
+                    Icon(
+                        Icons.Default.PushPin,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .padding(end = 4.dp),
+                    )
+                }
                 Text(
                     t.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -320,11 +524,23 @@ private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
                     Pill(formatClock(t.audioDurationMs))
                 }
             }
-            Text(
-                formatDate(t.createdAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    formatDate(t.createdAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                t.tag?.let { tag ->
+                    Pill(
+                        tagLabel(tag),
+                        color = MaterialTheme.colorScheme.secondary,
+                        background = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
+                    )
+                }
+            }
+            if (t.audioPath != null) {
+                MiniWaveform(item.waveform, modifier = Modifier.fillMaxWidth())
+            }
             when (t.status) {
                 TranscriptStatus.DONE -> {
                     if (t.text.isNotBlank()) {
@@ -379,4 +595,13 @@ private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun tagLabel(tag: String): String = when (tag) {
+    "work" -> stringResource(R.string.tag_work)
+    "study" -> stringResource(R.string.tag_study)
+    "interview" -> stringResource(R.string.tag_interview)
+    "personal" -> stringResource(R.string.tag_personal)
+    else -> stringResource(R.string.tag_other)
 }

@@ -161,4 +161,49 @@
     <string name="onboarding_skip">Lewati</string>
     <string name="onboarding_next">Lanjut</string>
     <string name="onboarding_start">Mulai</string>
+
+    <string name="home_import_cta">Impor audio</string>
+    <string name="home_stats">%1$d transkrip · %2$s ditranskripsi · 100%% offline</string>
+    <string name="home_stats_hours">%1$dj %2$dm</string>
+    <string name="home_stats_minutes">%1$d mnt</string>
+    <string name="home_sort">Urutkan</string>
+    <string name="home_filter_all">Semua</string>
+    <string name="home_filter_done">Selesai</string>
+    <string name="home_filter_progress">Berjalan</string>
+    <string name="home_filter_failed">Gagal</string>
+    <string name="home_sort_newest">Terbaru</string>
+    <string name="home_sort_oldest">Terlama</string>
+    <string name="home_sort_longest">Terpanjang</string>
+    <string name="home_sort_title">A–Z</string>
+    <string name="home_swipe_pin">Sematkan</string>
+    <string name="home_swipe_delete">Hapus</string>
+
+    <string name="tag_none">Tanpa tag</string>
+    <string name="tag_work">Kerja</string>
+    <string name="tag_study">Belajar</string>
+    <string name="tag_interview">Wawancara</string>
+    <string name="tag_personal">Pribadi</string>
+    <string name="tag_other">Lainnya</string>
+
+    <string name="record_live_preview">Pratinjau langsung</string>
+
+    <string name="action_copy_timestamps">Salin + waktu</string>
+    <string name="action_copy_segment">Salin segmen</string>
+    <string name="action_export_vtt">Ekspor VTT</string>
+    <string name="action_export_md">Ekspor MD</string>
+    <string name="action_export_pdf">Ekspor PDF</string>
+
+    <string name="paywall_col_free">Gratis</string>
+    <string name="paywall_col_pro">Unlimited</string>
+    <string name="paywall_row_transcription">Transkripsi</string>
+    <string name="paywall_row_record">Rekam &amp; edit</string>
+    <string name="paywall_row_export">Format ekspor</string>
+    <string name="paywall_row_offline">Sepenuhnya offline</string>
+
+    <string name="widget_title">Rekam Vocatim</string>
+    <string name="widget_description">Rekam cepat dengan Vocatim</string>
+    <string name="widget_tap_record">Ketuk untuk rekam</string>
+    <string name="shortcut_record">Rekam</string>
+    <string name="shortcut_record_long">Mulai rekaman baru</string>
+    <string name="shortcut_latest">Buka: %1$s</string>
 </resources>

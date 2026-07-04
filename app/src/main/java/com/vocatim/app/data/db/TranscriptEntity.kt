@@ -44,5 +44,9 @@ data class TranscriptEntity(
     val customTitle: Boolean = false,
     /** Language Whisper detected when the user chose "auto". */
     val detectedLanguage: String? = null,
+    /** Pinned transcripts stay at the top of the home list. */
+    val pinned: Boolean = false,
+    /** Optional folder/tag label, e.g. "work", "study". */
+    val tag: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

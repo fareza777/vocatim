@@ -32,8 +32,17 @@ object Routes {
 fun VocatimNavHost(
     startRecord: Boolean = false,
     onStartRecordConsumed: () -> Unit = {},
+    openTranscriptId: Long? = null,
+    onOpenTranscriptConsumed: () -> Unit = {},
 ) {
     val navController = rememberNavController()
+
+    LaunchedEffect(openTranscriptId) {
+        openTranscriptId?.let { id ->
+            onOpenTranscriptConsumed()
+            navController.navigate(Routes.detail(id))
+        }
+    }
 
     // Quick Settings tile: jump straight into an armed record screen.
     LaunchedEffect(startRecord) {
@@ -97,10 +106,11 @@ fun VocatimNavHost(
         composable(
             Routes.DETAIL,
             arguments = listOf(navArgument("transcriptId") { type = NavType.LongType }),
-        ) {
+        ) { entry ->
             DetailScreen(
                 onBack = { navController.popBackStack() },
                 onUpgrade = { navController.navigate(Routes.PAYWALL) },
+                viewModel = androidx.hilt.navigation.compose.hiltViewModel(entry),
             )
         }
         composable(Routes.DEBUG) {

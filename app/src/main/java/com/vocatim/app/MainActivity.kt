@@ -40,6 +40,8 @@ class MainActivity : FragmentActivity() {
     private var onboardingDone by mutableStateOf<Boolean?>(null)
     /** Set by the Quick Settings tile: jump straight into recording. */
     private var startRecordRequest by mutableStateOf(false)
+    /** Set by app shortcut: open a specific transcript. */
+    private var openTranscriptId by mutableStateOf<Long?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -47,6 +49,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         handleAudioIntent(intent)
         handleRecordIntent(intent)
+        handleTranscriptIntent(intent)
 
         lifecycleScope.launch {
             userPrefs.settings.collect { settings ->
@@ -80,6 +83,8 @@ class MainActivity : FragmentActivity() {
                     else -> VocatimNavHost(
                         startRecord = startRecordRequest,
                         onStartRecordConsumed = { startRecordRequest = false },
+                        openTranscriptId = openTranscriptId,
+                        onOpenTranscriptConsumed = { openTranscriptId = null },
                     )
                 }
             }
@@ -137,6 +142,15 @@ class MainActivity : FragmentActivity() {
         super.onNewIntent(intent)
         handleAudioIntent(intent)
         handleRecordIntent(intent)
+        handleTranscriptIntent(intent)
+    }
+
+    private fun handleTranscriptIntent(intent: Intent?) {
+        val id = intent?.getLongExtra(EXTRA_TRANSCRIPT_ID, -1L) ?: return
+        if (id > 0) {
+            intent.removeExtra(EXTRA_TRANSCRIPT_ID)
+            openTranscriptId = id
+        }
     }
 
     /** Audio shared or opened from another app goes straight to import. */
@@ -159,5 +173,6 @@ class MainActivity : FragmentActivity() {
 
     companion object {
         const val ACTION_START_RECORD = "com.vocatim.app.START_RECORD"
+        const val EXTRA_TRANSCRIPT_ID = "com.vocatim.app.TRANSCRIPT_ID"
     }
 }

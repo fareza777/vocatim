@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [TranscriptEntity::class, SegmentEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class VocatimDatabase : RoomDatabase() {
@@ -22,6 +22,15 @@ abstract class VocatimDatabase : RoomDatabase() {
                 db.execSQL(
                     "ALTER TABLE transcripts ADD COLUMN detectedLanguage TEXT"
                 )
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE transcripts ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL("ALTER TABLE transcripts ADD COLUMN tag TEXT")
             }
         }
     }
