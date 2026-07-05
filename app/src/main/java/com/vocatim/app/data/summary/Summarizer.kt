@@ -55,7 +55,7 @@ class Summarizer(
             for ((i, chunkText) in chunks.withIndex()) {
                 val partial = engine.chat(
                     system = system,
-                    user = "Ringkas transkrip berikut:\n\n$chunkText",
+                    user = "Transcript:\n\n$chunkText\n\nSummary (distinct bullet points):",
                     maxTokens = MAP_TOKENS,
                 )
                 partials.add(partial)
@@ -68,8 +68,8 @@ class Summarizer(
             } else {
                 engine.chat(
                     system = system,
-                    user = "Gabungkan ringkasan-ringkasan bagian berikut menjadi satu " +
-                        "ringkasan akhir yang runut dan tidak berulang:\n\n" +
+                    user = "Combine these partial summaries into one final set of " +
+                        "distinct, non-overlapping bullet points:\n\n" +
                         partials.joinToString("\n\n"),
                     maxTokens = REDUCE_TOKENS,
                 )
@@ -92,9 +92,12 @@ class Summarizer(
             "id" -> "Tulis ringkasan dalam bahasa Indonesia."
             else -> "Write the summary in the same language as the transcript."
         }
-        return "You are a helpful assistant that writes concise, faithful summaries " +
-            "of meeting and voice-note transcripts. Capture the key points, decisions, " +
-            "and any action items as short bullet points. Do not invent information. " +
+        // Small models loop; the explicit "distinct / do not repeat" rules
+        // plus the point cap keep the output tight.
+        return "You summarize meeting and voice-note transcripts. Write 3 to 6 short " +
+            "bullet points. Each bullet must express a DIFFERENT idea — never repeat or " +
+            "rephrase a previous point. Keep it faithful; do not invent facts. Include " +
+            "decisions and action items if present. Stop after the last distinct point. " +
             langLine
     }
 

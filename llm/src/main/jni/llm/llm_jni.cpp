@@ -124,11 +124,15 @@ Java_com_vocatim_llm_LlamaLib_00024Companion_complete(
         return env->NewStringUTF("");
     }
 
-    // Low-temperature chain: coherent, near-deterministic summaries.
+    // Repetition penalty is essential for small models: without it they loop,
+    // emitting the same bullet over and over. Moderate temperature adds the
+    // variety a pure-greedy/low-temp chain lacks.
     llama_sampler *smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
+    llama_sampler_chain_add(smpl, llama_sampler_init_penalties(
+            /* last_n */ 256, /* repeat */ 1.3f, /* freq */ 0.0f, /* present */ 0.0f));
     llama_sampler_chain_add(smpl, llama_sampler_init_top_k(40));
-    llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.9f, 1));
-    llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.3f));
+    llama_sampler_chain_add(smpl, llama_sampler_init_top_p(0.92f, 1));
+    llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.6f));
     llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
     diag("complete:sampler_ready");
