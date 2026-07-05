@@ -132,6 +132,22 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
                 onRun = viewModel::runBenchmark,
             )
 
+            val devPro by viewModel.devPro.collectAsStateWithLifecycle()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Unlock Pro (debug)", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Forces Unlimited on for testing AI summary & billing.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                androidx.compose.material3.Switch(
+                    checked = devPro,
+                    onCheckedChange = viewModel::setDevPro,
+                )
+            }
+
             if (systemInfo.isNotEmpty()) {
                 Text(
                     text = systemInfo,

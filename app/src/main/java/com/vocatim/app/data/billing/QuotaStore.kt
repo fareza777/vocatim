@@ -17,8 +17,14 @@ class QuotaStore(private val context: Context) {
 
     val usedMs: Flow<Long> = context.prefsDataStore.data.map { it[USED_MS_KEY] ?: 0L }
 
-    /** Cached Play entitlement; refreshed whenever Billing connects. */
-    val isProCached: Flow<Boolean> = context.prefsDataStore.data.map { it[PRO_KEY] ?: false }
+    /**
+     * Pro if the real Play entitlement is cached, OR the debug override is
+     * on. The override is a separate key that Billing never writes, so a Play
+     * re-sync can't clear it; it's only ever set from the debug screen.
+     */
+    val isProCached: Flow<Boolean> = context.prefsDataStore.data.map {
+        (it[PRO_KEY] ?: false) || (it[DEV_PRO_KEY] ?: false)
+    }
 
     suspend fun addUsage(ms: Long) {
         if (ms <= 0) return
@@ -31,6 +37,11 @@ class QuotaStore(private val context: Context) {
         context.prefsDataStore.edit { it[PRO_KEY] = pro }
     }
 
+    /** Debug-only entitlement override; never called from release code. */
+    suspend fun setDevPro(enabled: Boolean) {
+        context.prefsDataStore.edit { it[DEV_PRO_KEY] = enabled }
+    }
+
     suspend fun currentUsedMs(): Long = usedMs.first()
 
     suspend fun currentIsPro(): Boolean = isProCached.first()
@@ -40,5 +51,6 @@ class QuotaStore(private val context: Context) {
 
         private val USED_MS_KEY = longPreferencesKey("quota_used_ms")
         private val PRO_KEY = booleanPreferencesKey("entitlement_pro")
+        private val DEV_PRO_KEY = booleanPreferencesKey("entitlement_dev_pro")
     }
 }

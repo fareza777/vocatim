@@ -55,7 +55,15 @@ class DebugViewModel @Inject constructor(
     private val transcriptDao: TranscriptDao,
     private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
     private val rtfStore: com.vocatim.app.data.prefs.RtfStore,
+    private val quotaStore: com.vocatim.app.data.billing.QuotaStore,
 ) : ViewModel() {
+
+    val devPro: StateFlow<Boolean> = quotaStore.isProCached
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setDevPro(enabled: Boolean) {
+        viewModelScope.launch { quotaStore.setDevPro(enabled) }
+    }
 
     val modelStates: StateFlow<Map<WhisperModel, ModelState>> =
         combine(WhisperModel.entries.map { modelManager.state(it) }) { states ->
