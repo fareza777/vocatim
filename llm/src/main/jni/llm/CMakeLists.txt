@@ -38,9 +38,14 @@ target_compile_options(vocatim_llm PRIVATE
 
 target_link_libraries(vocatim_llm llama ${LOG_LIB})
 
-# Don't re-export llama/ggml symbols; drop unused code; strip symbols
-# (AGP fails to strip this large lib, so do it at link time -> ~45MB to ~10MB).
+# Isolation from the :whisper module's SHARED libggml.so (a different ggml
+# version). -Bsymbolic forces every internal reference in this .so to bind to
+# its OWN static ggml definitions, so the dynamic linker can't interpose them
+# with whisper's incompatible symbols (which would crash at runtime).
+# --exclude-libs hides our symbols; gc-sections + strip shrink the .so.
 target_link_options(vocatim_llm PRIVATE
+    -Wl,-Bsymbolic
+    -Wl,-Bsymbolic-functions
     -Wl,--exclude-libs,ALL
     -Wl,--gc-sections
     -Wl,-s)
