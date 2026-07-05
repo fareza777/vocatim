@@ -175,6 +175,15 @@
     <string name="merge_done">Digabung jadi catatan baru</string>
     <string name="home_group_today">Hari ini</string>
     <string name="home_group_yesterday">Kemarin</string>
+    <string name="settings_backup_section">Cadangan terenkripsi</string>
+    <string name="settings_backup_desc">Teks transkrip, judul, dan pengaturan — dienkripsi AES dengan password Anda. File audio tidak ikut.</string>
+    <string name="settings_backup">Cadangkan</string>
+    <string name="settings_restore">Pulihkan</string>
+    <string name="backup_password_title">Password cadangan</string>
+    <string name="backup_password_hint">Minimal 4 karakter</string>
+    <string name="backup_export_ok">%1$d transkrip dicadangkan</string>
+    <string name="backup_import_ok">%1$d transkrip dipulihkan</string>
+    <string name="backup_error">Cadangan gagal: %1$s</string>
 
     <string name="home_import_cta">Impor audio</string>
     <string name="home_stats">%1$d transkrip · %2$s ditranskripsi · 100%% offline</string>

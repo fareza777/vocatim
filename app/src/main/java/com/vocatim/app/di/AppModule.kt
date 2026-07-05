@@ -145,6 +145,14 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideBackupManager(
+        @ApplicationContext context: Context,
+        repository: TranscriptRepository,
+    ): com.vocatim.app.data.backup.BackupManager =
+        com.vocatim.app.data.backup.BackupManager(context, repository)
+
+    @Provides
+    @Singleton
     fun provideStartupRecovery(
         @ApplicationContext context: Context,
         repository: TranscriptRepository,

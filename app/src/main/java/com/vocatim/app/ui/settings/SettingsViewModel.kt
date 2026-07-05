@@ -28,13 +28,47 @@ import javax.inject.Inject
 
 data class StorageUsage(val modelBytes: Long, val audioBytes: Long)
 
+sealed interface BackupEvent {
+    data class ExportDone(val count: Int) : BackupEvent
+    data class ImportDone(val count: Int) : BackupEvent
+    data class Error(val message: String) : BackupEvent
+}
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val modelManager: ModelManager,
     private val userPrefs: UserPrefs,
+    private val backupManager: com.vocatim.app.data.backup.BackupManager,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
 ) : ViewModel() {
+
+    private val _backupEvent = MutableStateFlow<BackupEvent?>(null)
+    val backupEvent: StateFlow<BackupEvent?> = _backupEvent.asStateFlow()
+
+    fun exportBackup(uri: android.net.Uri, password: String) {
+        viewModelScope.launch {
+            _backupEvent.value = try {
+                BackupEvent.ExportDone(backupManager.export(uri, password.toCharArray()))
+            } catch (e: Exception) {
+                BackupEvent.Error(e.message ?: "backup failed")
+            }
+        }
+    }
+
+    fun importBackup(uri: android.net.Uri, password: String) {
+        viewModelScope.launch {
+            _backupEvent.value = try {
+                BackupEvent.ImportDone(backupManager.import(uri, password.toCharArray()))
+            } catch (e: Exception) {
+                BackupEvent.Error(e.message ?: "restore failed")
+            }
+        }
+    }
+
+    fun consumeBackupEvent() {
+        _backupEvent.value = null
+    }
 
     val isPro: StateFlow<Boolean> = quotaStore.isProCached
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)

@@ -175,6 +175,15 @@
     <string name="merge_done">Merged into a new note</string>
     <string name="home_group_today">Today</string>
     <string name="home_group_yesterday">Yesterday</string>
+    <string name="settings_backup_section">Encrypted backup</string>
+    <string name="settings_backup_desc">Transcript texts, titles, and settings — AES-encrypted with your password. Audio files are not included.</string>
+    <string name="settings_backup">Back up</string>
+    <string name="settings_restore">Restore</string>
+    <string name="backup_password_title">Backup password</string>
+    <string name="backup_password_hint">At least 4 characters</string>
+    <string name="backup_export_ok">Backed up %1$d transcripts</string>
+    <string name="backup_import_ok">Restored %1$d transcripts</string>
+    <string name="backup_error">Backup failed: %1$s</string>
 
     <!-- Home enhancements -->
     <string name="home_import_cta">Import audio</string>

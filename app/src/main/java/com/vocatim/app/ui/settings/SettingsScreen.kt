@@ -41,6 +41,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -275,7 +276,103 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
+
+            Text(stringResource(R.string.settings_backup_section), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_backup_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            BackupSection(viewModel)
         }
+    }
+}
+
+@Composable
+private fun BackupSection(viewModel: SettingsViewModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val backupEvent by viewModel.backupEvent.collectAsStateWithLifecycle()
+    var pendingExportUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var pendingImportUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var password by remember { mutableStateOf("") }
+
+    LaunchedEffect(backupEvent) {
+        backupEvent?.let { event ->
+            val message = when (event) {
+                is BackupEvent.ExportDone ->
+                    context.getString(R.string.backup_export_ok, event.count)
+                is BackupEvent.ImportDone ->
+                    context.getString(R.string.backup_import_ok, event.count)
+                is BackupEvent.Error ->
+                    context.getString(R.string.backup_error, event.message)
+            }
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+            viewModel.consumeBackupEvent()
+        }
+    }
+
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri -> uri?.let { pendingExportUri = it; password = "" } }
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let { pendingImportUri = it; password = "" } }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = {
+            val date = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
+                .format(java.util.Date())
+            exportLauncher.launch("vocatim-backup-$date.vbk")
+        }) {
+            Text(stringResource(R.string.settings_backup))
+        }
+        OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
+            Text(stringResource(R.string.settings_restore))
+        }
+    }
+
+    val activeUri = pendingExportUri ?: pendingImportUri
+    if (activeUri != null) {
+        val isExport = pendingExportUri != null
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pendingExportUri = null; pendingImportUri = null },
+            title = { Text(stringResource(R.string.backup_password_title)) },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.backup_password_hint)) },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    enabled = password.length >= 4,
+                    onClick = {
+                        if (isExport) viewModel.exportBackup(activeUri, password)
+                        else viewModel.importBackup(activeUri, password)
+                        pendingExportUri = null
+                        pendingImportUri = null
+                        password = ""
+                    },
+                ) {
+                    Text(
+                        stringResource(
+                            if (isExport) R.string.settings_backup else R.string.settings_restore
+                        )
+                    )
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    pendingExportUri = null
+                    pendingImportUri = null
+                }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 }
 
