@@ -25,10 +25,13 @@ Vocatim is an offline transcription app powered by Whisper AI that converts voic
 • Record with the screen off — long recordings keep running in the background
 • Import audio & video: MP3, M4A, WAV, MP4, WhatsApp voice notes (share directly to Vocatim)
 • Transcribe multi-hour recordings — resumes from checkpoint if interrupted
+• AI Summary — on-device: turn any transcript into key points, fully offline (Unlimited)
 • Timestamped segments — tap any line to jump the audio to that moment
-• Edit, copy, share — export TXT and SRT subtitles, no watermark
+• Playback speed, merge transcripts, add to Calendar
+• Edit, copy, share — export TXT, SRT, VTT, PDF, Markdown — no watermark
 • Choose your accuracy: fast (tiny), balanced (base), or accurate (small) models
 • App lock with fingerprint, screenshot blocking, full-text search
+• Encrypted backup & restore (AES-256, your password)
 • Dark & light themes, adjustable text size
 
 **Free vs Unlimited**
@@ -54,10 +57,13 @@ Vocatim adalah aplikasi transkripsi offline bertenaga Whisper AI yang mengubah s
 • Rekam dengan layar mati — rekaman panjang tetap jalan di latar belakang
 • Impor audio & video: MP3, M4A, WAV, MP4, voice note WhatsApp (share langsung ke Vocatim)
 • Transkrip rekaman berjam-jam — lanjut otomatis dari checkpoint jika terputus
+• Ringkasan AI — di perangkat: ubah transkrip jadi poin penting, sepenuhnya offline (Unlimited)
 • Segmen bertimestamp — ketuk baris mana pun untuk melompat ke detiknya
-• Edit, salin, bagikan — ekspor TXT dan subtitle SRT, tanpa watermark
+• Kecepatan putar, gabung transkrip, tambah ke Kalender
+• Edit, salin, bagikan — ekspor TXT, SRT, VTT, PDF, Markdown — tanpa watermark
 • Pilih akurasi: cepat (tiny), seimbang (base), akurat (small)
 • Kunci aplikasi sidik jari, blokir screenshot, pencarian teks penuh
+• Cadangan terenkripsi (AES-256, dengan password Anda)
 • Tema gelap & terang, ukuran teks bisa diatur
 
 **Gratis vs Unlimited**

@@ -79,7 +79,11 @@ class SummaryService : Service() {
             try {
                 val entity = repository.getById(transcriptId) ?: return@launch
                 val settings = userPrefs.current()
-                summarizerFactory.useDiagDir(filesDir)
+                // Step-by-step crash tracing is a debug-build aid only; release
+                // does no diagnostic file I/O.
+                if (com.vocatim.app.BuildConfig.DEBUG) {
+                    summarizerFactory.useDiagDir(filesDir)
+                }
                 val summarizer = summarizerFactory.create(
                     ThreadPolicy(this@SummaryService).threadsFor(settings.threads)
                 )
