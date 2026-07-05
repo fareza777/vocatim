@@ -56,7 +56,7 @@ class Summarizer(
             val summaryLabel = if (indonesian) {
                 "Ringkasan (poin-poin berbeda, bahasa Indonesia):"
             } else {
-                "Summary (distinct bullet points):"
+                "Summary in ${languageName(language)} (distinct bullet points):"
             }
 
             val partials = mutableListOf<String>()
@@ -79,7 +79,7 @@ class Summarizer(
                         "akhir yang berbeda dan tidak tumpang tindih, dalam bahasa Indonesia:"
                 } else {
                     "Combine these partial summaries into one final set of distinct, " +
-                        "non-overlapping bullet points:"
+                        "non-overlapping bullet points, written in ${languageName(language)}:"
                 }
                 engine.chat(
                     system = system,
@@ -99,8 +99,14 @@ class Summarizer(
         }
     }
 
-    // A small model follows the language of its instructions, so the whole
-    // system prompt is localized — not just a trailing "write in X" line.
+    /** English display name of a language code, e.g. "id" -> "Indonesian". */
+    private fun languageName(code: String): String =
+        java.util.Locale(code).getDisplayLanguage(java.util.Locale.ENGLISH)
+            .ifBlank { "the same language as the transcript" }
+
+    // A small model follows the language of its instructions, so Indonesian
+    // (the primary market) gets a fully-localized prompt. Other languages get
+    // an English prompt with an explicit, strongly-worded target-language line.
     private fun systemPrompt(language: String): String = if (language == "id") {
         "Anda meringkas transkrip rapat dan catatan suara. Tulis 3 sampai 6 poin " +
             "singkat dalam bahasa Indonesia. Setiap poin harus berisi gagasan yang " +
@@ -108,10 +114,12 @@ class Summarizer(
             "Setia pada isi; jangan mengarang. Sertakan keputusan dan action item bila " +
             "ada. Berhenti setelah poin terakhir yang berbeda."
     } else {
+        val name = languageName(language)
         "You summarize meeting and voice-note transcripts. Write 3 to 6 short bullet " +
-            "points in English. Each bullet must express a DIFFERENT idea — never repeat " +
-            "or rephrase a previous point. Keep it faithful; do not invent facts. Include " +
-            "decisions and action items if present. Stop after the last distinct point."
+            "points. Write the ENTIRE summary in $name — do not use any other language. " +
+            "Each bullet must express a DIFFERENT idea — never repeat or rephrase a " +
+            "previous point. Keep it faithful; do not invent facts. Include decisions and " +
+            "action items if present. Stop after the last distinct point."
     }
 
     /** Splits on sentence boundaries so chunks stay under the token budget. */
