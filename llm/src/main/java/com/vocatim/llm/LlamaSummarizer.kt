@@ -13,17 +13,24 @@ class LlamaException(message: String) : Exception(message)
  * calls are confined to one thread — llama contexts are not thread-safe.
  * Prompts use Qwen's ChatML format directly (no jinja dependency).
  */
-class LlamaSummarizer private constructor(private val nThreads: Int) {
+class LlamaSummarizer private constructor(
+    private val nThreads: Int,
+    private val onDiag: (String) -> Unit,
+) {
     private val dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     private val scope = CoroutineScope(dispatcher)
 
     @Volatile private var loaded = false
 
+    /** Points the native diagnostic log at [path] (a file the app can read). */
+    fun setNativeDiagFile(path: String) = LlamaLib.setDiagFile(path)
+
     suspend fun loadIfNeeded(modelPath: String) = withContext(dispatcher) {
         if (loaded) return@withContext
-        if (!LlamaLib.loadModel(modelPath, nThreads, CONTEXT_TOKENS)) {
-            throw LlamaException("Couldn't load summary model")
-        }
+        onDiag("load:start threads=$nThreads ctx=$CONTEXT_TOKENS")
+        val ok = LlamaLib.loadModel(modelPath, nThreads, CONTEXT_TOKENS)
+        onDiag("load:returned=$ok")
+        if (!ok) throw LlamaException("Couldn't load summary model")
         loaded = true
     }
 
@@ -39,7 +46,10 @@ class LlamaSummarizer private constructor(private val nThreads: Int) {
                 append("<|im_start|>user\n").append(user).append("<|im_end|>\n")
                 append("<|im_start|>assistant\n")
             }
-            LlamaLib.complete(prompt, maxTokens).trim()
+            onDiag("chat:start promptChars=${prompt.length} maxTokens=$maxTokens")
+            val out = LlamaLib.complete(prompt, maxTokens).trim()
+            onDiag("chat:returned chars=${out.length}")
+            out
         }
 
     fun cancel() {
@@ -60,7 +70,7 @@ class LlamaSummarizer private constructor(private val nThreads: Int) {
         /** Roughly 3000 words of transcript per chunk plus room for output. */
         const val CONTEXT_TOKENS = 4096
 
-        fun create(nThreads: Int): LlamaSummarizer =
-            LlamaSummarizer(nThreads.coerceIn(2, 6))
+        fun create(nThreads: Int, onDiag: (String) -> Unit = {}): LlamaSummarizer =
+            LlamaSummarizer(nThreads.coerceIn(2, 6), onDiag)
     }
 }

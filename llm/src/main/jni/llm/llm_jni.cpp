@@ -3,6 +3,8 @@
 // run a ChatML prompt to completion at low temperature, return the text.
 #include <jni.h>
 #include <android/log.h>
+#include <cstdio>
+#include <unistd.h>
 #include <string>
 #include <vector>
 #include <atomic>
@@ -17,6 +19,21 @@ llama_model   *g_model   = nullptr;
 llama_context *g_ctx     = nullptr;
 int            g_n_ctx   = 4096;
 std::atomic<bool> g_cancel{false};
+std::string    g_diag_path;
+
+// Append one diagnostic line and flush + fsync, so it survives a hard crash
+// on the very next native call.
+void diag(const char *msg) {
+    LOGi("%s", msg);
+    if (g_diag_path.empty()) return;
+    FILE *f = fopen(g_diag_path.c_str(), "a");
+    if (f) {
+        fprintf(f, "native: %s\n", msg);
+        fflush(f);
+        fsync(fileno(f));
+        fclose(f);
+    }
+}
 
 std::vector<llama_token> tokenize(const llama_vocab *vocab, const std::string &text, bool add_special) {
     int n = -llama_tokenize(vocab, text.c_str(), (int) text.size(), nullptr, 0, add_special, true);
@@ -35,19 +52,30 @@ std::string piece(const llama_vocab *vocab, llama_token token) {
 }
 } // namespace
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_vocatim_llm_LlamaLib_00024Companion_setDiagFile(
+        JNIEnv *env, jobject, jstring jpath) {
+    const char *path = env->GetStringUTFChars(jpath, nullptr);
+    g_diag_path = path;
+    env->ReleaseStringUTFChars(jpath, path);
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_vocatim_llm_LlamaLib_00024Companion_loadModel(
         JNIEnv *env, jobject, jstring jpath, jint nThreads, jint nCtx) {
+    diag("loadModel:backend_init");
     llama_backend_init();
 
     const char *path = env->GetStringUTFChars(jpath, nullptr);
+    diag("loadModel:load_from_file:start");
     llama_model_params mparams = llama_model_default_params();
     g_model = llama_model_load_from_file(path, mparams);
     env->ReleaseStringUTFChars(jpath, path);
     if (!g_model) {
-        LOGe("Failed to load model");
+        diag("loadModel:model_null");
         return JNI_FALSE;
     }
+    diag("loadModel:model_ok");
 
     g_n_ctx = nCtx;
     llama_context_params cparams = llama_context_default_params();
@@ -57,12 +85,12 @@ Java_com_vocatim_llm_LlamaLib_00024Companion_loadModel(
     cparams.n_threads_batch = nThreads;
     g_ctx = llama_init_from_model(g_model, cparams);
     if (!g_ctx) {
-        LOGe("Failed to create context");
+        diag("loadModel:context_null");
         llama_model_free(g_model);
         g_model = nullptr;
         return JNI_FALSE;
     }
-    LOGi("Model loaded (n_ctx=%d, threads=%d)", nCtx, nThreads);
+    diag("loadModel:context_ok");
     return JNI_TRUE;
 }
 
@@ -79,16 +107,19 @@ Java_com_vocatim_llm_LlamaLib_00024Companion_complete(
     if (!g_ctx || !g_model) return env->NewStringUTF("");
     g_cancel.store(false);
 
+    diag("complete:start");
     const llama_vocab *vocab = llama_model_get_vocab(g_model);
     const char *prompt = env->GetStringUTFChars(jprompt, nullptr);
     std::vector<llama_token> tokens = tokenize(vocab, std::string(prompt), true);
     env->ReleaseStringUTFChars(jprompt, prompt);
+    diag((std::string("complete:tokenized n=") + std::to_string(tokens.size())).c_str());
 
     // Each summarize call is independent: wipe the KV cache first.
     llama_memory_clear(llama_get_memory(g_ctx), true);
+    diag("complete:kv_cleared");
 
     if (tokens.empty() || (int) tokens.size() >= g_n_ctx - maxTokens) {
-        LOGe("Prompt too long (%d tokens) for context %d", (int) tokens.size(), g_n_ctx);
+        diag("complete:prompt_too_long");
         return env->NewStringUTF("");
     }
 
@@ -99,12 +130,15 @@ Java_com_vocatim_llm_LlamaLib_00024Companion_complete(
     llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.3f));
     llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
+    diag("complete:sampler_ready");
     llama_batch batch = llama_batch_get_one(tokens.data(), (int) tokens.size());
+    diag("complete:prompt_decode:start");
     if (llama_decode(g_ctx, batch) != 0) {
-        LOGe("Prompt decode failed");
+        diag("complete:prompt_decode:fail");
         llama_sampler_free(smpl);
         return env->NewStringUTF("");
     }
+    diag("complete:prompt_decode:ok");
 
     std::string result;
     llama_token new_token = 0;
@@ -115,11 +149,13 @@ Java_com_vocatim_llm_LlamaLib_00024Companion_complete(
         result += piece(vocab, new_token);
         batch = llama_batch_get_one(&new_token, 1);
         if (llama_decode(g_ctx, batch) != 0) {
-            LOGe("Token decode failed at %d", i);
+            diag("complete:gen_decode:fail");
             break;
         }
+        if (i == 0) diag("complete:first_token_ok");
     }
 
+    diag((std::string("complete:done chars=") + std::to_string(result.size())).c_str());
     llama_sampler_free(smpl);
     return env->NewStringUTF(result.c_str());
 }

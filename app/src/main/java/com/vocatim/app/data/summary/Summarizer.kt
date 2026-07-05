@@ -14,12 +14,17 @@ class SummaryException(message: String) : Exception(message)
 class Summarizer(
     private val modelManager: SummaryModelManager,
     private val threads: Int,
+    private val diagFile: java.io.File? = null,
 ) {
     @Volatile private var engine: LlamaSummarizer? = null
 
     /** Requests cancellation of an in-flight summarization. */
     fun cancel() {
         engine?.cancel()
+    }
+
+    private fun diag(msg: String) {
+        diagFile?.let { runCatching { it.appendText(msg + "\n") } }
     }
 
     /** @param onProgress 0f..1f. Suspends until the summary is complete. */
@@ -35,8 +40,11 @@ class Summarizer(
         val modelPath = modelManager.modelFile
         if (!modelPath.exists()) throw SummaryException("MODEL_MISSING")
 
-        val engine = LlamaSummarizer.create(threads).also { this.engine = it }
+        // Fresh diagnostic trace for this run.
+        diagFile?.let { runCatching { it.writeText("summarize:start chars=${cleaned.length}\n") } }
+        val engine = LlamaSummarizer.create(threads) { diag(it) }.also { this.engine = it }
         try {
+            diagFile?.let { engine.setNativeDiagFile(it.absolutePath) }
             engine.loadIfNeeded(modelPath.absolutePath)
             onProgress(0.05f)
 

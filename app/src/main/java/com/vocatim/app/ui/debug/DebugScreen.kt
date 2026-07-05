@@ -27,6 +27,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -146,6 +149,20 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
                     checked = devPro,
                     onCheckedChange = viewModel::setDevPro,
                 )
+            }
+
+            var diagText by remember { mutableStateOf<String?>(null) }
+            OutlinedButton(onClick = { diagText = viewModel.readSummaryDiag() }) {
+                Text("Show AI summary diagnostic")
+            }
+            diagText?.let { text ->
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(
+                        text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             if (systemInfo.isNotEmpty()) {

@@ -79,6 +79,7 @@ class SummaryService : Service() {
             try {
                 val entity = repository.getById(transcriptId) ?: return@launch
                 val settings = userPrefs.current()
+                summarizerFactory.useDiagDir(filesDir)
                 val summarizer = summarizerFactory.create(
                     ThreadPolicy(this@SummaryService).threadsFor(settings.threads)
                 )
@@ -165,8 +166,15 @@ class SummarizerFactory @Inject constructor(
 ) {
     @Volatile private var active: Summarizer? = null
 
+    private var diagFile: java.io.File? = null
+
+    /** Route diagnostics to [dir]/llm_diag.txt so it survives a native crash. */
+    fun useDiagDir(dir: java.io.File) {
+        diagFile = java.io.File(dir, "llm_diag.txt")
+    }
+
     fun create(threads: Int): Summarizer =
-        Summarizer(modelManager, threads).also { active = it }
+        Summarizer(modelManager, threads, diagFile).also { active = it }
 
     fun cancelActive() {
         active?.cancel()

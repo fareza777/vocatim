@@ -65,6 +65,12 @@ class DebugViewModel @Inject constructor(
         viewModelScope.launch { quotaStore.setDevPro(enabled) }
     }
 
+    /** Reads the last-run AI-summary crash trace, if any. */
+    fun readSummaryDiag(): String {
+        val f = java.io.File(appContext.filesDir, "llm_diag.txt")
+        return if (f.exists()) f.readText().ifBlank { "(kosong)" } else "(belum ada)"
+    }
+
     val modelStates: StateFlow<Map<WhisperModel, ModelState>> =
         combine(WhisperModel.entries.map { modelManager.state(it) }) { states ->
             WhisperModel.entries.zip(states.toList()).toMap()
