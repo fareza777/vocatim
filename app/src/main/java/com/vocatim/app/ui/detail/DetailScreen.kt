@@ -11,6 +11,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -98,6 +100,9 @@ fun DetailScreen(
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var renameDraft by remember { mutableStateOf<String?>(null) }
+    var overflowOpen by remember { mutableStateOf(false) }
+    var keyPointsDialog by remember { mutableStateOf<List<String>?>(null) }
+    var showMergeDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(exportEvent) {
         exportEvent?.let { event ->
@@ -158,6 +163,43 @@ fun DetailScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    if (transcript?.status == TranscriptStatus.DONE) {
+                        Box {
+                            IconButton(onClick = { overflowOpen = true }) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = stringResource(R.string.action_more),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            androidx.compose.material3.DropdownMenu(
+                                expanded = overflowOpen,
+                                onDismissRequest = { overflowOpen = false },
+                            ) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_key_points)) },
+                                    onClick = {
+                                        overflowOpen = false
+                                        keyPointsDialog = viewModel.keyPoints()
+                                    },
+                                )
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_add_calendar)) },
+                                    onClick = {
+                                        overflowOpen = false
+                                        transcript?.let { addToCalendar(context, it) }
+                                    },
+                                )
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_merge)) },
+                                    onClick = {
+                                        overflowOpen = false
+                                        showMergeDialog = true
+                                    },
+                                )
+                            }
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             )
@@ -180,12 +222,15 @@ fun DetailScreen(
                 TranscriptStatus.DONE -> {
                     if (t.audioPath != null) {
                         LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
+                        val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
                         PlayerCard(
                             state = playerState,
                             waveform = waveform,
                             durationMs = t.audioDurationMs,
+                            speed = playbackSpeed,
                             onToggle = viewModel::togglePlayback,
                             onSeek = viewModel::seekToFraction,
+                            onSpeedClick = viewModel::cyclePlaybackSpeed,
                         )
                     }
 
@@ -394,6 +439,111 @@ fun DetailScreen(
         )
     }
 
+    keyPointsDialog?.let { points ->
+        AlertDialog(
+            onDismissRequest = { keyPointsDialog = null },
+            title = { Text(stringResource(R.string.key_points_title)) },
+            text = {
+                if (points.isEmpty()) {
+                    Text(stringResource(R.string.key_points_empty))
+                } else {
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            points.forEach { point ->
+                                Text("•  $point", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    copyToClipboard(context, points.joinToString("\n") { "• $it" })
+                    Toast.makeText(
+                        context, context.getString(R.string.copied), Toast.LENGTH_SHORT
+                    ).show()
+                    keyPointsDialog = null
+                }) {
+                    Text(stringResource(R.string.action_copy))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { keyPointsDialog = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    if (showMergeDialog) {
+        var candidates by remember { mutableStateOf<List<TranscriptEntity>?>(null) }
+        var selected by remember { mutableStateOf(setOf<Long>()) }
+        LaunchedEffect(Unit) { candidates = viewModel.mergeCandidates() }
+        AlertDialog(
+            onDismissRequest = { showMergeDialog = false },
+            title = { Text(stringResource(R.string.merge_title)) },
+            text = {
+                val list = candidates
+                when {
+                    list == null -> Text(stringResource(R.string.status_queued))
+                    list.isEmpty() -> Text(stringResource(R.string.merge_empty))
+                    else -> Column(
+                        modifier = Modifier
+                            .heightIn(max = 320.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        list.forEach { candidate ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selected = if (candidate.id in selected) {
+                                            selected - candidate.id
+                                        } else {
+                                            selected + candidate.id
+                                        }
+                                    },
+                            ) {
+                                androidx.compose.material3.Checkbox(
+                                    checked = candidate.id in selected,
+                                    onCheckedChange = null,
+                                )
+                                Text(
+                                    candidate.title,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = selected.isNotEmpty(),
+                    onClick = {
+                        showMergeDialog = false
+                        viewModel.merge(selected.toList()) { newId ->
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.merge_done),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.action_merge_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMergeDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -424,8 +574,10 @@ private fun PlayerCard(
     state: PlayerState?,
     waveform: FloatArray?,
     durationMs: Long,
+    speed: Float,
     onToggle: () -> Unit,
     onSeek: (Float) -> Unit,
+    onSpeedClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -459,6 +611,24 @@ private fun PlayerCard(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Surface(
+                onClick = onSpeedClick,
+                shape = MaterialTheme.shapes.small,
+                color = if (speed != 1.0f) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                },
+            ) {
+                Text(
+                    // 1.25f -> "1.25x", 2.0f -> "2x"
+                    java.text.DecimalFormat("0.##").format(speed) + "x",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (speed != 1.0f) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -745,6 +915,25 @@ private fun ActionButton(
         Spacer(Modifier.width(6.dp))
         Text(label, maxLines = 1)
     }
+}
+
+/** Prefilled system calendar event; no calendar permission needed. */
+private fun addToCalendar(context: Context, t: TranscriptEntity) {
+    val intent = Intent(Intent.ACTION_INSERT)
+        .setData(android.provider.CalendarContract.Events.CONTENT_URI)
+        .putExtra(android.provider.CalendarContract.Events.TITLE, t.title)
+        .putExtra(
+            android.provider.CalendarContract.Events.DESCRIPTION,
+            t.text.take(4000),
+        )
+        .putExtra(
+            android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, t.createdAt
+        )
+        .putExtra(
+            android.provider.CalendarContract.EXTRA_EVENT_END_TIME,
+            t.createdAt + t.audioDurationMs.coerceAtLeast(60_000),
+        )
+    runCatching { context.startActivity(intent) }
 }
 
 private fun copyToClipboard(context: Context, text: String) {

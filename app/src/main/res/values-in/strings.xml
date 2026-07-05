@@ -163,6 +163,18 @@
     <string name="onboarding_start">Mulai</string>
     <string name="paywall_value_free_minutes">30 menit</string>
     <string name="paywall_value_unlimited">Tanpa batas</string>
+    <string name="action_more">Lainnya</string>
+    <string name="action_key_points">Poin penting</string>
+    <string name="key_points_title">Poin penting</string>
+    <string name="key_points_empty">Teks belum cukup untuk diringkas.</string>
+    <string name="action_add_calendar">Tambah ke Kalender</string>
+    <string name="action_merge">Gabungkan dengan…</string>
+    <string name="action_merge_confirm">Gabungkan</string>
+    <string name="merge_title">Gabungkan transkrip</string>
+    <string name="merge_empty">Tidak ada transkrip selesai lain untuk digabung.</string>
+    <string name="merge_done">Digabung jadi catatan baru</string>
+    <string name="home_group_today">Hari ini</string>
+    <string name="home_group_yesterday">Kemarin</string>
 
     <string name="home_import_cta">Impor audio</string>
     <string name="home_stats">%1$d transkrip · %2$s ditranskripsi · 100%% offline</string>

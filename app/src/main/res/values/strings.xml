@@ -163,6 +163,18 @@
     <string name="onboarding_start">Start</string>
     <string name="paywall_value_free_minutes">30 min</string>
     <string name="paywall_value_unlimited">Unlimited</string>
+    <string name="action_more">More</string>
+    <string name="action_key_points">Key points</string>
+    <string name="key_points_title">Key points</string>
+    <string name="key_points_empty">Not enough text to summarize yet.</string>
+    <string name="action_add_calendar">Add to Calendar</string>
+    <string name="action_merge">Merge with…</string>
+    <string name="action_merge_confirm">Merge</string>
+    <string name="merge_title">Merge transcripts</string>
+    <string name="merge_empty">No other finished transcripts to merge.</string>
+    <string name="merge_done">Merged into a new note</string>
+    <string name="home_group_today">Today</string>
+    <string name="home_group_yesterday">Yesterday</string>
 
     <!-- Home enhancements -->
     <string name="home_import_cta">Import audio</string>

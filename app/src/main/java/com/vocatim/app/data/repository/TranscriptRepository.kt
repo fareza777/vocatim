@@ -56,6 +56,53 @@ class TranscriptRepository(private val dao: TranscriptDao) {
 
     suspend fun clearSegments(transcriptId: Long) = dao.deleteSegments(transcriptId)
 
+    /**
+     * Combines several finished transcripts into a new one: texts joined,
+     * segment timestamps shifted onto one continuous timeline. Audio files
+     * are not merged — the result is text-only.
+     */
+    suspend fun merge(ids: List<Long>): Long? {
+        val entities = ids.mapNotNull { dao.getById(it) }
+        if (entities.size < 2) return null
+        val first = entities.first()
+
+        var offsetMs = 0L
+        val mergedSegments = mutableListOf<SegmentEntity>()
+        val textParts = mutableListOf<String>()
+        for (entity in entities) {
+            textParts.add(entity.text)
+            val segments = dao.getSegments(entity.id)
+            segments.forEach { s ->
+                mergedSegments.add(
+                    s.copy(id = 0, startMs = s.startMs + offsetMs, endMs = s.endMs + offsetMs)
+                )
+            }
+            val partDuration = when {
+                entity.audioDurationMs > 0 -> entity.audioDurationMs
+                segments.isNotEmpty() -> segments.last().endMs
+                else -> 0L
+            }
+            offsetMs += partDuration
+        }
+
+        val mergedId = dao.insert(
+            first.copy(
+                id = 0,
+                title = entities.joinToString(" + ") { it.title }.take(80),
+                text = textParts.filter { it.isNotBlank() }.joinToString("\n\n"),
+                audioDurationMs = offsetMs,
+                processingTimeMs = entities.sumOf { it.processingTimeMs },
+                audioPath = null,
+                sourceUri = null,
+                sourceName = null,
+                customTitle = true,
+                createdAt = System.currentTimeMillis(),
+            )
+        )
+        dao.insertSegments(mergedSegments.map { it.copy(transcriptId = mergedId) })
+        return mergedId
+    }
+
     /** Deletes the row, its segments (cascade), and the audio file on disk. */
     suspend fun delete(id: Long) {
         val entity = dao.getById(id) ?: return

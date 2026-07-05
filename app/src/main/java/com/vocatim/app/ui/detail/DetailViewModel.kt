@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -80,6 +81,49 @@ class DetailViewModel @Inject constructor(
     private val _playerState = MutableStateFlow<PlayerState?>(null)
     val playerState: StateFlow<PlayerState?> = _playerState.asStateFlow()
 
+    private val _playbackSpeed = MutableStateFlow(1.0f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+
+    fun cyclePlaybackSpeed() {
+        val next = when (_playbackSpeed.value) {
+            1.0f -> 1.25f
+            1.25f -> 1.5f
+            1.5f -> 2.0f
+            else -> 1.0f
+        }
+        _playbackSpeed.value = next
+        // Applying params to a paused player force-starts it; only touch live.
+        player?.let { p ->
+            if (p.isPlaying) {
+                runCatching { p.playbackParams = p.playbackParams.setSpeed(next) }
+            }
+        }
+    }
+
+    private fun applySpeed(p: android.media.MediaPlayer) {
+        val speed = _playbackSpeed.value
+        if (speed != 1.0f) {
+            runCatching { p.playbackParams = p.playbackParams.setSpeed(speed) }
+        }
+    }
+
+    /** Sentence-level extractive summary; instant and fully offline. */
+    fun keyPoints(): List<String> =
+        com.vocatim.app.data.transcribe.KeyPointsExtractor.extract(currentText())
+
+    /** Other finished transcripts that can be merged into this one. */
+    suspend fun mergeCandidates(): List<TranscriptEntity> =
+        repository.observeAll().first().filter {
+            it.id != transcriptId && it.status == TranscriptStatus.DONE
+        }
+
+    fun merge(otherIds: List<Long>, onMerged: (Long) -> Unit) {
+        viewModelScope.launch {
+            val newId = repository.merge(listOf(transcriptId) + otherIds)
+            if (newId != null) onMerged(newId)
+        }
+    }
+
     /** Downsampled peaks of the audio file, for the playback waveform. */
     private val _waveform = MutableStateFlow<FloatArray?>(null)
     val waveform: StateFlow<FloatArray?> = _waveform.asStateFlow()
@@ -133,6 +177,7 @@ class DetailViewModel @Inject constructor(
             _playerState.value = _playerState.value?.copy(playing = false)
         } else {
             existing.start()
+            applySpeed(existing)
             startPositionUpdates()
         }
     }
@@ -145,6 +190,7 @@ class DetailViewModel @Inject constructor(
         } else {
             existing.seekTo(ms.toInt())
             if (!existing.isPlaying) existing.start()
+            applySpeed(existing)
             startPositionUpdates()
         }
     }
@@ -172,6 +218,7 @@ class DetailViewModel @Inject constructor(
                 player = created
                 if (seekToMs > 0) created.seekTo(seekToMs)
                 created.start()
+                applySpeed(created)
                 startPositionUpdates()
             } catch (e: Exception) {
                 _playerState.value = null

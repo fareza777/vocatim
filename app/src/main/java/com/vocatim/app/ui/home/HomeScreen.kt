@@ -222,6 +222,12 @@ fun HomeScreen(
                     )
                 }
             } else {
+                // Day headers only make sense for date-ordered lists.
+                val grouped = if (sort == HomeSort.NEWEST || sort == HomeSort.OLDEST) {
+                    groupedByDay(items)
+                } else {
+                    listOf(null to items)
+                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
@@ -229,13 +235,25 @@ fun HomeScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(items, key = { it.transcript.id }) { item ->
-                        SwipeableTranscriptCard(
-                            item = item,
-                            onClick = { onTranscriptClick(item.transcript.id) },
-                            onPin = { viewModel.togglePin(item.transcript.id) },
-                            onDelete = { viewModel.delete(item.transcript.id) },
-                        )
+                    grouped.forEach { (label, groupItems) ->
+                        if (label != null) {
+                            item(key = "header_$label") {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+                                )
+                            }
+                        }
+                        items(groupItems, key = { it.transcript.id }) { item ->
+                            SwipeableTranscriptCard(
+                                item = item,
+                                onClick = { onTranscriptClick(item.transcript.id) },
+                                onPin = { viewModel.togglePin(item.transcript.id) },
+                                onDelete = { viewModel.delete(item.transcript.id) },
+                            )
+                        }
                     }
                 }
             }
@@ -337,6 +355,30 @@ private fun SwipeableTranscriptCard(
         },
     ) {
         TranscriptCard(item, onClick = onClick)
+    }
+}
+
+@Composable
+private fun groupedByDay(items: List<HomeItem>): List<Pair<String?, List<HomeItem>>> {
+    val todayLabel = stringResource(R.string.home_group_today)
+    val yesterdayLabel = stringResource(R.string.home_group_yesterday)
+    return remember(items, todayLabel, yesterdayLabel) {
+        val zone = java.time.ZoneId.systemDefault()
+        val today = java.time.LocalDate.now(zone)
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy")
+        items
+            .groupBy { item ->
+                java.time.Instant.ofEpochMilli(item.transcript.createdAt)
+                    .atZone(zone).toLocalDate()
+            }
+            .map { (date, list) ->
+                val label: String? = when (date) {
+                    today -> todayLabel
+                    today.minusDays(1) -> yesterdayLabel
+                    else -> date.format(formatter)
+                }
+                label to list
+            }
     }
 }
 
