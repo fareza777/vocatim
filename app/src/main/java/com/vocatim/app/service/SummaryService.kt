@@ -84,9 +84,15 @@ class SummaryService : Service() {
                     ThreadPolicy(this@SummaryService).threadsFor(settings.threads)
                 )
                 progressHolder.set(transcriptId, 0f)
+                // "auto" carries no target language for the LLM; fall back to
+                // the detected language, then Indonesian (the app's audience).
+                val effectiveLanguage = entity.language
+                    .takeIf { it != "auto" }
+                    ?: entity.detectedLanguage
+                    ?: "id"
                 val summary = summarizer.summarize(
                     text = entity.text,
-                    language = entity.language,
+                    language = effectiveLanguage,
                 ) { fraction ->
                     progressHolder.set(transcriptId, fraction)
                     updateNotification(

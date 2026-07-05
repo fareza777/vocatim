@@ -51,11 +51,19 @@ class Summarizer(
             val system = systemPrompt(language)
             val chunks = chunk(cleaned)
 
+            val indonesian = language == "id"
+            val transcriptLabel = if (indonesian) "Transkrip" else "Transcript"
+            val summaryLabel = if (indonesian) {
+                "Ringkasan (poin-poin berbeda, bahasa Indonesia):"
+            } else {
+                "Summary (distinct bullet points):"
+            }
+
             val partials = mutableListOf<String>()
             for ((i, chunkText) in chunks.withIndex()) {
                 val partial = engine.chat(
                     system = system,
-                    user = "Transcript:\n\n$chunkText\n\nSummary (distinct bullet points):",
+                    user = "$transcriptLabel:\n\n$chunkText\n\n$summaryLabel",
                     maxTokens = MAP_TOKENS,
                 )
                 partials.add(partial)
@@ -66,11 +74,16 @@ class Summarizer(
             val result = if (partials.size == 1) {
                 partials.first()
             } else {
+                val reduceInstruction = if (indonesian) {
+                    "Gabungkan ringkasan-ringkasan bagian ini menjadi satu set poin " +
+                        "akhir yang berbeda dan tidak tumpang tindih, dalam bahasa Indonesia:"
+                } else {
+                    "Combine these partial summaries into one final set of distinct, " +
+                        "non-overlapping bullet points:"
+                }
                 engine.chat(
                     system = system,
-                    user = "Combine these partial summaries into one final set of " +
-                        "distinct, non-overlapping bullet points:\n\n" +
-                        partials.joinToString("\n\n"),
+                    user = "$reduceInstruction\n\n" + partials.joinToString("\n\n"),
                     maxTokens = REDUCE_TOKENS,
                 )
             }
@@ -86,19 +99,19 @@ class Summarizer(
         }
     }
 
-    private fun systemPrompt(language: String): String {
-        val langLine = when (language) {
-            "en" -> "Write the summary in English."
-            "id" -> "Tulis ringkasan dalam bahasa Indonesia."
-            else -> "Write the summary in the same language as the transcript."
-        }
-        // Small models loop; the explicit "distinct / do not repeat" rules
-        // plus the point cap keep the output tight.
-        return "You summarize meeting and voice-note transcripts. Write 3 to 6 short " +
-            "bullet points. Each bullet must express a DIFFERENT idea — never repeat or " +
-            "rephrase a previous point. Keep it faithful; do not invent facts. Include " +
-            "decisions and action items if present. Stop after the last distinct point. " +
-            langLine
+    // A small model follows the language of its instructions, so the whole
+    // system prompt is localized — not just a trailing "write in X" line.
+    private fun systemPrompt(language: String): String = if (language == "id") {
+        "Anda meringkas transkrip rapat dan catatan suara. Tulis 3 sampai 6 poin " +
+            "singkat dalam bahasa Indonesia. Setiap poin harus berisi gagasan yang " +
+            "BERBEDA — jangan pernah mengulang atau memparafrase poin sebelumnya. " +
+            "Setia pada isi; jangan mengarang. Sertakan keputusan dan action item bila " +
+            "ada. Berhenti setelah poin terakhir yang berbeda."
+    } else {
+        "You summarize meeting and voice-note transcripts. Write 3 to 6 short bullet " +
+            "points in English. Each bullet must express a DIFFERENT idea — never repeat " +
+            "or rephrase a previous point. Keep it faithful; do not invent facts. Include " +
+            "decisions and action items if present. Stop after the last distinct point."
     }
 
     /** Splits on sentence boundaries so chunks stay under the token budget. */
