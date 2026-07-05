@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <atomic>
+#include <algorithm>
 #include "llama.h"
 
 #define TAG "VocatimLLM"
@@ -131,12 +132,19 @@ Java_com_vocatim_llm_LlamaLib_00024Companion_complete(
     llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
     diag("complete:sampler_ready");
-    llama_batch batch = llama_batch_get_one(tokens.data(), (int) tokens.size());
+    // A single llama_decode may not exceed n_batch tokens, so feed the prompt
+    // in n_batch-sized chunks. llama_batch_get_one continues positions from
+    // the KV cache automatically across calls.
+    const int n_batch = 512;
     diag("complete:prompt_decode:start");
-    if (llama_decode(g_ctx, batch) != 0) {
-        diag("complete:prompt_decode:fail");
-        llama_sampler_free(smpl);
-        return env->NewStringUTF("");
+    for (int offset = 0; offset < (int) tokens.size(); offset += n_batch) {
+        const int chunk = std::min(n_batch, (int) tokens.size() - offset);
+        llama_batch pb = llama_batch_get_one(tokens.data() + offset, chunk);
+        if (llama_decode(g_ctx, pb) != 0) {
+            diag("complete:prompt_decode:fail");
+            llama_sampler_free(smpl);
+            return env->NewStringUTF("");
+        }
     }
     diag("complete:prompt_decode:ok");
 
@@ -147,8 +155,8 @@ Java_com_vocatim_llm_LlamaLib_00024Companion_complete(
         new_token = llama_sampler_sample(smpl, g_ctx, -1);
         if (llama_vocab_is_eog(vocab, new_token)) break;
         result += piece(vocab, new_token);
-        batch = llama_batch_get_one(&new_token, 1);
-        if (llama_decode(g_ctx, batch) != 0) {
+        llama_batch gb = llama_batch_get_one(&new_token, 1);
+        if (llama_decode(g_ctx, gb) != 0) {
             diag("complete:gen_decode:fail");
             break;
         }
