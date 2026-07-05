@@ -48,6 +48,9 @@ class DetailViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val repository: TranscriptRepository,
     progressHolder: TranscriptionProgressHolder,
+    private val summaryModelManager: com.vocatim.app.data.summary.SummaryModelManager,
+    summaryProgressHolder: com.vocatim.app.data.summary.SummaryProgressHolder,
+    quotaStore: com.vocatim.app.data.billing.QuotaStore,
     userPrefs: com.vocatim.app.data.prefs.UserPrefs,
 ) : ViewModel() {
 
@@ -55,6 +58,42 @@ class DetailViewModel @Inject constructor(
         ?: savedStateHandle.get<String>("transcriptId")?.toLongOrNull()
         ?: savedStateHandle.get<Int>("transcriptId")?.toLong()
         ?: error("Detail screen opened without transcriptId")
+
+    val isPro: StateFlow<Boolean> = quotaStore.isProCached
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val summaryModelState: StateFlow<com.vocatim.app.data.model.ModelState> =
+        summaryModelManager.state
+            .stateIn(
+                viewModelScope, SharingStarted.WhileSubscribed(5_000),
+                summaryModelManager.state.value,
+            )
+
+    /** null when idle; 0f..1f while a summary job for this transcript runs. */
+    val summaryProgress: StateFlow<Float?> =
+        summaryProgressHolder.progress.map { it[transcriptId] }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private var summaryDownloadJob: kotlinx.coroutines.Job? = null
+
+    fun downloadSummaryModel() {
+        if (summaryDownloadJob?.isActive == true) return
+        summaryDownloadJob = viewModelScope.launch {
+            runCatching { summaryModelManager.download() }
+        }
+    }
+
+    fun startSummary() {
+        com.vocatim.app.service.SummaryService.start(appContext, transcriptId)
+    }
+
+    fun cancelSummary() {
+        com.vocatim.app.service.SummaryService.cancel(appContext)
+    }
+
+    fun clearSummary() {
+        viewModelScope.launch { repository.updateSummary(transcriptId, null) }
+    }
 
     /** Reading-comfort multiplier for the transcript text. */
     val textScale: StateFlow<Float> = userPrefs.settings

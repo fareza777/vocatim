@@ -277,6 +277,29 @@ fun SettingsScreen(
                 )
             }
 
+            val summaryModelState by viewModel.summaryModelState.collectAsStateWithLifecycle()
+            if (summaryModelState is ModelState.Downloaded) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.settings_summary_model))
+                        Text(
+                            stringResource(R.string.settings_summary_model_size),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = viewModel::deleteSummaryModel) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.debug_delete_model),
+                        )
+                    }
+                }
+            }
+
             Text(stringResource(R.string.settings_backup_section), style = MaterialTheme.typography.titleMedium)
             Text(
                 stringResource(R.string.settings_backup_desc),

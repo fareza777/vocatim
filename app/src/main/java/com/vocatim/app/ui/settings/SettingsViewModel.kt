@@ -38,10 +38,20 @@ sealed interface BackupEvent {
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val modelManager: ModelManager,
+    private val summaryModelManager: com.vocatim.app.data.summary.SummaryModelManager,
     private val userPrefs: UserPrefs,
     private val backupManager: com.vocatim.app.data.backup.BackupManager,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
 ) : ViewModel() {
+
+    val summaryModelState: StateFlow<ModelState> =
+        summaryModelManager.state
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), summaryModelManager.state.value)
+
+    fun deleteSummaryModel() {
+        summaryModelManager.delete()
+        refreshStorage()
+    }
 
     private val _backupEvent = MutableStateFlow<BackupEvent?>(null)
     val backupEvent: StateFlow<BackupEvent?> = _backupEvent.asStateFlow()

@@ -5,6 +5,10 @@
     native <methods>;
 }
 
+# LLM JNI: native methods resolved by name at runtime.
+-keep class com.vocatim.llm.LlamaLib { *; }
+-keep class com.vocatim.llm.LlamaLib$Companion { *; }
+
 # Room / Hilt / app models (release minify)
 -keep class com.vocatim.app.data.db.** { *; }
 -keep class com.vocatim.app.VocatimApp { *; }

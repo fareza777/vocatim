@@ -23,8 +23,8 @@ android {
         applicationId = "com.vocatim.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.0.3"
+        versionCode = 13
+        versionName = "1.1.0"
 
         ndk {
             abiFilters += "arm64-v8a"
@@ -77,6 +77,7 @@ android {
 
 dependencies {
     implementation(project(":whisper"))
+    implementation(project(":llm"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -34,7 +34,11 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): VocatimDatabase =
         Room.databaseBuilder(context, VocatimDatabase::class.java, "vocatim.db")
-            .addMigrations(VocatimDatabase.MIGRATION_3_4, VocatimDatabase.MIGRATION_4_5)
+            .addMigrations(
+                VocatimDatabase.MIGRATION_3_4,
+                VocatimDatabase.MIGRATION_4_5,
+                VocatimDatabase.MIGRATION_5_6,
+            )
             // Only for pre-v3 leftovers; from v3 on, real migrations apply.
             .fallbackToDestructiveMigration()
             .build()
@@ -142,6 +146,22 @@ object AppModule {
                 kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default
             ),
         )
+
+    @Provides
+    @Singleton
+    fun provideSummaryModelManager(
+        @ApplicationContext context: Context,
+        client: OkHttpClient,
+    ): com.vocatim.app.data.summary.SummaryModelManager =
+        com.vocatim.app.data.summary.SummaryModelManager(
+            modelsDir = File(context.filesDir, "models"),
+            client = client,
+        )
+
+    @Provides
+    @Singleton
+    fun provideSummaryProgressHolder(): com.vocatim.app.data.summary.SummaryProgressHolder =
+        com.vocatim.app.data.summary.SummaryProgressHolder()
 
     @Provides
     @Singleton

@@ -184,6 +184,22 @@
     <string name="backup_export_ok">%1$d transkrip dicadangkan</string>
     <string name="backup_import_ok">%1$d transkrip dipulihkan</string>
     <string name="backup_error">Cadangan gagal: %1$s</string>
+    <string name="summary_title">Ringkasan AI</string>
+    <string name="summary_offline_badge">Di perangkat</string>
+    <string name="summary_running">Meringkas di HP Anda… bisa beberapa menit.</string>
+    <string name="summary_generate">Ringkas</string>
+    <string name="summary_regenerate">Ringkas ulang</string>
+    <string name="summary_ready_pitch">Buat ringkasan berisi poin penting dan action item — sepenuhnya offline.</string>
+    <string name="summary_pro_pitch">Ringkasan AI termasuk dalam Vocatim Unlimited — offline, privat, bayar sekali.</string>
+    <string name="summary_unlock">Buka Ringkasan AI</string>
+    <string name="summary_download_pitch">Ringkasan AI butuh unduhan model satu kali (±%1$d MB). Setelah itu jalan sepenuhnya offline.</string>
+    <string name="summary_download">Unduh model AI</string>
+    <string name="summary_downloading">Mengunduh model AI… %1$d / %2$d MB</string>
+    <string name="summary_notif_title">Ringkasan AI Vocatim</string>
+    <string name="summary_notif_running">Meringkas…</string>
+    <string name="summary_notif_progress">Meringkas… %1$d%%</string>
+    <string name="settings_summary_model">Model ringkasan AI</string>
+    <string name="settings_summary_model_size">Qwen 1.5B · ±1 GB</string>
 
     <string name="home_import_cta">Impor audio</string>
     <string name="home_stats">%1$d transkrip · %2$s ditranskripsi · 100%% offline</string>

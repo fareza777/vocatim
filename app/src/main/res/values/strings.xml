@@ -184,6 +184,22 @@
     <string name="backup_export_ok">Backed up %1$d transcripts</string>
     <string name="backup_import_ok">Restored %1$d transcripts</string>
     <string name="backup_error">Backup failed: %1$s</string>
+    <string name="summary_title">AI Summary</string>
+    <string name="summary_offline_badge">On-device</string>
+    <string name="summary_running">Summarizing on your phone… this can take a few minutes.</string>
+    <string name="summary_generate">Summarize</string>
+    <string name="summary_regenerate">Regenerate</string>
+    <string name="summary_ready_pitch">Generate a concise summary with key points and action items — fully offline.</string>
+    <string name="summary_pro_pitch">AI summaries are part of Vocatim Unlimited — offline, private, pay once.</string>
+    <string name="summary_unlock">Unlock AI Summary</string>
+    <string name="summary_download_pitch">AI summary needs a one-time model download (±%1$d MB). It then runs fully offline.</string>
+    <string name="summary_download">Download AI model</string>
+    <string name="summary_downloading">Downloading AI model… %1$d / %2$d MB</string>
+    <string name="summary_notif_title">Vocatim AI Summary</string>
+    <string name="summary_notif_running">Summarizing…</string>
+    <string name="summary_notif_progress">Summarizing… %1$d%%</string>
+    <string name="settings_summary_model">AI summary model</string>
+    <string name="settings_summary_model_size">Qwen 1.5B · ±1 GB</string>
 
     <!-- Home enhancements -->
     <string name="home_import_cta">Import audio</string>

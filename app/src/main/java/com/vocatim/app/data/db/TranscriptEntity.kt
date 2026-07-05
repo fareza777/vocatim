@@ -48,5 +48,7 @@ data class TranscriptEntity(
     val pinned: Boolean = false,
     /** Optional folder/tag label, e.g. "work", "study". */
     val tag: String? = null,
+    /** AI-generated summary; null until the user runs it. */
+    val summary: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

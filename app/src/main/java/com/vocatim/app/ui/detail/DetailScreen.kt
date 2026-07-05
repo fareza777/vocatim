@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Description
@@ -77,6 +78,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vocatim.app.R
 import com.vocatim.app.data.db.TranscriptEntity
 import com.vocatim.app.data.db.TranscriptStatus
+import com.vocatim.app.data.model.ModelState
+import com.vocatim.app.data.summary.SummaryModel
 import com.vocatim.app.ui.common.Pill
 import com.vocatim.app.ui.common.formatClock
 import com.vocatim.app.ui.common.formatDate
@@ -220,6 +223,12 @@ fun DetailScreen(
 
             when (t.status) {
                 TranscriptStatus.DONE -> {
+                    SummarySection(
+                        summary = t.summary,
+                        viewModel = viewModel,
+                        onUpgrade = onUpgrade,
+                    )
+
                     if (t.audioPath != null) {
                         LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
                         val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
@@ -789,6 +798,135 @@ private fun SegmentList(
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummarySection(
+    summary: String?,
+    viewModel: DetailViewModel,
+    onUpgrade: () -> Unit,
+) {
+    val isPro by viewModel.isPro.collectAsStateWithLifecycle()
+    val modelState by viewModel.summaryModelState.collectAsStateWithLifecycle()
+    val progress by viewModel.summaryProgress.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.width(20.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.summary_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                Pill(stringResource(R.string.summary_offline_badge))
+            }
+
+            when {
+                progress != null -> {
+                    LinearProgressIndicator(
+                        progress = { progress ?: 0f },
+                        modifier = Modifier.fillMaxWidth(),
+                        trackColor = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                    Text(
+                        stringResource(R.string.summary_running),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(onClick = viewModel::cancelSummary) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+                summary != null -> {
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(summary, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalButton(onClick = {
+                            copyToClipboard(context, summary)
+                            Toast.makeText(
+                                context, context.getString(R.string.copied), Toast.LENGTH_SHORT
+                            ).show()
+                        }) { Text(stringResource(R.string.action_copy)) }
+                        OutlinedButton(onClick = viewModel::startSummary) {
+                            Text(stringResource(R.string.summary_regenerate))
+                        }
+                    }
+                }
+                !isPro -> {
+                    Text(
+                        stringResource(R.string.summary_pro_pitch),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Button(onClick = onUpgrade) {
+                        Text(stringResource(R.string.summary_unlock))
+                    }
+                }
+                modelState is ModelState.Downloaded -> {
+                    Text(
+                        stringResource(R.string.summary_ready_pitch),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Button(onClick = viewModel::startSummary) {
+                        Text(stringResource(R.string.summary_generate))
+                    }
+                }
+                modelState is ModelState.Downloading -> {
+                    val d = modelState as ModelState.Downloading
+                    Text(
+                        stringResource(
+                            R.string.summary_downloading,
+                            d.downloadedBytes / (1024 * 1024),
+                            (d.totalBytes.takeIf { it > 0 } ?: SummaryModel.APPROX_SIZE_BYTES) / (1024 * 1024),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (d.totalBytes > 0) {
+                        LinearProgressIndicator(
+                            progress = { d.progress },
+                            modifier = Modifier.fillMaxWidth(),
+                            trackColor = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            trackColor = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    }
+                }
+                else -> {
+                    Text(
+                        stringResource(
+                            R.string.summary_download_pitch,
+                            SummaryModel.APPROX_SIZE_BYTES / (1024 * 1024),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Button(onClick = viewModel::downloadSummaryModel) {
+                        Text(stringResource(R.string.summary_download))
                     }
                 }
             }

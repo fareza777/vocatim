@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "Vocatim"
 include(":app")
 include(":whisper")
+include(":llm")
