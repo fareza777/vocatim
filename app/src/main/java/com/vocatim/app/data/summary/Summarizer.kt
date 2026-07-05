@@ -41,7 +41,11 @@ class Summarizer(
         if (!modelPath.exists()) throw SummaryException("MODEL_MISSING")
 
         // Fresh diagnostic trace for this run.
-        diagFile?.let { runCatching { it.writeText("summarize:start chars=${cleaned.length}\n") } }
+        diagFile?.let {
+            runCatching {
+                it.writeText("summarize:start chars=${cleaned.length} lang=$language\n")
+            }
+        }
         val engine = LlamaSummarizer.create(threads) { diag(it) }.also { this.engine = it }
         try {
             diagFile?.let { engine.setNativeDiagFile(it.absolutePath) }
