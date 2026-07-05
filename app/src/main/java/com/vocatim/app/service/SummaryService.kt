@@ -86,10 +86,13 @@ class SummaryService : Service() {
                 progressHolder.set(transcriptId, 0f)
                 // "auto" carries no target language for the LLM; fall back to
                 // the detected language, then Indonesian (the app's audience).
-                val effectiveLanguage = entity.language
-                    .takeIf { it != "auto" }
-                    ?: entity.detectedLanguage
-                    ?: "id"
+                // Whisper routinely mis-detects Indonesian as Malay ("ms") —
+                // they're mutually intelligible — so normalise ms -> id.
+                val effectiveLanguage = (
+                    entity.language.takeIf { it != "auto" }
+                        ?: entity.detectedLanguage
+                        ?: "id"
+                    ).let { if (it == "ms") "id" else it }
                 val summary = summarizer.summarize(
                     text = entity.text,
                     language = effectiveLanguage,
