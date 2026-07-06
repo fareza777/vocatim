@@ -30,6 +30,10 @@ interface TranscriptDao {
     @Query("UPDATE transcripts SET tag = :tag WHERE id = :id")
     suspend fun updateTag(id: Long, tag: String?)
 
+    /** Distinct non-empty folder names, for the Home folder filter. */
+    @Query("SELECT DISTINCT tag FROM transcripts WHERE tag IS NOT NULL AND tag != '' ORDER BY tag")
+    fun observeFolders(): Flow<List<String>>
+
     @Query("SELECT * FROM transcripts WHERE id = :id")
     suspend fun getById(id: Long): TranscriptEntity?
 
@@ -82,4 +86,19 @@ interface TranscriptDao {
 
     @Query("DELETE FROM segments WHERE transcriptId = :transcriptId")
     suspend fun deleteSegments(transcriptId: Long)
+
+    @Insert
+    suspend fun insertAttachment(attachment: AttachmentEntity): Long
+
+    @Insert
+    suspend fun insertAttachments(attachments: List<AttachmentEntity>)
+
+    @Query("SELECT * FROM attachments WHERE transcriptId = :transcriptId ORDER BY createdAt")
+    fun observeAttachments(transcriptId: Long): Flow<List<AttachmentEntity>>
+
+    @Query("SELECT * FROM attachments WHERE transcriptId = :transcriptId ORDER BY createdAt")
+    suspend fun getAttachments(transcriptId: Long): List<AttachmentEntity>
+
+    @Query("DELETE FROM attachments WHERE id = :id")
+    suspend fun deleteAttachment(id: Long)
 }

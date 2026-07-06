@@ -47,6 +47,43 @@ class ImportCoordinator(
         return id
     }
 
+    /**
+     * Creates a text-only note (no audio) from external text — a shared
+     * snippet or an imported .txt — so it can be summarized like a transcript.
+     * @return the new transcript id, or null if the text was empty.
+     */
+    suspend fun importText(text: String, title: String?): Long? {
+        val cleaned = text.trim()
+        if (cleaned.isEmpty()) return null
+        val settings = userPrefs.current()
+        val derivedTitle = title?.takeIf { it.isNotBlank() }
+            ?: com.vocatim.app.data.transcribe.TitleGenerator.fromText(cleaned)
+            ?: "Text note"
+        return repository.create(
+            TranscriptEntity(
+                title = derivedTitle,
+                text = cleaned,
+                language = settings.language,
+                modelId = settings.model.id,
+                audioPath = null,
+                audioDurationMs = 0,
+                status = TranscriptStatus.DONE,
+                customTitle = title != null,
+                sourceName = title,
+            )
+        )
+    }
+
+    /** Reads a text file at [uri] and turns it into a note. */
+    suspend fun importTextFile(uri: Uri): Long? = withContext(Dispatchers.IO) {
+        val text = runCatching {
+            context.contentResolver.openInputStream(uri)?.use {
+                it.readBytes().toString(Charsets.UTF_8)
+            }
+        }.getOrNull() ?: return@withContext null
+        importText(text, displayName(uri))
+    }
+
     private suspend fun displayName(uri: Uri): String? = withContext(Dispatchers.IO) {
         runCatching {
             context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->

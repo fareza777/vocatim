@@ -29,7 +29,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Description
@@ -65,6 +67,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -219,7 +222,15 @@ fun DetailScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             MetaRow(t)
-            TagRow(current = t.tag, onSelect = viewModel::setTag)
+            val folders by viewModel.folders.collectAsStateWithLifecycle()
+            FolderRow(current = t.tag, folders = folders, onSelect = viewModel::setTag)
+
+            val attachments by viewModel.attachments.collectAsStateWithLifecycle()
+            PhotoRow(
+                attachments = attachments,
+                onAdd = viewModel::addPhoto,
+                onRemove = viewModel::removePhoto,
+            )
 
             when (t.status) {
                 TranscriptStatus.DONE -> {
@@ -696,36 +707,154 @@ private fun ViewModeToggle(segmentMode: Boolean, onChange: (Boolean) -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TagRow(current: String?, onSelect: (String?) -> Unit) {
-    val tags = listOf(null, "work", "study", "interview", "personal", "other")
+private fun PhotoRow(
+    attachments: List<com.vocatim.app.data.db.AttachmentEntity>,
+    onAdd: (android.net.Uri) -> Unit,
+    onRemove: (com.vocatim.app.data.db.AttachmentEntity) -> Unit,
+) {
+    var fullScreen by remember { mutableStateOf<String?>(null) }
+    val pickPhoto = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let(onAdd) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        tags.forEach { tag ->
-            androidx.compose.material3.FilterChip(
-                selected = current == tag,
-                onClick = { onSelect(tag) },
-                label = {
-                    Text(
-                        if (tag == null) stringResource(R.string.tag_none)
-                        else tagLabel(tag)
+        // Add tile.
+        Surface(
+            onClick = {
+                pickPhoto.launch(
+                    androidx.activity.result.PickVisualMediaRequest(
+                        androidx.activity.result.contract.ActivityResultContracts
+                            .PickVisualMedia.ImageOnly
                     )
-                },
+                )
+            },
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.size(72.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(R.string.detail_add_photo),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        attachments.forEach { att ->
+            Box {
+                coil.compose.AsyncImage(
+                    model = att.path,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable { fullScreen = att.path },
+                )
+                Surface(
+                    onClick = { onRemove(att) },
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(2.dp)
+                        .size(20.dp),
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = stringResource(R.string.detail_remove_photo),
+                        tint = Color.White,
+                        modifier = Modifier.padding(3.dp),
+                    )
+                }
+            }
+        }
+    }
+
+    fullScreen?.let { path ->
+        androidx.compose.ui.window.Dialog(onDismissRequest = { fullScreen = null }) {
+            coil.compose.AsyncImage(
+                model = path,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { fullScreen = null },
             )
         }
     }
 }
 
 @Composable
-private fun tagLabel(tag: String): String = when (tag) {
-    "work" -> stringResource(R.string.tag_work)
-    "study" -> stringResource(R.string.tag_study)
-    "interview" -> stringResource(R.string.tag_interview)
-    "personal" -> stringResource(R.string.tag_personal)
-    else -> stringResource(R.string.tag_other)
+private fun FolderRow(
+    current: String?,
+    folders: List<String>,
+    onSelect: (String?) -> Unit,
+) {
+    var showNewDialog by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.material3.FilterChip(
+            selected = current == null,
+            onClick = { onSelect(null) },
+            label = { Text(stringResource(R.string.folder_none)) },
+        )
+        // Show every known folder, plus the current one if it's brand new.
+        (folders + listOfNotNull(current).filter { it !in folders }).distinct().forEach { folder ->
+            androidx.compose.material3.FilterChip(
+                selected = current == folder,
+                onClick = { onSelect(folder) },
+                label = { Text(folder) },
+            )
+        }
+        androidx.compose.material3.AssistChip(
+            onClick = { newName = ""; showNewDialog = true },
+            label = { Text(stringResource(R.string.folder_new)) },
+            leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) },
+        )
+    }
+
+    if (showNewDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewDialog = false },
+            title = { Text(stringResource(R.string.folder_new_title)) },
+            text = {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.folder_new_hint)) },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = newName.isNotBlank(),
+                    onClick = {
+                        onSelect(newName.trim())
+                        showNewDialog = false
+                    },
+                ) { Text(stringResource(R.string.action_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable

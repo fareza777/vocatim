@@ -84,21 +84,30 @@ class HomeViewModel @Inject constructor(
     private val _sort = MutableStateFlow(HomeSort.NEWEST)
     val sort: StateFlow<HomeSort> = _sort
 
+    /** null = show all folders. */
+    private val _selectedFolder = MutableStateFlow<String?>(null)
+    val selectedFolder: StateFlow<String?> = _selectedFolder
+
+    val folders: StateFlow<List<String>> =
+        repository.observeFolders()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val _waveforms = MutableStateFlow<Map<Long, FloatArray>>(emptyMap())
     val waveforms: StateFlow<Map<Long, FloatArray>> = _waveforms
 
-    private val queryState = combine(_query, _sort) { query, sort ->
-        query to sort
+    private val filters = combine(_query, _sort, _selectedFolder) { query, sort, folder ->
+        Triple(query, sort, folder)
     }
 
     val items: StateFlow<List<HomeItem>> =
         combine(
             repository.observeAll(),
             progressHolder.progress,
-            queryState,
+            filters,
             _waveforms,
-        ) { transcripts, progress, (query, sort), waveforms ->
+        ) { transcripts, progress, (query, sort, folder), waveforms ->
             transcripts
+                .filter { t -> folder == null || t.tag == folder }
                 .filter { t ->
                     query.isBlank() ||
                         t.title.contains(query, ignoreCase = true) ||
@@ -108,6 +117,10 @@ class HomeViewModel @Inject constructor(
                 .let { sortList(it, sort) }
                 .map { HomeItem(it, progress[it.id], waveforms[it.id]) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun selectFolder(folder: String?) {
+        _selectedFolder.value = folder
+    }
 
     init {
         viewModelScope.launch {
@@ -138,10 +151,53 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private var lastDeleted: com.vocatim.app.data.repository.DeletedTranscript? = null
+
+    /** Emits the deleted transcript's title so the UI can offer an undo. */
+    private val _deletedEvent = MutableStateFlow<String?>(null)
+    val deletedEvent: StateFlow<String?> = _deletedEvent
+
     fun delete(id: Long) {
         viewModelScope.launch {
-            transcriptRepository.delete(id)
+            // Finalize any prior pending delete before starting a new one.
+            lastDeleted?.let { transcriptRepository.purgeDeletedFiles(it) }
+            val deleted = transcriptRepository.deleteForUndo(id)
             _waveforms.value = _waveforms.value - id
+            if (deleted != null) {
+                lastDeleted = deleted
+                _deletedEvent.value = deleted.transcript.title
+            }
+        }
+    }
+
+    fun undoDelete() {
+        val deleted = lastDeleted ?: return
+        lastDeleted = null
+        _deletedEvent.value = null
+        viewModelScope.launch { transcriptRepository.restore(deleted) }
+    }
+
+    /** Undo window closed: really remove the files. */
+    fun finalizeDelete() {
+        val deleted = lastDeleted ?: return
+        lastDeleted = null
+        _deletedEvent.value = null
+        viewModelScope.launch { transcriptRepository.purgeDeletedFiles(deleted) }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        lastDeleted?.let { d ->
+            // App scope: files must still be purged even after the VM dies.
+            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                transcriptRepository.purgeDeletedFiles(d)
+            }
+        }
+    }
+
+    fun importTextFile(uri: Uri) {
+        viewModelScope.launch {
+            runCatching { importCoordinator.importTextFile(uri) }
         }
     }
 

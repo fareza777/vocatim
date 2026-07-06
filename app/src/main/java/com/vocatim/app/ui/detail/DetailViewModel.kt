@@ -397,8 +397,37 @@ class DetailViewModel @Inject constructor(
 
     fun setTag(tag: String?) {
         viewModelScope.launch {
-            repository.setTag(transcriptId, tag)
+            repository.setFolder(transcriptId, tag)
         }
+    }
+
+    /** Existing folder names, for the folder picker. */
+    val folders: StateFlow<List<String>> = repository.observeFolders()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val attachments: StateFlow<List<com.vocatim.app.data.db.AttachmentEntity>> =
+        repository.observeAttachments(transcriptId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Copies the picked image into app storage and links it to this transcript. */
+    fun addPhoto(uri: Uri) {
+        viewModelScope.launch {
+            val path = withContext(Dispatchers.IO) {
+                runCatching {
+                    val dir = java.io.File(appContext.filesDir, "attachments").apply { mkdirs() }
+                    val out = java.io.File(dir, "att_${transcriptId}_${System.currentTimeMillis()}.jpg")
+                    appContext.contentResolver.openInputStream(uri)?.use { input ->
+                        out.outputStream().use { input.copyTo(it) }
+                    } ?: return@runCatching null
+                    out.absolutePath
+                }.getOrNull()
+            } ?: return@launch
+            repository.addAttachment(transcriptId, path)
+        }
+    }
+
+    fun removePhoto(attachment: com.vocatim.app.data.db.AttachmentEntity) {
+        viewModelScope.launch { repository.removeAttachment(attachment) }
     }
 
     fun consumeExportEvent() {

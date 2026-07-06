@@ -1,5 +1,6 @@
 package com.vocatim.app.data.repository
 
+import com.vocatim.app.data.db.AttachmentEntity
 import com.vocatim.app.data.db.SegmentEntity
 import com.vocatim.app.data.db.TranscriptDao
 import com.vocatim.app.data.db.TranscriptEntity
@@ -8,9 +9,32 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.io.File
 
+/** Snapshot of a deleted transcript, kept in memory to power undo. */
+data class DeletedTranscript(
+    val transcript: TranscriptEntity,
+    val segments: List<SegmentEntity>,
+    val attachments: List<AttachmentEntity>,
+)
+
 class TranscriptRepository(private val dao: TranscriptDao) {
 
     fun observeAll(): Flow<List<TranscriptEntity>> = dao.observeAll()
+
+    fun observeFolders(): Flow<List<String>> = dao.observeFolders()
+
+    fun observeAttachments(transcriptId: Long): Flow<List<AttachmentEntity>> =
+        dao.observeAttachments(transcriptId)
+
+    suspend fun setFolder(id: Long, folder: String?) =
+        dao.updateTag(id, folder?.trim()?.ifBlank { null })
+
+    suspend fun addAttachment(transcriptId: Long, path: String): Long =
+        dao.insertAttachment(AttachmentEntity(transcriptId = transcriptId, path = path))
+
+    suspend fun removeAttachment(attachment: AttachmentEntity) {
+        withContext(Dispatchers.IO) { File(attachment.path).delete() }
+        dao.deleteAttachment(attachment.id)
+    }
 
     fun observeTotalDurationMs(): Flow<Long> = dao.observeTotalDurationMs()
 
@@ -106,13 +130,41 @@ class TranscriptRepository(private val dao: TranscriptDao) {
         return mergedId
     }
 
-    /** Deletes the row, its segments (cascade), and the audio file on disk. */
+    /** Deletes the row, its segments/attachments (cascade), and files on disk. */
     suspend fun delete(id: Long) {
         val entity = dao.getById(id) ?: return
+        val attachments = dao.getAttachments(id)
         withContext(Dispatchers.IO) {
             entity.audioPath?.let { File(it).delete() }
+            attachments.forEach { File(it.path).delete() }
         }
         dao.deleteById(id)
+    }
+
+    /**
+     * Deletes the DB rows but keeps the files, returning a snapshot so the
+     * delete can be undone. Call [purgeDeletedFiles] once the undo window
+     * closes, or [restore] to bring it back.
+     */
+    suspend fun deleteForUndo(id: Long): DeletedTranscript? {
+        val entity = dao.getById(id) ?: return null
+        val segments = dao.getSegments(id)
+        val attachments = dao.getAttachments(id)
+        dao.deleteById(id) // cascade removes segment + attachment rows
+        return DeletedTranscript(entity, segments, attachments)
+    }
+
+    suspend fun restore(deleted: DeletedTranscript) {
+        val newId = dao.insert(deleted.transcript.copy(id = 0))
+        dao.insertSegments(deleted.segments.map { it.copy(id = 0, transcriptId = newId) })
+        dao.insertAttachments(deleted.attachments.map { it.copy(id = 0, transcriptId = newId) })
+    }
+
+    suspend fun purgeDeletedFiles(deleted: DeletedTranscript) {
+        withContext(Dispatchers.IO) {
+            deleted.transcript.audioPath?.let { File(it).delete() }
+            deleted.attachments.forEach { File(it.path).delete() }
+        }
     }
 
     /** Removes only the audio file to free space, keeping the transcript. */

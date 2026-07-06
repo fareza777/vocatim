@@ -46,7 +46,15 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -87,16 +95,37 @@ fun HomeScreen(
     val quotaBanner by viewModel.quotaBanner.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
+    val folders by viewModel.folders.collectAsStateWithLifecycle()
+    val selectedFolder by viewModel.selectedFolder.collectAsStateWithLifecycle()
+    val deletedEvent by viewModel.deletedEvent.collectAsStateWithLifecycle()
     var sortMenuOpen by remember { mutableStateOf(false) }
+    val snackbarHost = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     val pickAudio = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         uris.forEach { viewModel.importAudio(it) }
     }
+    val pickText = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let { viewModel.importTextFile(it) } }
+
+    // Undo snackbar: action restores, any other dismissal finalizes the delete.
+    LaunchedEffect(deletedEvent) {
+        val title = deletedEvent ?: return@LaunchedEffect
+        val result = snackbarHost.showSnackbar(
+            message = context.getString(R.string.home_deleted, title),
+            actionLabel = context.getString(R.string.action_undo),
+            duration = SnackbarDuration.Short,
+        )
+        if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete()
+        else viewModel.finalizeDelete()
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHost) },
         floatingActionButton = {
             Box(
                 modifier = Modifier
@@ -122,13 +151,22 @@ fun HomeScreen(
                 .statusBarsPadding()
         ) {
             HomeHeader(
-                onImport = { pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg")) },
+                onImportAudio = { pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg")) },
+                onImportText = { pickText.launch(arrayOf("text/*")) },
                 onSettings = onSettingsClick,
                 onDebug = onDebugClick,
             )
 
             if (stats.transcriptCount > 0) {
                 StatsBar(stats)
+            }
+
+            if (folders.isNotEmpty()) {
+                FolderRow(
+                    folders = folders,
+                    selected = selectedFolder,
+                    onSelect = viewModel::selectFolder,
+                )
             }
 
             // Search + sort share one row; status filters were dropped —
@@ -359,6 +397,52 @@ private fun SwipeableTranscriptCard(
 }
 
 @Composable
+private fun FolderRow(
+    folders: List<String>,
+    selected: String?,
+    onSelect: (String?) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FolderChip(
+            label = stringResource(R.string.folder_all),
+            selected = selected == null,
+            onClick = { onSelect(null) },
+        )
+        folders.forEach { folder ->
+            FolderChip(
+                label = folder,
+                selected = selected == folder,
+                onClick = { onSelect(folder) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FolderChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = androidx.compose.foundation.shape.CircleShape,
+        color = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 private fun groupedByDay(items: List<HomeItem>): List<Pair<String?, List<HomeItem>>> {
     val todayLabel = stringResource(R.string.home_group_today)
     val yesterdayLabel = stringResource(R.string.home_group_yesterday)
@@ -424,10 +508,12 @@ private fun SearchField(
 
 @Composable
 private fun HomeHeader(
-    onImport: () -> Unit,
+    onImportAudio: () -> Unit,
+    onImportText: () -> Unit,
     onSettings: () -> Unit,
     onDebug: () -> Unit,
 ) {
+    var importMenuOpen by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -445,12 +531,24 @@ private fun HomeHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(onClick = onImport) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = stringResource(R.string.home_import),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Box {
+            IconButton(onClick = { importMenuOpen = true }) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(R.string.home_import),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(expanded = importMenuOpen, onDismissRequest = { importMenuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.home_import_audio)) },
+                    onClick = { importMenuOpen = false; onImportAudio() },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.home_import_text)) },
+                    onClick = { importMenuOpen = false; onImportText() },
+                )
+            }
         }
         IconButton(onClick = onSettings) {
             Icon(

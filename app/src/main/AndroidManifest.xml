@@ -37,6 +37,12 @@
                 <data android:mimeType="video/mp4" />
                 <data android:mimeType="application/ogg" />
             </intent-filter>
+            <!-- Share plain text to summarize. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
             <!-- Open audio files with Vocatim. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

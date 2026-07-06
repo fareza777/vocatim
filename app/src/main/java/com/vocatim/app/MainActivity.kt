@@ -153,8 +153,20 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    /** Audio shared or opened from another app goes straight to import. */
+    /** Audio shared/opened, or text shared, from another app -> import. */
     private fun handleAudioIntent(intent: Intent?) {
+        // Shared plain text becomes a summarizable note.
+        if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+            val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT)
+            if (!text.isNullOrBlank()) {
+                intent.action = null
+                lifecycleScope.launch {
+                    runCatching { importCoordinator.importText(text, subject) }
+                }
+                return
+            }
+        }
         val uri: Uri? = when (intent?.action) {
             Intent.ACTION_SEND ->
                 @Suppress("DEPRECATION")
