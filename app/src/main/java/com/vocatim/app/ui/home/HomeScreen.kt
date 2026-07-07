@@ -734,9 +734,11 @@ private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
 
 @Composable
 private fun tagLabel(tag: String): String = when (tag) {
+    // Legacy built-in tags are localized; custom folders show verbatim.
     "work" -> stringResource(R.string.tag_work)
     "study" -> stringResource(R.string.tag_study)
     "interview" -> stringResource(R.string.tag_interview)
     "personal" -> stringResource(R.string.tag_personal)
-    else -> stringResource(R.string.tag_other)
+    "other" -> stringResource(R.string.tag_other)
+    else -> tag
 }

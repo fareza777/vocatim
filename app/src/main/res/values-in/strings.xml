@@ -189,6 +189,7 @@
     <string name="detail_add_photo">Tambah foto</string>
     <string name="detail_remove_photo">Hapus foto</string>
     <string name="detail_transcript_section">Transkrip</string>
+    <string name="detail_minutes_section">Notulen</string>
     <string name="calendar_title">Kalender</string>
     <string name="calendar_empty_day">Tidak ada transkrip di hari ini</string>
     <string name="settings_cloud_section">AI Cloud (kunci milik Anda)</string>

@@ -195,6 +195,7 @@ class SummaryService : Service() {
                 id = 0,
                 title = "$prefix ${entity.title}".take(80),
                 text = minutes,
+                modelId = MODEL_ID_MINUTES,
                 audioPath = null,
                 audioDurationMs = 0,
                 processingTimeMs = 0,
@@ -271,6 +272,10 @@ class SummaryService : Service() {
         const val MODE_LOCAL = "local"
         const val MODE_CLOUD = "cloud"
         const val MODE_MINUTES = "minutes"
+
+        /** Sentinel [TranscriptEntity.modelId] marking an AI meeting-minutes
+         *  note, so the detail screen renders it as minutes, not a transcript. */
+        const val MODEL_ID_MINUTES = "minutes"
 
         fun start(context: Context, transcriptId: Long, mode: String = MODE_LOCAL) {
             context.startForegroundService(

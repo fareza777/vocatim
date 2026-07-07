@@ -189,6 +189,7 @@
     <string name="detail_add_photo">Add photo</string>
     <string name="detail_remove_photo">Remove photo</string>
     <string name="detail_transcript_section">Transcript</string>
+    <string name="detail_minutes_section">Meeting minutes</string>
     <string name="calendar_title">Calendar</string>
     <string name="calendar_empty_day">No transcripts on this day</string>
     <string name="settings_cloud_section">Cloud AI (your own key)</string>

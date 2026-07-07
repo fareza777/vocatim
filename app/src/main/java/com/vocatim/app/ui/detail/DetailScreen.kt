@@ -117,6 +117,8 @@ fun DetailScreen(
     val cloudConfiguredTop by viewModel.cloudConfigured.collectAsStateWithLifecycle()
     var keyPointsDialog by remember { mutableStateOf<List<String>?>(null) }
     var showMergeDialog by remember { mutableStateOf(false) }
+    val isMinutesNote =
+        transcript?.modelId == com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES
 
     LaunchedEffect(exportEvent) {
         exportEvent?.let { event ->
@@ -211,7 +213,7 @@ fun DetailScreen(
                                         showMergeDialog = true
                                     },
                                 )
-                                androidx.compose.material3.DropdownMenuItem(
+                                if (!isMinutesNote) androidx.compose.material3.DropdownMenuItem(
                                     text = { Text(stringResource(R.string.action_minutes)) },
                                     onClick = {
                                         overflowOpen = false
@@ -262,11 +264,19 @@ fun DetailScreen(
 
             when (t.status) {
                 TranscriptStatus.DONE -> {
-                    SummarySection(
-                        summary = t.summary,
-                        viewModel = viewModel,
-                        onUpgrade = onUpgrade,
-                    )
+                    // A minutes note is AI output, not a recording: no summarize
+                    // card, no timestamp exports, no segment view.
+                    val isMinutes =
+                        t.modelId == com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES
+                    val hasAudio = t.audioPath != null
+
+                    if (!isMinutes) {
+                        SummarySection(
+                            summary = t.summary,
+                            viewModel = viewModel,
+                            onUpgrade = onUpgrade,
+                        )
+                    }
 
                     if (t.audioPath != null) {
                         LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
@@ -319,6 +329,7 @@ fun DetailScreen(
                         onExportPdf = {
                             runCatching { exportPdfLauncher.launch(exportFileName(t.title, "pdf")) }
                         },
+                        showTimestamped = hasAudio,
                     )
                     // Long transcripts collapse by default; the header row
                     // toggles them open without endless scrolling.
@@ -341,7 +352,10 @@ fun DetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                stringResource(R.string.detail_transcript_section),
+                                stringResource(
+                                    if (isMinutes) R.string.detail_minutes_section
+                                    else R.string.detail_transcript_section
+                                ),
                                 style = MaterialTheme.typography.titleSmall,
                                 modifier = Modifier.weight(1f),
                             )
@@ -365,16 +379,19 @@ fun DetailScreen(
                             modifier = Modifier.clickable { transcriptExpanded = true },
                         )
                     } else {
+                        // Segment (timestamp) view only exists for audio.
                         var segmentMode by remember { mutableStateOf(false) }
-                        ViewModeToggle(
-                            segmentMode = segmentMode,
-                            onChange = { mode ->
-                                segmentMode = mode
-                                if (mode) viewModel.loadSegments()
-                            },
-                        )
+                        if (hasAudio) {
+                            ViewModeToggle(
+                                segmentMode = segmentMode,
+                                onChange = { mode ->
+                                    segmentMode = mode
+                                    if (mode) viewModel.loadSegments()
+                                },
+                            )
+                        }
 
-                        if (segmentMode) {
+                        if (hasAudio && segmentMode) {
                             SegmentList(
                                 segments = segments,
                                 positionMs = playerState?.positionMs?.toLong() ?: -1L,
@@ -1031,6 +1048,9 @@ private fun SummarySection(
     val modelState by viewModel.summaryModelState.collectAsStateWithLifecycle()
     val progress by viewModel.summaryProgress.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // A finished summary can be collapsed so it never buries the transcript.
+    var summaryExpanded by rememberSaveable { mutableStateOf(true) }
+    val collapsible = summary != null && progress == null
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1041,7 +1061,12 @@ private fun SummarySection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = if (collapsible) {
+                    Modifier.clickable { summaryExpanded = !summaryExpanded }
+                } else Modifier,
+            ) {
                 Icon(
                     Icons.Default.AutoAwesome,
                     contentDescription = null,
@@ -1055,6 +1080,15 @@ private fun SummarySection(
                     modifier = Modifier.weight(1f),
                 )
                 Pill(stringResource(R.string.summary_offline_badge))
+                if (collapsible) {
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        if (summaryExpanded) Icons.Default.ExpandLess
+                        else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             when {
@@ -1074,19 +1108,30 @@ private fun SummarySection(
                     }
                 }
                 summary != null -> {
-                    androidx.compose.foundation.text.selection.SelectionContainer {
-                        Text(summary, style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(onClick = {
-                            copyToClipboard(context, summary)
-                            Toast.makeText(
-                                context, context.getString(R.string.copied), Toast.LENGTH_SHORT
-                            ).show()
-                        }) { Text(stringResource(R.string.action_copy)) }
-                        OutlinedButton(onClick = viewModel::startSummary) {
-                            Text(stringResource(R.string.summary_regenerate))
+                    if (summaryExpanded) {
+                        androidx.compose.foundation.text.selection.SelectionContainer {
+                            Text(summary, style = MaterialTheme.typography.bodyMedium)
                         }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilledTonalButton(onClick = {
+                                copyToClipboard(context, summary)
+                                Toast.makeText(
+                                    context, context.getString(R.string.copied), Toast.LENGTH_SHORT
+                                ).show()
+                            }) { Text(stringResource(R.string.action_copy)) }
+                            OutlinedButton(onClick = viewModel::startSummary) {
+                                Text(stringResource(R.string.summary_regenerate))
+                            }
+                        }
+                    } else {
+                        Text(
+                            summary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.clickable { summaryExpanded = true },
+                        )
                     }
                 }
                 !isPro -> {
@@ -1188,7 +1233,10 @@ private fun MetaRow(t: TranscriptEntity) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Pill(formatDate(t.createdAt))
         if (t.audioDurationMs > 0) Pill(formatClock(t.audioDurationMs))
-        Pill(t.modelId)
+        // The "minutes" sentinel model id is internal — don't surface it.
+        if (t.modelId != com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES) {
+            Pill(t.modelId)
+        }
         if (t.language == "auto" && t.detectedLanguage != null) {
             Pill(
                 java.util.Locale(t.detectedLanguage).let { locale ->
@@ -1219,58 +1267,99 @@ private fun ActionGrid(
     onExportVtt: () -> Unit,
     onExportMd: () -> Unit,
     onExportPdf: () -> Unit,
+    // SRT/VTT and timestamped copy only apply to audio transcripts.
+    showTimestamped: Boolean,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ActionButton(
-            Icons.Default.ContentCopy, stringResource(R.string.action_copy), onCopy,
-            Modifier.weight(1f),
-        )
-        ActionButton(
-            Icons.Default.Subtitles, stringResource(R.string.action_copy_timestamps), onCopyTimestamps,
-            Modifier.weight(1f),
-        )
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ActionButton(
-            Icons.Default.Share, stringResource(R.string.action_share), onShare,
-            Modifier.weight(1f),
-        )
-        ActionButton(
-            Icons.Default.Description, stringResource(R.string.action_export_txt), onExportTxt,
-            Modifier.weight(1f),
-        )
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ActionButton(
-            Icons.Default.Subtitles, stringResource(R.string.action_export_srt), onExportSrt,
-            Modifier.weight(1f),
-        )
-        ActionButton(
-            Icons.Default.Subtitles, stringResource(R.string.action_export_vtt), onExportVtt,
-            Modifier.weight(1f),
-        )
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ActionButton(
-            Icons.Default.Description, stringResource(R.string.action_export_md), onExportMd,
-            Modifier.weight(1f),
-        )
-        ActionButton(
-            Icons.Default.Description, stringResource(R.string.action_export_pdf), onExportPdf,
-            Modifier.weight(1f),
-        )
+    if (showTimestamped) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ActionButton(
+                Icons.Default.ContentCopy, stringResource(R.string.action_copy), onCopy,
+                Modifier.weight(1f),
+            )
+            ActionButton(
+                Icons.Default.Subtitles, stringResource(R.string.action_copy_timestamps), onCopyTimestamps,
+                Modifier.weight(1f),
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ActionButton(
+                Icons.Default.Share, stringResource(R.string.action_share), onShare,
+                Modifier.weight(1f),
+            )
+            ActionButton(
+                Icons.Default.Description, stringResource(R.string.action_export_txt), onExportTxt,
+                Modifier.weight(1f),
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ActionButton(
+                Icons.Default.Subtitles, stringResource(R.string.action_export_srt), onExportSrt,
+                Modifier.weight(1f),
+            )
+            ActionButton(
+                Icons.Default.Subtitles, stringResource(R.string.action_export_vtt), onExportVtt,
+                Modifier.weight(1f),
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ActionButton(
+                Icons.Default.Description, stringResource(R.string.action_export_md), onExportMd,
+                Modifier.weight(1f),
+            )
+            ActionButton(
+                Icons.Default.Description, stringResource(R.string.action_export_pdf), onExportPdf,
+                Modifier.weight(1f),
+            )
+        }
+    } else {
+        // Text-only notes (minutes, imported text): no timestamps/subtitles.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ActionButton(
+                Icons.Default.ContentCopy, stringResource(R.string.action_copy), onCopy,
+                Modifier.weight(1f),
+            )
+            ActionButton(
+                Icons.Default.Share, stringResource(R.string.action_share), onShare,
+                Modifier.weight(1f),
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ActionButton(
+                Icons.Default.Description, stringResource(R.string.action_export_txt), onExportTxt,
+                Modifier.weight(1f),
+            )
+            ActionButton(
+                Icons.Default.Description, stringResource(R.string.action_export_md), onExportMd,
+                Modifier.weight(1f),
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ActionButton(
+                Icons.Default.Description, stringResource(R.string.action_export_pdf), onExportPdf,
+                Modifier.weight(1f),
+            )
+        }
     }
 }
 
