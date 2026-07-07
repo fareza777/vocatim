@@ -119,6 +119,8 @@ fun DetailScreen(
     var showMergeDialog by remember { mutableStateOf(false) }
     val isMinutesNote =
         transcript?.modelId == com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES
+    // Cloud AI (summaries + minutes) is a paid Pro feature.
+    val isProTop by viewModel.isPro.collectAsStateWithLifecycle()
 
     LaunchedEffect(exportEvent) {
         exportEvent?.let { event ->
@@ -217,15 +219,24 @@ fun DetailScreen(
                                     text = { Text(stringResource(R.string.action_minutes)) },
                                     onClick = {
                                         overflowOpen = false
-                                        if (cloudConfiguredTop) {
-                                            viewModel.createMinutes()
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.minutes_started),
-                                                Toast.LENGTH_LONG,
-                                            ).show()
-                                        } else {
-                                            Toast.makeText(
+                                        when {
+                                            !isProTop -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.cloud_need_pro),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                                onUpgrade()
+                                            }
+                                            cloudConfiguredTop -> {
+                                                viewModel.createMinutes()
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.minutes_started),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                            }
+                                            else -> Toast.makeText(
                                                 context,
                                                 context.getString(R.string.minutes_need_byok),
                                                 Toast.LENGTH_LONG,

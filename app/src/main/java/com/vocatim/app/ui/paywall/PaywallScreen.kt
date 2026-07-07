@@ -20,9 +20,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AllInclusive
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.Button
@@ -126,6 +128,13 @@ fun PaywallScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 textAlign = TextAlign.Center,
             )
+            Text(
+                stringResource(R.string.paywall_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
 
             if (isPro) {
                 Text(
@@ -151,13 +160,9 @@ fun PaywallScreen(
                 }
             }
 
+            FeaturesCard()
+
             ComparisonTable()
-
-            Spacer(Modifier.height(4.dp))
-
-            // Only what the table doesn't already say.
-            Benefit(Icons.Default.Lock, stringResource(R.string.paywall_benefit_private))
-            Benefit(Icons.Default.Payments, stringResource(R.string.paywall_benefit_once))
 
             Spacer(Modifier.height(8.dp))
 
@@ -290,19 +295,74 @@ private fun CompareIcon(enabled: Boolean) {
     )
 }
 
+private data class Feature(
+    val icon: ImageVector,
+    val titleRes: Int,
+    val descRes: Int,
+)
+
 @Composable
-private fun Benefit(icon: ImageVector, text: String) {
+private fun FeaturesCard() {
+    val features = listOf(
+        Feature(Icons.Default.AllInclusive, R.string.paywall_feat_unlimited_title, R.string.paywall_feat_unlimited_desc),
+        Feature(Icons.Default.AutoAwesome, R.string.paywall_feat_ai_title, R.string.paywall_feat_ai_desc),
+        Feature(Icons.Default.Description, R.string.paywall_feat_export_title, R.string.paywall_feat_export_desc),
+        Feature(Icons.Default.Lock, R.string.paywall_feat_secure_title, R.string.paywall_feat_secure_desc),
+        Feature(Icons.Default.CloudOff, R.string.paywall_feat_private_title, R.string.paywall_feat_private_desc),
+        Feature(Icons.Default.Payments, R.string.paywall_feat_once_title, R.string.paywall_feat_once_desc),
+    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Text(
+                stringResource(R.string.paywall_features_header),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            features.forEach { FeatureRow(it) }
+        }
+    }
+}
+
+@Composable
+private fun FeatureRow(feature: Feature) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(22.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(text, style = MaterialTheme.typography.bodyLarge)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(MaterialTheme.shapes.medium)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                feature.icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                stringResource(feature.titleRes),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                stringResource(feature.descRes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

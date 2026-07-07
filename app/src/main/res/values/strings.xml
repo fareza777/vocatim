@@ -126,6 +126,20 @@
     <string name="tile_record">Record with Vocatim</string>
 
     <string name="paywall_title">Vocatim Unlimited</string>
+    <string name="paywall_subtitle">One purchase unlocks every feature — transcribe without limits, forever.</string>
+    <string name="paywall_features_header">Everything you unlock</string>
+    <string name="paywall_feat_unlimited_title">Unlimited transcription</string>
+    <string name="paywall_feat_unlimited_desc">Transcribe hours of audio with no monthly caps or time limits.</string>
+    <string name="paywall_feat_ai_title">AI summaries &amp; meeting minutes</string>
+    <string name="paywall_feat_ai_desc">Turn long recordings into clean summaries and structured minutes — on-device or with your own cloud key.</string>
+    <string name="paywall_feat_export_title">Every export format</string>
+    <string name="paywall_feat_export_desc">Export to TXT, SRT, VTT, Markdown, and PDF — with attached photos included.</string>
+    <string name="paywall_feat_secure_title">Encrypted backup &amp; app lock</string>
+    <string name="paywall_feat_secure_desc">AES-encrypted backups, biometric lock, and screenshot protection.</string>
+    <string name="paywall_feat_private_title">Private &amp; offline</string>
+    <string name="paywall_feat_private_desc">Transcription runs entirely on your phone. Your audio never leaves the device.</string>
+    <string name="paywall_feat_once_title">Pay once, yours forever</string>
+    <string name="paywall_feat_once_desc">A single purchase unlocks everything. No subscriptions, no recurring fees.</string>
     <string name="paywall_already_pro">Unlimited is active. Thank you!</string>
     <string name="paywall_quota_status">Free plan: %1$d minutes of transcription left</string>
     <string name="paywall_benefit_unlimited">Unlimited transcription, forever</string>
@@ -204,6 +218,7 @@
     <string name="action_minutes">Create meeting minutes (AI)</string>
     <string name="minutes_started">Creating minutes… the result will appear as a new note.</string>
     <string name="minutes_need_byok">Set up Cloud AI in Settings first.</string>
+    <string name="cloud_need_pro">Cloud AI is a Pro feature. Unlock unlimited to use it.</string>
     <string name="minutes_title_prefix">Minutes:</string>
     <string name="minutes_ready_title">Meeting minutes ready</string>
     <string name="minutes_ready_body">Tap to open the new note.</string>
