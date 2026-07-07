@@ -322,8 +322,11 @@ fun DetailScreen(
                     )
                     // Long transcripts collapse by default; the header row
                     // toggles them open without endless scrolling.
+                    // Text-only notes (minutes, imported text) ARE the
+                    // content — always start them expanded.
+                    val isTextNote = t.audioPath == null && t.audioDurationMs == 0L
                     var transcriptExpanded by rememberSaveable(t.id) {
-                        mutableStateOf(t.text.length <= COLLAPSE_THRESHOLD_CHARS)
+                        mutableStateOf(isTextNote || t.text.length <= COLLAPSE_THRESHOLD_CHARS)
                     }
                     Surface(
                         modifier = Modifier

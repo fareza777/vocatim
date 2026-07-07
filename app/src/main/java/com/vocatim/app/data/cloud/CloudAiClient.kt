@@ -68,7 +68,12 @@ class CloudAiClient(baseClient: OkHttpClient) {
                     .getJSONObject("message")
                     .getString("content")
             }.getOrNull()
-            content?.trim()?.takeIf { it.isNotBlank() }
+            // MiniMax M-series (and other reasoning models) may prepend a
+            // <think>...</think> block; strip it so only the answer remains.
+            content
+                ?.replace(Regex("(?s)<think>.*?</think>"), "")
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
                 ?: throw CloudAiException("Empty response from provider")
         }
     }

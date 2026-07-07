@@ -205,6 +205,7 @@
     <string name="minutes_title_prefix">Notulen:</string>
     <string name="minutes_ready_title">Notulen rapat siap</string>
     <string name="minutes_ready_body">Ketuk untuk membuka catatannya.</string>
+    <string name="summary_failed_title">Proses AI gagal</string>
     <string name="settings_backup_section">Cadangan terenkripsi</string>
     <string name="settings_backup_desc">Teks transkrip, judul, dan pengaturan — dienkripsi AES dengan password Anda. File audio tidak ikut.</string>
     <string name="settings_backup">Cadangkan</string>

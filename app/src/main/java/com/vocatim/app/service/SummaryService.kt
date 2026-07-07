@@ -79,8 +79,11 @@ class SummaryService : Service() {
     }
 
     private fun enqueue(transcriptId: Long, mode: String) {
-        if (job?.isActive == true) return
+        // Serialize instead of dropping: a minutes request made while a
+        // summary is running must still execute afterwards.
+        val previous = job
         job = scope.launch {
+            previous?.join()
             try {
                 val entity = repository.getById(transcriptId) ?: return@launch
                 // "auto" carries no target language for the LLM; fall back to
@@ -93,22 +96,45 @@ class SummaryService : Service() {
                         ?: "id"
                     ).let { if (it == "ms") "id" else it }
 
-                progressHolder.set(transcriptId, 0f)
                 when (mode) {
-                    MODE_CLOUD -> runCloudSummary(entity, effectiveLanguage)
+                    MODE_CLOUD -> {
+                        progressHolder.set(transcriptId, 0.3f)
+                        runCloudSummary(entity, effectiveLanguage)
+                    }
+                    // Minutes are NOT a summary: don't drive the summary
+                    // card's progress; the notification carries the status.
                     MODE_MINUTES -> runCloudMinutes(entity, effectiveLanguage)
-                    else -> runLocalSummary(entity, effectiveLanguage)
+                    else -> {
+                        progressHolder.set(transcriptId, 0f)
+                        runLocalSummary(entity, effectiveLanguage)
+                    }
                 }
             } catch (e: Exception) {
-                // Leave summary null; the UI offers retry.
+                // Surface cloud/provider errors; silence is undebuggable.
+                notifyFailure(e.message ?: e.javaClass.simpleName)
             } finally {
                 progressHolder.remove(transcriptId)
-                wakeLock?.let { if (it.isHeld) it.release() }
-                wakeLock = null
-                ServiceCompat.stopForeground(this@SummaryService, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                if (job?.isActive != true) {
+                    wakeLock?.let { if (it.isHeld) it.release() }
+                    wakeLock = null
+                    ServiceCompat.stopForeground(
+                        this@SummaryService, ServiceCompat.STOP_FOREGROUND_REMOVE
+                    )
+                    stopSelf()
+                }
             }
         }
+    }
+
+    private fun notifyFailure(message: String) {
+        val notification = NotificationCompat.Builder(this, Notifications.CHANNEL_TRANSCRIPTION)
+            .setSmallIcon(R.drawable.ic_stat_mic)
+            .setContentTitle(getString(R.string.summary_failed_title))
+            .setContentText(message.take(120))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message.take(400)))
+            .setAutoCancel(true)
+            .build()
+        getSystemService<android.app.NotificationManager>()?.notify(NOTIF_FAIL_ID, notification)
     }
 
     private suspend fun runLocalSummary(
@@ -240,6 +266,7 @@ class SummaryService : Service() {
         private const val ACTION_CANCEL = "com.vocatim.app.summary.CANCEL"
         private const val NOTIF_ID = 3
         private const val NOTIF_MINUTES_ID = 4
+        private const val NOTIF_FAIL_ID = 5
 
         const val MODE_LOCAL = "local"
         const val MODE_CLOUD = "cloud"
