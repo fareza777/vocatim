@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
@@ -86,6 +87,7 @@ fun HomeScreen(
     onRecordClick: () -> Unit,
     onTranscriptClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
+    onCalendarClick: () -> Unit,
     onDebugClick: () -> Unit,
     onUpgradeClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -154,6 +156,7 @@ fun HomeScreen(
                 onImportAudio = { pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg")) },
                 onImportText = { pickText.launch(arrayOf("text/*")) },
                 onSettings = onSettingsClick,
+                onCalendar = onCalendarClick,
                 onDebug = onDebugClick,
             )
 
@@ -511,6 +514,7 @@ private fun HomeHeader(
     onImportAudio: () -> Unit,
     onImportText: () -> Unit,
     onSettings: () -> Unit,
+    onCalendar: () -> Unit,
     onDebug: () -> Unit,
 ) {
     var importMenuOpen by remember { mutableStateOf(false) }
@@ -549,6 +553,13 @@ private fun HomeHeader(
                     onClick = { importMenuOpen = false; onImportText() },
                 )
             }
+        }
+        IconButton(onClick = onCalendar) {
+            Icon(
+                Icons.Default.CalendarMonth,
+                contentDescription = stringResource(R.string.calendar_title),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         IconButton(onClick = onSettings) {
             Icon(

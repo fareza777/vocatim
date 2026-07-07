@@ -1,6 +1,7 @@
 package com.vocatim.app.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -300,6 +301,14 @@ fun SettingsScreen(
                 }
             }
 
+            Text(stringResource(R.string.settings_cloud_section), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_cloud_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            CloudAiSection(viewModel)
+
             Text(stringResource(R.string.settings_backup_section), style = MaterialTheme.typography.titleMedium)
             Text(
                 stringResource(R.string.settings_backup_desc),
@@ -307,6 +316,74 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             BackupSection(viewModel)
+        }
+    }
+}
+
+@Composable
+private fun CloudAiSection(viewModel: SettingsViewModel) {
+    val saved by viewModel.cloudConfig.collectAsStateWithLifecycle()
+    var baseUrl by remember(saved?.baseUrl) { mutableStateOf(saved?.baseUrl ?: "") }
+    var apiKey by remember(saved?.apiKey) { mutableStateOf(saved?.apiKey ?: "") }
+    var model by remember(saved?.model) { mutableStateOf(saved?.model ?: "") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Provider presets fill the base URL; model stays user-typed.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            com.vocatim.app.data.cloud.CloudAiPrefs.PRESETS.forEach { (name, url) ->
+                androidx.compose.material3.AssistChip(
+                    onClick = { baseUrl = url },
+                    label = { Text(name) },
+                )
+            }
+        }
+        androidx.compose.material3.OutlinedTextField(
+            value = baseUrl,
+            onValueChange = { baseUrl = it },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.settings_cloud_base_url)) },
+            placeholder = { Text("https://api.minimax.io/v1") },
+        )
+        androidx.compose.material3.OutlinedTextField(
+            value = apiKey,
+            onValueChange = { apiKey = it },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.settings_cloud_api_key)) },
+            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+        )
+        androidx.compose.material3.OutlinedTextField(
+            value = model,
+            onValueChange = { model = it },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.settings_cloud_model)) },
+            placeholder = { Text("MiniMax-M3") },
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                enabled = baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank(),
+                onClick = {
+                    viewModel.saveCloudConfig(baseUrl, apiKey, model)
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.settings_cloud_saved),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                },
+            ) { Text(stringResource(R.string.action_save)) }
+            if (saved?.isConfigured == true) {
+                OutlinedButton(onClick = viewModel::clearCloudConfig) {
+                    Text(stringResource(R.string.settings_cloud_clear))
+                }
+            }
         }
     }
 }

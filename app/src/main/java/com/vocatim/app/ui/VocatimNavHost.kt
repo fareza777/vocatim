@@ -23,6 +23,7 @@ object Routes {
     const val DEBUG = "debug"
     const val SETTINGS = "settings"
     const val PAYWALL = "paywall"
+    const val CALENDAR = "calendar"
     const val DETAIL = "detail/{transcriptId}"
     fun record(autoStart: Boolean = false) = "record?autoStart=$autoStart"
     fun detail(id: Long) = "detail/$id"
@@ -69,6 +70,7 @@ fun VocatimNavHost(
                 onRecordClick = { navController.navigate(Routes.record()) },
                 onTranscriptClick = { id -> navController.navigate(Routes.detail(id)) },
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                onCalendarClick = { navController.navigate(Routes.CALENDAR) },
                 onDebugClick = { navController.navigate(Routes.DEBUG) },
                 onUpgradeClick = { navController.navigate(Routes.PAYWALL) },
             )
@@ -82,6 +84,12 @@ fun VocatimNavHost(
         composable(Routes.PAYWALL) {
             com.vocatim.app.ui.paywall.PaywallScreen(
                 onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Routes.CALENDAR) {
+            com.vocatim.app.ui.calendar.CalendarScreen(
+                onBack = { navController.popBackStack() },
+                onTranscriptClick = { id -> navController.navigate(Routes.detail(id)) },
             )
         }
         composable(

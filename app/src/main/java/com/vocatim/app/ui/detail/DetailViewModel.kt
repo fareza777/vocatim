@@ -52,7 +52,13 @@ class DetailViewModel @Inject constructor(
     summaryProgressHolder: com.vocatim.app.data.summary.SummaryProgressHolder,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
     userPrefs: com.vocatim.app.data.prefs.UserPrefs,
+    cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
 ) : ViewModel() {
+
+    /** True when the user has set up a BYOK cloud provider in Settings. */
+    val cloudConfigured: StateFlow<Boolean> = cloudAiPrefs.config
+        .map { it.isConfigured }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     private val transcriptId: Long = savedStateHandle.get<Long>("transcriptId")
         ?: savedStateHandle.get<String>("transcriptId")?.toLongOrNull()
@@ -85,6 +91,18 @@ class DetailViewModel @Inject constructor(
 
     fun startSummary() {
         com.vocatim.app.service.SummaryService.start(appContext, transcriptId)
+    }
+
+    fun startCloudSummary() {
+        com.vocatim.app.service.SummaryService.start(
+            appContext, transcriptId, com.vocatim.app.service.SummaryService.MODE_CLOUD
+        )
+    }
+
+    fun createMinutes() {
+        com.vocatim.app.service.SummaryService.start(
+            appContext, transcriptId, com.vocatim.app.service.SummaryService.MODE_MINUTES
+        )
     }
 
     fun cancelSummary() {

@@ -150,6 +150,16 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideCloudAiPrefs(@ApplicationContext context: Context): com.vocatim.app.data.cloud.CloudAiPrefs =
+        com.vocatim.app.data.cloud.CloudAiPrefs(context)
+
+    @Provides
+    @Singleton
+    fun provideCloudAiClient(client: OkHttpClient): com.vocatim.app.data.cloud.CloudAiClient =
+        com.vocatim.app.data.cloud.CloudAiClient(client)
+
+    @Provides
+    @Singleton
     fun provideSummaryModelManager(
         @ApplicationContext context: Context,
         client: OkHttpClient,

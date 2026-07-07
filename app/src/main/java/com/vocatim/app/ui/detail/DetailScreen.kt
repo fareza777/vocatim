@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Description
@@ -67,6 +69,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -84,9 +87,13 @@ import com.vocatim.app.data.db.TranscriptStatus
 import com.vocatim.app.data.model.ModelState
 import com.vocatim.app.data.summary.SummaryModel
 import com.vocatim.app.ui.common.Pill
+import com.vocatim.app.ui.common.exportFileName
 import com.vocatim.app.ui.common.formatClock
 import com.vocatim.app.ui.common.formatDate
 import java.util.Locale
+
+/** Transcripts longer than this start collapsed in the detail screen. */
+private const val COLLAPSE_THRESHOLD_CHARS = 800
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,6 +114,7 @@ fun DetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var renameDraft by remember { mutableStateOf<String?>(null) }
     var overflowOpen by remember { mutableStateOf(false) }
+    val cloudConfiguredTop by viewModel.cloudConfigured.collectAsStateWithLifecycle()
     var keyPointsDialog by remember { mutableStateOf<List<String>?>(null) }
     var showMergeDialog by remember { mutableStateOf(false) }
 
@@ -203,6 +211,26 @@ fun DetailScreen(
                                         showMergeDialog = true
                                     },
                                 )
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_minutes)) },
+                                    onClick = {
+                                        overflowOpen = false
+                                        if (cloudConfiguredTop) {
+                                            viewModel.createMinutes()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.minutes_started),
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.minutes_need_byok),
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                        }
+                                    },
+                                )
                             }
                         }
                     }
@@ -254,58 +282,8 @@ fun DetailScreen(
                         )
                     }
 
-                    var segmentMode by remember { mutableStateOf(false) }
-                    ViewModeToggle(
-                        segmentMode = segmentMode,
-                        onChange = { mode ->
-                            segmentMode = mode
-                            if (mode) viewModel.loadSegments()
-                        },
-                    )
-
-                    if (segmentMode) {
-                        SegmentList(
-                            segments = segments,
-                            positionMs = playerState?.positionMs?.toLong() ?: -1L,
-                            canSeek = t.audioPath != null,
-                            textScale = textScale,
-                            onSegmentClick = { viewModel.playFromMs(it) },
-                            onCopySegment = { text ->
-                                copyToClipboard(context, text)
-                                Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
-                            },
-                        )
-                    } else {
-                        OutlinedTextField(
-                            value = editedText ?: t.text,
-                            onValueChange = viewModel::onTextChanged,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 240.dp),
-                            placeholder = { Text(stringResource(R.string.detail_empty_text)) },
-                            shape = MaterialTheme.shapes.large,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                fontSize = MaterialTheme.typography.bodyLarge.fontSize * textScale,
-                                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * textScale,
-                            ),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            ),
-                        )
-                    }
-                    if (editedText != null && editedText != t.text) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = viewModel::saveEdits) {
-                                Text(stringResource(R.string.action_save))
-                            }
-                            OutlinedButton(onClick = viewModel::discardEdits) {
-                                Text(stringResource(R.string.action_discard))
-                            }
-                        }
-                    }
+                    // Actions live ABOVE the (potentially very long) text so
+                    // export/copy never require scrolling to the bottom.
                     ActionGrid(
                         onCopy = {
                             copyToClipboard(context, viewModel.currentText())
@@ -326,12 +304,118 @@ fun DetailScreen(
                             }
                         },
                         onShare = { shareText(context, viewModel.currentText()) },
-                        onExportTxt = { exportTxtLauncher.launch(t.title + ".txt") },
-                        onExportSrt = { exportSrtLauncher.launch(t.title + ".srt") },
-                        onExportVtt = { exportVttLauncher.launch(t.title + ".vtt") },
-                        onExportMd = { exportMdLauncher.launch(t.title + ".md") },
-                        onExportPdf = { exportPdfLauncher.launch(t.title + ".pdf") },
+                        onExportTxt = {
+                            runCatching { exportTxtLauncher.launch(exportFileName(t.title, "txt")) }
+                        },
+                        onExportSrt = {
+                            runCatching { exportSrtLauncher.launch(exportFileName(t.title, "srt")) }
+                        },
+                        onExportVtt = {
+                            runCatching { exportVttLauncher.launch(exportFileName(t.title, "vtt")) }
+                        },
+                        onExportMd = {
+                            runCatching { exportMdLauncher.launch(exportFileName(t.title, "md")) }
+                        },
+                        onExportPdf = {
+                            runCatching { exportPdfLauncher.launch(exportFileName(t.title, "pdf")) }
+                        },
                     )
+                    // Long transcripts collapse by default; the header row
+                    // toggles them open without endless scrolling.
+                    var transcriptExpanded by rememberSaveable(t.id) {
+                        mutableStateOf(t.text.length <= COLLAPSE_THRESHOLD_CHARS)
+                    }
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.medium)
+                            .clickable { transcriptExpanded = !transcriptExpanded },
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                stringResource(R.string.detail_transcript_section),
+                                style = MaterialTheme.typography.titleSmall,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                if (transcriptExpanded) Icons.Default.ExpandLess
+                                else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    if (!transcriptExpanded) {
+                        // Teaser: first lines, tap to expand.
+                        Text(
+                            t.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.clickable { transcriptExpanded = true },
+                        )
+                    } else {
+                        var segmentMode by remember { mutableStateOf(false) }
+                        ViewModeToggle(
+                            segmentMode = segmentMode,
+                            onChange = { mode ->
+                                segmentMode = mode
+                                if (mode) viewModel.loadSegments()
+                            },
+                        )
+
+                        if (segmentMode) {
+                            SegmentList(
+                                segments = segments,
+                                positionMs = playerState?.positionMs?.toLong() ?: -1L,
+                                canSeek = t.audioPath != null,
+                                textScale = textScale,
+                                onSegmentClick = { viewModel.playFromMs(it) },
+                                onCopySegment = { text ->
+                                    copyToClipboard(context, text)
+                                    Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        } else {
+                            OutlinedTextField(
+                                value = editedText ?: t.text,
+                                onValueChange = viewModel::onTextChanged,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 240.dp),
+                                placeholder = { Text(stringResource(R.string.detail_empty_text)) },
+                                shape = MaterialTheme.shapes.large,
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * textScale,
+                                    lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * textScale,
+                                ),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                ),
+                            )
+                        }
+                        if (editedText != null && editedText != t.text) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = viewModel::saveEdits) {
+                                    Text(stringResource(R.string.action_save))
+                                }
+                                OutlinedButton(onClick = viewModel::discardEdits) {
+                                    Text(stringResource(R.string.action_discard))
+                                }
+                            }
+                        }
+                    }
+
                     if (t.audioPath != null) {
                         TextButton(onClick = viewModel::deleteAudioOnly) {
                             Text(
@@ -1018,8 +1102,16 @@ private fun SummarySection(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Button(onClick = viewModel::startSummary) {
-                        Text(stringResource(R.string.summary_generate))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = viewModel::startSummary) {
+                            Text(stringResource(R.string.summary_generate))
+                        }
+                        val cloudConfigured by viewModel.cloudConfigured.collectAsStateWithLifecycle()
+                        if (cloudConfigured) {
+                            OutlinedButton(onClick = viewModel::startCloudSummary) {
+                                Text(stringResource(R.string.summary_generate_cloud))
+                            }
+                        }
                     }
                 }
                 modelState is ModelState.Downloading -> {
@@ -1054,8 +1146,17 @@ private fun SummarySection(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Button(onClick = viewModel::downloadSummaryModel) {
-                        Text(stringResource(R.string.summary_download))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = viewModel::downloadSummaryModel) {
+                            Text(stringResource(R.string.summary_download))
+                        }
+                        // BYOK works without the 1GB local model.
+                        val cloudConfigured by viewModel.cloudConfigured.collectAsStateWithLifecycle()
+                        if (cloudConfigured) {
+                            OutlinedButton(onClick = viewModel::startCloudSummary) {
+                                Text(stringResource(R.string.summary_generate_cloud))
+                            }
+                        }
                     }
                 }
             }

@@ -41,8 +41,21 @@ class SettingsViewModel @Inject constructor(
     private val summaryModelManager: com.vocatim.app.data.summary.SummaryModelManager,
     private val userPrefs: UserPrefs,
     private val backupManager: com.vocatim.app.data.backup.BackupManager,
+    private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
 ) : ViewModel() {
+
+    val cloudConfig: StateFlow<com.vocatim.app.data.cloud.CloudAiConfig?> =
+        cloudAiPrefs.config
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun saveCloudConfig(baseUrl: String, apiKey: String, model: String) {
+        viewModelScope.launch { cloudAiPrefs.save(baseUrl, apiKey, model) }
+    }
+
+    fun clearCloudConfig() {
+        viewModelScope.launch { cloudAiPrefs.clear() }
+    }
 
     val summaryModelState: StateFlow<ModelState> =
         summaryModelManager.state

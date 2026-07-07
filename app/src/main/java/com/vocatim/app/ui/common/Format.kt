@@ -16,3 +16,20 @@ fun formatClock(ms: Long): String {
 fun formatDate(epochMs: Long): String =
     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
         .format(Date(epochMs))
+
+/**
+ * Turns a transcript title into a filename document providers accept.
+ * Auto-generated titles carry ellipses, quotes, slashes, etc. — several
+ * providers (notably MIUI's) reject those and the SAF dialog silently fails.
+ */
+fun exportFileName(title: String, extension: String): String {
+    val safe = title
+        .replace(Regex("[\\\\/:*?\"<>|\\n\\r\\t]"), " ")
+        .replace("…", "")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .take(60)
+        .trim('.', ' ')
+        .ifBlank { "vocatim" }
+    return "$safe.$extension"
+}

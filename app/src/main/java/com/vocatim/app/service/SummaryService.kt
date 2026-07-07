@@ -13,6 +13,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.getSystemService
 import com.vocatim.app.MainActivity
 import com.vocatim.app.R
+import com.vocatim.app.data.cloud.CloudPrompts
 import com.vocatim.app.data.prefs.UserPrefs
 import com.vocatim.app.data.repository.TranscriptRepository
 import com.vocatim.app.data.summary.SummaryProgressHolder
@@ -39,6 +40,8 @@ class SummaryService : Service() {
     @Inject lateinit var repository: TranscriptRepository
     @Inject lateinit var progressHolder: SummaryProgressHolder
     @Inject lateinit var userPrefs: UserPrefs
+    @Inject lateinit var cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs
+    @Inject lateinit var cloudClient: com.vocatim.app.data.cloud.CloudAiClient
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
@@ -50,9 +53,11 @@ class SummaryService : Service() {
         val id = intent?.getLongExtra(EXTRA_ID, -1) ?: -1
         if (intent?.action == ACTION_CANCEL) {
             summarizerFactory.cancelActive()
+            job?.cancel()
             return START_NOT_STICKY
         }
         if (id <= 0) return START_NOT_STICKY
+        val mode = intent?.getStringExtra(EXTRA_MODE) ?: MODE_LOCAL
 
         ServiceCompat.startForeground(
             this,
@@ -61,7 +66,7 @@ class SummaryService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
         )
         acquireWake()
-        enqueue(id)
+        enqueue(id, mode)
         return START_NOT_STICKY
     }
 
@@ -73,21 +78,11 @@ class SummaryService : Service() {
         }
     }
 
-    private fun enqueue(transcriptId: Long) {
+    private fun enqueue(transcriptId: Long, mode: String) {
         if (job?.isActive == true) return
         job = scope.launch {
             try {
                 val entity = repository.getById(transcriptId) ?: return@launch
-                val settings = userPrefs.current()
-                // Step-by-step crash tracing is a debug-build aid only; release
-                // does no diagnostic file I/O.
-                if (com.vocatim.app.BuildConfig.DEBUG) {
-                    summarizerFactory.useDiagDir(filesDir)
-                }
-                val summarizer = summarizerFactory.create(
-                    ThreadPolicy(this@SummaryService).threadsFor(settings.threads)
-                )
-                progressHolder.set(transcriptId, 0f)
                 // "auto" carries no target language for the LLM; fall back to
                 // the detected language, then Indonesian (the app's audience).
                 // Whisper routinely mis-detects Indonesian as Malay ("ms") —
@@ -97,17 +92,13 @@ class SummaryService : Service() {
                         ?: entity.detectedLanguage
                         ?: "id"
                     ).let { if (it == "ms") "id" else it }
-                val summary = summarizer.summarize(
-                    text = entity.text,
-                    language = effectiveLanguage,
-                ) { fraction ->
-                    progressHolder.set(transcriptId, fraction)
-                    updateNotification(
-                        getString(R.string.summary_notif_progress, (fraction * 100).toInt()),
-                        transcriptId,
-                    )
+
+                progressHolder.set(transcriptId, 0f)
+                when (mode) {
+                    MODE_CLOUD -> runCloudSummary(entity, effectiveLanguage)
+                    MODE_MINUTES -> runCloudMinutes(entity, effectiveLanguage)
+                    else -> runLocalSummary(entity, effectiveLanguage)
                 }
-                repository.updateSummary(transcriptId, summary)
             } catch (e: Exception) {
                 // Leave summary null; the UI offers retry.
             } finally {
@@ -118,6 +109,96 @@ class SummaryService : Service() {
                 stopSelf()
             }
         }
+    }
+
+    private suspend fun runLocalSummary(
+        entity: com.vocatim.app.data.db.TranscriptEntity,
+        language: String,
+    ) {
+        val settings = userPrefs.current()
+        // Step-by-step crash tracing is a debug-build aid only; release
+        // does no diagnostic file I/O.
+        if (com.vocatim.app.BuildConfig.DEBUG) {
+            summarizerFactory.useDiagDir(filesDir)
+        }
+        val summarizer = summarizerFactory.create(
+            ThreadPolicy(this).threadsFor(settings.threads)
+        )
+        val summary = summarizer.summarize(
+            text = entity.text,
+            language = language,
+        ) { fraction ->
+            progressHolder.set(entity.id, fraction)
+            updateNotification(
+                getString(R.string.summary_notif_progress, (fraction * 100).toInt()),
+                entity.id,
+            )
+        }
+        repository.updateSummary(entity.id, summary)
+    }
+
+    private suspend fun runCloudSummary(
+        entity: com.vocatim.app.data.db.TranscriptEntity,
+        language: String,
+    ) {
+        progressHolder.set(entity.id, 0.3f)
+        val summary = cloudClient.chat(
+            config = cloudAiPrefs.current(),
+            system = CloudPrompts.summarySystem(language),
+            user = entity.text.take(CloudPrompts.MAX_INPUT_CHARS),
+            maxTokens = 2048,
+        )
+        repository.updateSummary(entity.id, summary)
+    }
+
+    /** Formats the transcript into tidy meeting minutes as a NEW note. */
+    private suspend fun runCloudMinutes(
+        entity: com.vocatim.app.data.db.TranscriptEntity,
+        language: String,
+    ) {
+        progressHolder.set(entity.id, 0.3f)
+        val minutes = cloudClient.chat(
+            config = cloudAiPrefs.current(),
+            system = CloudPrompts.minutesSystem(language),
+            user = entity.text.take(CloudPrompts.MAX_INPUT_CHARS),
+            maxTokens = 8192,
+        )
+        val prefix = getString(R.string.minutes_title_prefix)
+        val newId = repository.create(
+            entity.copy(
+                id = 0,
+                title = "$prefix ${entity.title}".take(80),
+                text = minutes,
+                audioPath = null,
+                audioDurationMs = 0,
+                processingTimeMs = 0,
+                summary = null,
+                sourceUri = null,
+                sourceName = null,
+                customTitle = true,
+                completedChunks = 0,
+                createdAt = System.currentTimeMillis(),
+            )
+        )
+        notifyMinutesReady(newId)
+    }
+
+    private fun notifyMinutesReady(noteId: Long) {
+        val open = PendingIntent.getActivity(
+            this, noteId.toInt(),
+            Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_TRANSCRIPT_ID, noteId)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(this, Notifications.CHANNEL_TRANSCRIPTION)
+            .setSmallIcon(R.drawable.ic_stat_mic)
+            .setContentTitle(getString(R.string.minutes_ready_title))
+            .setContentText(getString(R.string.minutes_ready_body))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        getSystemService<android.app.NotificationManager>()?.notify(NOTIF_MINUTES_ID, notification)
     }
 
     private fun buildNotification(text: String, id: Long): Notification {
@@ -155,12 +236,20 @@ class SummaryService : Service() {
 
     companion object {
         private const val EXTRA_ID = "transcript_id"
+        private const val EXTRA_MODE = "mode"
         private const val ACTION_CANCEL = "com.vocatim.app.summary.CANCEL"
         private const val NOTIF_ID = 3
+        private const val NOTIF_MINUTES_ID = 4
 
-        fun start(context: Context, transcriptId: Long) {
+        const val MODE_LOCAL = "local"
+        const val MODE_CLOUD = "cloud"
+        const val MODE_MINUTES = "minutes"
+
+        fun start(context: Context, transcriptId: Long, mode: String = MODE_LOCAL) {
             context.startForegroundService(
-                Intent(context, SummaryService::class.java).putExtra(EXTRA_ID, transcriptId)
+                Intent(context, SummaryService::class.java)
+                    .putExtra(EXTRA_ID, transcriptId)
+                    .putExtra(EXTRA_MODE, mode)
             )
         }
 
