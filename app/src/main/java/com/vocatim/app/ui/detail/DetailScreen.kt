@@ -817,6 +817,7 @@ private fun PhotoRow(
     onRemove: (com.vocatim.app.data.db.AttachmentEntity) -> Unit,
 ) {
     var fullScreen by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
     val pickPhoto = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
     ) { uri -> uri?.let(onAdd) }
@@ -883,14 +884,24 @@ private fun PhotoRow(
 
     fullScreen?.let { path ->
         androidx.compose.ui.window.Dialog(onDismissRequest = { fullScreen = null }) {
-            coil.compose.AsyncImage(
-                model = path,
-                contentDescription = null,
-                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { fullScreen = null },
-            )
+            Box(contentAlignment = Alignment.BottomCenter) {
+                coil.compose.AsyncImage(
+                    model = path,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { fullScreen = null },
+                )
+                FilledTonalButton(
+                    onClick = { shareImage(context, path) },
+                    modifier = Modifier.padding(16.dp),
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.width(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.detail_share_photo))
+                }
+            }
         }
     }
 }
@@ -1408,4 +1419,20 @@ private fun shareText(context: Context, text: String) {
     context.startActivity(
         Intent.createChooser(intent, context.getString(R.string.action_share))
     )
+}
+
+/** Shares an attached photo via FileProvider so other apps can read it. */
+private fun shareImage(context: Context, path: String) {
+    runCatching {
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context, "${context.packageName}.fileprovider", java.io.File(path)
+        )
+        val intent = Intent(Intent.ACTION_SEND)
+            .setType("image/*")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        context.startActivity(
+            Intent.createChooser(intent, context.getString(R.string.detail_share_photo))
+        )
+    }
 }

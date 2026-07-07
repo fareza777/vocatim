@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Photos attached to transcripts/notes live here. -->
+    <files-path name="attachments" path="attachments/" />
+    <!-- Staged share/export files. -->
+    <cache-path name="cache" path="." />
+</paths>

@@ -188,6 +188,7 @@
     <string name="detail_photos">Photos</string>
     <string name="detail_add_photo">Add photo</string>
     <string name="detail_remove_photo">Remove photo</string>
+    <string name="detail_share_photo">Share photo</string>
     <string name="detail_transcript_section">Transcript</string>
     <string name="detail_minutes_section">Meeting minutes</string>
     <string name="calendar_title">Calendar</string>

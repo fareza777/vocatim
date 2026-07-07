@@ -25,6 +25,9 @@ class TranscriptRepository(private val dao: TranscriptDao) {
     fun observeAttachments(transcriptId: Long): Flow<List<AttachmentEntity>> =
         dao.observeAttachments(transcriptId)
 
+    suspend fun getAttachments(transcriptId: Long): List<AttachmentEntity> =
+        dao.getAttachments(transcriptId)
+
     suspend fun setFolder(id: Long, folder: String?) =
         dao.updateTag(id, folder?.trim()?.ifBlank { null })
 

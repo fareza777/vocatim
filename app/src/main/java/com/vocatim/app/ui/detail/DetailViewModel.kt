@@ -380,8 +380,9 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val title = transcript.value?.title ?: "Transcript"
+                val photos = repository.getAttachments(transcriptId).map { it.path }
                 withContext(Dispatchers.IO) {
-                    PdfExporter.write(appContext, uri, title, currentText())
+                    PdfExporter.write(appContext, uri, title, currentText(), photos)
                 }
                 _exportEvent.value = ExportEvent.Success
             } catch (e: Exception) {

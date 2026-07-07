@@ -188,6 +188,7 @@
     <string name="detail_photos">Foto</string>
     <string name="detail_add_photo">Tambah foto</string>
     <string name="detail_remove_photo">Hapus foto</string>
+    <string name="detail_share_photo">Bagikan foto</string>
     <string name="detail_transcript_section">Transkrip</string>
     <string name="detail_minutes_section">Notulen</string>
     <string name="calendar_title">Kalender</string>
