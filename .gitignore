@@ -14,3 +14,7 @@ captures/
 keystore/
 key.properties
 .claude/scheduled_tasks.lock
+
+# Personal captures in repo root
+/Screenshot_*.jpg
+/*.mp4
