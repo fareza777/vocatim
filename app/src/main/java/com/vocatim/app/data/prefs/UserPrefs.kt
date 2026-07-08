@@ -36,6 +36,14 @@ data class UserSettings(
     val minutesTemplate: String,
     /** User-written minutes prompt, used when [minutesTemplate] is custom. */
     val customMinutesPrompt: String,
+    /** Convert finished recordings from WAV to M4A to save ~85% storage. */
+    val compressAudio: Boolean,
+    /** SAF tree URI for weekly automatic backups; empty = disabled. */
+    val autoBackupUri: String,
+    /** Backup password, encrypted with an Android Keystore key. */
+    val autoBackupPw: String,
+    /** Epoch ms of the last successful automatic backup. */
+    val autoBackupLast: Long,
 )
 
 /** User settings applied to new recordings and imports. */
@@ -58,6 +66,10 @@ class UserPrefs(private val context: Context) {
             autoSummarize = prefs[AUTO_SUMMARIZE_KEY] ?: false,
             minutesTemplate = prefs[MINUTES_TEMPLATE_KEY] ?: "general",
             customMinutesPrompt = prefs[CUSTOM_MINUTES_PROMPT_KEY] ?: "",
+            compressAudio = prefs[COMPRESS_AUDIO_KEY] ?: false,
+            autoBackupUri = prefs[AUTO_BACKUP_URI_KEY] ?: "",
+            autoBackupPw = prefs[AUTO_BACKUP_PW_KEY] ?: "",
+            autoBackupLast = prefs[AUTO_BACKUP_LAST_KEY] ?: 0L,
         )
     }
 
@@ -123,6 +135,28 @@ class UserPrefs(private val context: Context) {
         context.prefsDataStore.edit { it[CUSTOM_MINUTES_PROMPT_KEY] = prompt.take(1000) }
     }
 
+    suspend fun setCompressAudio(enabled: Boolean) {
+        context.prefsDataStore.edit { it[COMPRESS_AUDIO_KEY] = enabled }
+    }
+
+    suspend fun setAutoBackup(uri: String, encryptedPw: String) {
+        context.prefsDataStore.edit {
+            it[AUTO_BACKUP_URI_KEY] = uri
+            it[AUTO_BACKUP_PW_KEY] = encryptedPw
+        }
+    }
+
+    suspend fun clearAutoBackup() {
+        context.prefsDataStore.edit {
+            it[AUTO_BACKUP_URI_KEY] = ""
+            it[AUTO_BACKUP_PW_KEY] = ""
+        }
+    }
+
+    suspend fun setAutoBackupLast(ts: Long) {
+        context.prefsDataStore.edit { it[AUTO_BACKUP_LAST_KEY] = ts }
+    }
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
@@ -142,5 +176,10 @@ class UserPrefs(private val context: Context) {
         private val AUTO_SUMMARIZE_KEY = booleanPreferencesKey("auto_summarize")
         private val MINUTES_TEMPLATE_KEY = stringPreferencesKey("minutes_template")
         private val CUSTOM_MINUTES_PROMPT_KEY = stringPreferencesKey("custom_minutes_prompt")
+        private val COMPRESS_AUDIO_KEY = booleanPreferencesKey("compress_audio")
+        private val AUTO_BACKUP_URI_KEY = stringPreferencesKey("auto_backup_uri")
+        private val AUTO_BACKUP_PW_KEY = stringPreferencesKey("auto_backup_pw")
+        private val AUTO_BACKUP_LAST_KEY =
+            androidx.datastore.preferences.core.longPreferencesKey("auto_backup_last")
     }
 }

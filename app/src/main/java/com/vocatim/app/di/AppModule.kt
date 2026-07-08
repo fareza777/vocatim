@@ -42,6 +42,7 @@ object AppModule {
                 VocatimDatabase.MIGRATION_7_8,
                 VocatimDatabase.MIGRATION_8_9,
                 VocatimDatabase.MIGRATION_9_10,
+                VocatimDatabase.MIGRATION_10_11,
             )
             // Only for pre-v3 leftovers; from v3 on, real migrations apply.
             .fallbackToDestructiveMigration()
@@ -187,8 +188,18 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideAutoBackup(
+        @ApplicationContext context: Context,
+        userPrefs: UserPrefs,
+        backupManager: com.vocatim.app.data.backup.BackupManager,
+    ): com.vocatim.app.data.backup.AutoBackup =
+        com.vocatim.app.data.backup.AutoBackup(context, userPrefs, backupManager)
+
+    @Provides
+    @Singleton
     fun provideStartupRecovery(
         @ApplicationContext context: Context,
         repository: TranscriptRepository,
-    ): StartupRecovery = StartupRecovery(context, repository)
+        userPrefs: UserPrefs,
+    ): StartupRecovery = StartupRecovery(context, repository, userPrefs)
 }

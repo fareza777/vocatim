@@ -14,9 +14,17 @@ import javax.crypto.spec.SecretKeySpec
 class BackupFormatException(message: String, cause: Throwable? = null) :
     Exception(message, cause)
 
+/** One attached photo, carried inline as base64 (photos are small JPEGs). */
+data class BackupAttachment(
+    val transcriptId: Long,
+    val fileName: String,
+    val base64: String,
+)
+
 data class BackupData(
     val transcripts: List<TranscriptEntity>,
     val segments: List<SegmentEntity>,
+    val attachments: List<BackupAttachment> = emptyList(),
 )
 
 /**
@@ -71,7 +79,8 @@ object BackupCodec {
 
     private fun toJson(data: BackupData): String {
         val root = JSONObject()
-        root.put("version", 1)
+        // v2 adds summary/minutes/markers/word-timings and photo attachments.
+        root.put("version", 2)
         root.put("transcripts", JSONArray().apply {
             data.transcripts.forEach { t ->
                 put(JSONObject().apply {
@@ -89,6 +98,10 @@ object BackupCodec {
                     put("detectedLanguage", t.detectedLanguage ?: JSONObject.NULL)
                     put("pinned", t.pinned)
                     put("tag", t.tag ?: JSONObject.NULL)
+                    put("summary", t.summary ?: JSONObject.NULL)
+                    put("summarySource", t.summarySource ?: JSONObject.NULL)
+                    put("minutes", t.minutes ?: JSONObject.NULL)
+                    put("markers", t.markers ?: JSONObject.NULL)
                     put("createdAt", t.createdAt)
                 })
             }
@@ -100,6 +113,16 @@ object BackupCodec {
                     put("startMs", s.startMs)
                     put("endMs", s.endMs)
                     put("text", s.text)
+                    put("words", s.words ?: JSONObject.NULL)
+                })
+            }
+        })
+        root.put("attachments", JSONArray().apply {
+            data.attachments.forEach { a ->
+                put(JSONObject().apply {
+                    put("transcriptId", a.transcriptId)
+                    put("fileName", a.fileName)
+                    put("base64", a.base64)
                 })
             }
         })
@@ -129,6 +152,11 @@ object BackupCodec {
                     detectedLanguage = o.optString("detectedLanguage").ifEmpty { null },
                     pinned = o.optBoolean("pinned"),
                     tag = o.optString("tag").ifEmpty { null },
+                    // v2 fields; absent in v1 files, so opt* with null fallback.
+                    summary = o.optString("summary").ifEmpty { null },
+                    summarySource = o.optString("summarySource").ifEmpty { null },
+                    minutes = o.optString("minutes").ifEmpty { null },
+                    markers = o.optString("markers").ifEmpty { null },
                     createdAt = o.getLong("createdAt"),
                 )
             )
@@ -143,10 +171,24 @@ object BackupCodec {
                     startMs = o.getLong("startMs"),
                     endMs = o.getLong("endMs"),
                     text = o.getString("text"),
+                    words = o.optString("words").ifEmpty { null },
                 )
             )
         }
-        BackupData(transcripts, segments)
+        val attachments = mutableListOf<BackupAttachment>()
+        root.optJSONArray("attachments")?.let { aArray ->
+            for (i in 0 until aArray.length()) {
+                val o = aArray.getJSONObject(i)
+                attachments.add(
+                    BackupAttachment(
+                        transcriptId = o.getLong("transcriptId"),
+                        fileName = o.getString("fileName"),
+                        base64 = o.getString("base64"),
+                    )
+                )
+            }
+        }
+        BackupData(transcripts, segments, attachments)
     } catch (e: org.json.JSONException) {
         throw BackupFormatException("Corrupted backup content", e)
     }

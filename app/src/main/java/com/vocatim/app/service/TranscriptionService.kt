@@ -38,6 +38,7 @@ class TranscriptionService : Service() {
     @Inject lateinit var runner: TranscriptionRunner
     @Inject lateinit var progressHolder: TranscriptionProgressHolder
     @Inject lateinit var userPrefs: com.vocatim.app.data.prefs.UserPrefs
+    @Inject lateinit var repository: com.vocatim.app.data.repository.TranscriptRepository
     @Inject lateinit var quotaStore: com.vocatim.app.data.billing.QuotaStore
     @Inject lateinit var cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs
     @Inject lateinit var summaryModelManager: com.vocatim.app.data.summary.SummaryModelManager
@@ -117,7 +118,10 @@ class TranscriptionService : Service() {
                 currentJob = null
                 currentTranscriptId = -1
                 stopNotifier()
-                if (succeeded) maybeAutoSummarize(job.transcriptId)
+                if (succeeded) {
+                    maybeCompressAudio(job.transcriptId)
+                    maybeAutoSummarize(job.transcriptId)
+                }
             }
             wakeLock?.let { if (it.isHeld) it.release() }
             wakeLock = null
@@ -165,6 +169,24 @@ class TranscriptionService : Service() {
     private fun stopNotifier() {
         notifierJob?.cancel()
         notifierJob = null
+    }
+
+    /** Optionally shrink the finished WAV to M4A (~85% smaller). */
+    private suspend fun maybeCompressAudio(transcriptId: Long) {
+        if (!userPrefs.current().compressAudio) return
+        val entity = repository.getById(transcriptId) ?: return
+        val wavPath = entity.audioPath ?: return
+        if (!wavPath.endsWith(".wav")) return
+        val wav = java.io.File(wavPath)
+        if (!wav.exists()) return
+        val m4a = java.io.File(wavPath.removeSuffix(".wav") + ".m4a")
+        val ok = kotlinx.coroutines.withContext(Dispatchers.IO) {
+            com.vocatim.app.data.audio.AudioCompressor.compressWavToM4a(wav, m4a)
+        }
+        if (ok) {
+            repository.update(entity.copy(audioPath = m4a.absolutePath))
+            wav.delete()
+        }
     }
 
     /** Optionally kick off an AI summary once a transcript finishes (Pro). */

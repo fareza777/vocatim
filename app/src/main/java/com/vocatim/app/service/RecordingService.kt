@@ -60,6 +60,7 @@ class RecordingService : Service() {
 
     @Volatile private var paused = false
     @Volatile private var stopping = false
+    private var btRouted = false
     private var accumulatedMs = 0L
     private var resumedAt = 0L
 
@@ -73,6 +74,39 @@ class RecordingService : Service() {
             ACTION_STOP -> stopRecording()
         }
         return START_NOT_STICKY
+    }
+
+    /** Records from a connected Bluetooth headset mic instead of the phone's. */
+    private fun routeToBluetoothIfAvailable() {
+        val am = getSystemService<android.media.AudioManager>() ?: return
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                val device = am.availableCommunicationDevices.firstOrNull {
+                    it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                }
+                if (device != null && am.setCommunicationDevice(device)) {
+                    btRouted = true
+                }
+            } else if (am.isBluetoothScoAvailableOffCall) {
+                @Suppress("DEPRECATION") am.startBluetoothSco()
+                @Suppress("DEPRECATION") am.isBluetoothScoOn = true
+                btRouted = true
+            }
+        }
+    }
+
+    private fun clearBluetoothRouting() {
+        if (!btRouted) return
+        btRouted = false
+        val am = getSystemService<android.media.AudioManager>() ?: return
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                am.clearCommunicationDevice()
+            } else {
+                @Suppress("DEPRECATION") am.stopBluetoothSco()
+                @Suppress("DEPRECATION") am.isBluetoothScoOn = false
+            }
+        }
     }
 
     @SuppressLint("MissingPermission") // UI checks RECORD_AUDIO before starting.
@@ -95,6 +129,7 @@ class RecordingService : Service() {
             ?.apply { acquire(MAX_WAKELOCK_MS) }
 
         requestAudioFocus()
+        routeToBluetoothIfAvailable()
 
         val minBuffer = AudioRecord.getMinBufferSize(
             SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
@@ -184,6 +219,7 @@ class RecordingService : Service() {
                 runCatching { record.stop() }
                 record.release()
                 effects.forEach { runCatching { it.release() } }
+                clearBluetoothRouting()
                 runCatching { writer?.close() }
             }
 

@@ -24,6 +24,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val PAYWALL = "paywall"
     const val CALENDAR = "calendar"
+    const val TRASH = "trash"
     const val DETAIL = "detail/{transcriptId}"
     fun record(autoStart: Boolean = false) = "record?autoStart=$autoStart"
     fun detail(id: Long) = "detail/$id"
@@ -79,6 +80,12 @@ fun VocatimNavHost(
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onUpgradeClick = { navController.navigate(Routes.PAYWALL) },
+                onTrashClick = { navController.navigate(Routes.TRASH) },
+            )
+        }
+        composable(Routes.TRASH) {
+            com.vocatim.app.ui.trash.TrashScreen(
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.PAYWALL) {

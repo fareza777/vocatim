@@ -19,9 +19,28 @@ class BackupManager(
     suspend fun export(uri: Uri, password: CharArray): Int = withContext(Dispatchers.IO) {
         val transcripts = repository.observeAll().first()
         val segments = mutableListOf<SegmentEntity>()
-        transcripts.forEach { segments.addAll(repository.getSegments(it.id)) }
+        val attachments = mutableListOf<BackupAttachment>()
+        transcripts.forEach { t ->
+            segments.addAll(repository.getSegments(t.id))
+            repository.getAttachments(t.id).forEach { att ->
+                val file = java.io.File(att.path)
+                if (file.exists()) {
+                    attachments.add(
+                        BackupAttachment(
+                            transcriptId = t.id,
+                            fileName = file.name,
+                            base64 = android.util.Base64.encodeToString(
+                                file.readBytes(), android.util.Base64.NO_WRAP
+                            ),
+                        )
+                    )
+                }
+            }
+        }
 
-        val blob = BackupCodec.encrypt(BackupData(transcripts, segments), password)
+        val blob = BackupCodec.encrypt(
+            BackupData(transcripts, segments, attachments), password
+        )
         context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(blob) }
             ?: throw IOException("Couldn't open backup destination")
         transcripts.size
@@ -51,6 +70,20 @@ class BackupManager(
             if (ownSegments.isNotEmpty()) {
                 repository.appendSegments(newId, ownSegments)
             }
+            // Restore attached photos into app storage.
+            data.attachments
+                .filter { it.transcriptId == transcript.id }
+                .forEach { att ->
+                    runCatching {
+                        val dir = java.io.File(context.filesDir, "attachments")
+                            .apply { mkdirs() }
+                        val out = java.io.File(dir, "restored_${newId}_${att.fileName}")
+                        out.writeBytes(
+                            android.util.Base64.decode(att.base64, android.util.Base64.NO_WRAP)
+                        )
+                        repository.addAttachment(newId, out.absolutePath)
+                    }
+                }
             imported++
         }
         imported

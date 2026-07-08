@@ -15,14 +15,30 @@ interface TranscriptDao {
     @Update
     suspend fun update(transcript: TranscriptEntity)
 
-    @Query("SELECT * FROM transcripts ORDER BY pinned DESC, createdAt DESC")
+    @Query("SELECT * FROM transcripts WHERE deletedAt IS NULL ORDER BY pinned DESC, createdAt DESC")
     fun observeAll(): Flow<List<TranscriptEntity>>
 
-    @Query("SELECT COALESCE(SUM(audioDurationMs), 0) FROM transcripts WHERE status = 'DONE'")
+    @Query(
+        "SELECT COALESCE(SUM(audioDurationMs), 0) FROM transcripts " +
+            "WHERE status = 'DONE' AND deletedAt IS NULL"
+    )
     fun observeTotalDurationMs(): Flow<Long>
 
-    @Query("SELECT COUNT(*) FROM transcripts")
+    @Query("SELECT COUNT(*) FROM transcripts WHERE deletedAt IS NULL")
     fun observeCount(): Flow<Int>
+
+    @Query("SELECT * FROM transcripts WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC")
+    fun observeTrash(): Flow<List<TranscriptEntity>>
+
+    @Query("UPDATE transcripts SET deletedAt = :ts WHERE id = :id")
+    suspend fun setDeletedAt(id: Long, ts: Long?)
+
+    @Query("SELECT * FROM transcripts WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
+    suspend fun getTrashOlderThan(cutoff: Long): List<TranscriptEntity>
+
+    /** Every referenced audio path, trash included — for orphan-file scans. */
+    @Query("SELECT audioPath FROM transcripts WHERE audioPath IS NOT NULL")
+    suspend fun getAllAudioPaths(): List<String>
 
     @Query("UPDATE transcripts SET pinned = :pinned WHERE id = :id")
     suspend fun updatePinned(id: Long, pinned: Boolean)
@@ -31,7 +47,10 @@ interface TranscriptDao {
     suspend fun updateTag(id: Long, tag: String?)
 
     /** Distinct non-empty folder names, for the Home folder filter. */
-    @Query("SELECT DISTINCT tag FROM transcripts WHERE tag IS NOT NULL AND tag != '' ORDER BY tag")
+    @Query(
+        "SELECT DISTINCT tag FROM transcripts " +
+            "WHERE tag IS NOT NULL AND tag != '' AND deletedAt IS NULL ORDER BY tag"
+    )
     fun observeFolders(): Flow<List<String>>
 
     @Query("SELECT * FROM transcripts WHERE id = :id")
@@ -64,7 +83,7 @@ interface TranscriptDao {
     @Query("UPDATE transcripts SET minutes = :minutes WHERE id = :id")
     suspend fun updateMinutes(id: Long, minutes: String?)
 
-    @Query("SELECT * FROM transcripts WHERE status IN (:statuses)")
+    @Query("SELECT * FROM transcripts WHERE status IN (:statuses) AND deletedAt IS NULL")
     suspend fun getByStatuses(statuses: List<String>): List<TranscriptEntity>
 
     @Insert

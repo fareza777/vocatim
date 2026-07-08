@@ -395,24 +395,56 @@ private fun homeSortLabel(sort: HomeSort): String = when (sort) {
 private fun StatsBar(stats: HomeStats) {
     val hours = stats.totalDurationMs / 3_600_000
     val minutes = (stats.totalDurationMs % 3_600_000) / 60_000
-    val durationLabel = if (hours > 0) {
-        stringResource(R.string.home_stats_hours, hours, minutes)
+    val durationValue = if (hours > 0) {
+        stringResource(R.string.home_stat_hours_value, hours, minutes)
     } else {
-        stringResource(R.string.home_stats_minutes, minutes.coerceAtLeast(1))
+        "${minutes.coerceAtLeast(if (stats.totalDurationMs > 0) 1 else 0)}m"
     }
-    Surface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        StatCard(
+            value = stats.transcriptCount.toString(),
+            label = stringResource(R.string.home_stat_notes),
+            modifier = Modifier.weight(1f),
+        )
+        StatCard(
+            value = durationValue,
+            label = stringResource(R.string.home_stat_transcribed),
+            modifier = Modifier.weight(1f),
+        )
+        StatCard(
+            value = stats.weekCount.toString(),
+            label = stringResource(R.string.home_stat_week),
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun StatCard(value: String, label: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
     ) {
-        Text(
-            stringResource(R.string.home_stats, stats.transcriptCount, durationLabel),
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(
+                value,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

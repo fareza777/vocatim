@@ -22,6 +22,7 @@ class VocatimApp : android.app.Application() {
 
     @Inject lateinit var startupRecovery: StartupRecovery
     @Inject lateinit var transcriptRepository: TranscriptRepository
+    @Inject lateinit var autoBackup: com.vocatim.app.data.backup.AutoBackup
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -32,6 +33,7 @@ class VocatimApp : android.app.Application() {
         Notifications.createChannels(this)
         appScope.launch {
             runCatching { startupRecovery.recover() }
+            runCatching { autoBackup.runIfDue() }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
                 runCatching { publishShortcuts() }
             }

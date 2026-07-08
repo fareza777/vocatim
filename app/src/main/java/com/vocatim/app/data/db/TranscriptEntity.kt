@@ -56,5 +56,7 @@ data class TranscriptEntity(
     val minutes: String? = null,
     /** Recording bookmarks as comma-separated millisecond offsets; null if none. */
     val markers: String? = null,
+    /** Soft-delete timestamp: non-null rows live in the trash for 30 days. */
+    val deletedAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

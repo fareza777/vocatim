@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [TranscriptEntity::class, SegmentEntity::class, AttachmentEntity::class],
-    version = 10,
+    version = 11,
     exportSchema = false,
 )
 abstract class VocatimDatabase : RoomDatabase() {
@@ -73,6 +73,12 @@ abstract class VocatimDatabase : RoomDatabase() {
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE segments ADD COLUMN words TEXT")
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transcripts ADD COLUMN deletedAt INTEGER")
             }
         }
     }

@@ -9,13 +9,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/** Snapshot of a deleted transcript, kept in memory to power undo. */
-data class DeletedTranscript(
-    val transcript: TranscriptEntity,
-    val segments: List<SegmentEntity>,
-    val attachments: List<AttachmentEntity>,
-)
-
 class TranscriptRepository(private val dao: TranscriptDao) {
 
     fun observeAll(): Flow<List<TranscriptEntity>> = dao.observeAll()
@@ -73,6 +66,27 @@ class TranscriptRepository(private val dao: TranscriptDao) {
 
     suspend fun updateMinutes(id: Long, minutes: String?) =
         dao.updateMinutes(id, minutes)
+
+    // --- Trash: soft delete with a 30-day retention window ---
+
+    fun observeTrash(): Flow<List<TranscriptEntity>> = dao.observeTrash()
+
+    /** Moves a transcript to the trash; files stay until purge. */
+    suspend fun moveToTrash(id: Long) = dao.setDeletedAt(id, System.currentTimeMillis())
+
+    suspend fun restoreFromTrash(id: Long) = dao.setDeletedAt(id, null)
+
+    suspend fun getAllAudioPaths(): List<String> = dao.getAllAudioPaths()
+
+    /** Hard-deletes trashed rows past the retention window, files included. */
+    suspend fun purgeExpiredTrash(retentionMs: Long = TRASH_RETENTION_MS) {
+        val cutoff = System.currentTimeMillis() - retentionMs
+        dao.getTrashOlderThan(cutoff).forEach { delete(it.id) }
+    }
+
+    companion object {
+        const val TRASH_RETENTION_MS = 30L * 24 * 60 * 60 * 1000
+    }
 
     suspend fun getByStatuses(statuses: List<String>): List<TranscriptEntity> =
         dao.getByStatuses(statuses)
@@ -148,32 +162,6 @@ class TranscriptRepository(private val dao: TranscriptDao) {
             attachments.forEach { File(it.path).delete() }
         }
         dao.deleteById(id)
-    }
-
-    /**
-     * Deletes the DB rows but keeps the files, returning a snapshot so the
-     * delete can be undone. Call [purgeDeletedFiles] once the undo window
-     * closes, or [restore] to bring it back.
-     */
-    suspend fun deleteForUndo(id: Long): DeletedTranscript? {
-        val entity = dao.getById(id) ?: return null
-        val segments = dao.getSegments(id)
-        val attachments = dao.getAttachments(id)
-        dao.deleteById(id) // cascade removes segment + attachment rows
-        return DeletedTranscript(entity, segments, attachments)
-    }
-
-    suspend fun restore(deleted: DeletedTranscript) {
-        val newId = dao.insert(deleted.transcript.copy(id = 0))
-        dao.insertSegments(deleted.segments.map { it.copy(id = 0, transcriptId = newId) })
-        dao.insertAttachments(deleted.attachments.map { it.copy(id = 0, transcriptId = newId) })
-    }
-
-    suspend fun purgeDeletedFiles(deleted: DeletedTranscript) {
-        withContext(Dispatchers.IO) {
-            deleted.transcript.audioPath?.let { File(it).delete() }
-            deleted.attachments.forEach { File(it.path).delete() }
-        }
     }
 
     /** Removes only the audio file to free space, keeping the transcript. */

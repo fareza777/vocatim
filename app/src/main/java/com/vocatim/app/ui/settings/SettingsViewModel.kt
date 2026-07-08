@@ -212,6 +212,30 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPrefs.setCustomMinutesPrompt(prompt) }
     }
 
+    fun setCompressAudio(enabled: Boolean) {
+        viewModelScope.launch { userPrefs.setCompressAudio(enabled) }
+    }
+
+    /** Persists folder access + keystore-wrapped password for weekly backups. */
+    fun enableAutoBackup(uri: android.net.Uri, password: String) {
+        viewModelScope.launch {
+            runCatching {
+                appContext.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }
+            val encrypted = com.vocatim.app.data.backup.KeystoreCrypto.encrypt(password)
+                ?: return@launch
+            userPrefs.setAutoBackup(uri.toString(), encrypted)
+        }
+    }
+
+    fun disableAutoBackup() {
+        viewModelScope.launch { userPrefs.clearAutoBackup() }
+    }
+
     fun download(model: WhisperModel) {
         if (downloadJobs[model]?.isActive == true) return
         downloadJobs[model] = viewModelScope.launch {

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -76,6 +77,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -1613,6 +1615,11 @@ private fun SectionCard(
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    // Smooth reveal: content height animates, chevron rotates in sync.
+    val chevronAngle by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "chevron",
+    )
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -1620,7 +1627,9 @@ private fun SectionCard(
         shadowElevation = 1.dp,
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
@@ -1644,11 +1653,12 @@ private fun SectionCard(
                     Spacer(Modifier.width(6.dp))
                 }
                 Icon(
-                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    Icons.Default.ExpandMore,
                     contentDescription = stringResource(
                         if (expanded) R.string.action_collapse else R.string.action_expand
                     ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.rotate(chevronAngle),
                 )
             }
             if (expanded) content()

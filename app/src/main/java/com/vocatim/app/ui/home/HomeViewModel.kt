@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,7 +46,11 @@ data class HomeItem(
 
 data class QuotaBanner(val remainingMinutes: Long, val exhausted: Boolean)
 
-data class HomeStats(val transcriptCount: Int, val totalDurationMs: Long)
+data class HomeStats(
+    val transcriptCount: Int,
+    val totalDurationMs: Long,
+    val weekCount: Int = 0,
+)
 
 
 enum class HomeSort { NEWEST, OLDEST, LONGEST, TITLE }
@@ -74,8 +79,15 @@ class HomeViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val stats: StateFlow<HomeStats> =
-        combine(repository.observeCount(), repository.observeTotalDurationMs()) { count, duration ->
-            HomeStats(count, duration)
+        repository.observeAll().map { list ->
+            val weekCutoff = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
+            HomeStats(
+                transcriptCount = list.size,
+                totalDurationMs = list
+                    .filter { it.status == TranscriptStatus.DONE }
+                    .sumOf { it.audioDurationMs },
+                weekCount = list.count { it.createdAt >= weekCutoff },
+            )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeStats(0, 0))
 
     private val _query = MutableStateFlow("")
@@ -112,7 +124,9 @@ class HomeViewModel @Inject constructor(
                     query.isBlank() ||
                         t.title.contains(query, ignoreCase = true) ||
                         t.text.contains(query, ignoreCase = true) ||
-                        t.tag?.contains(query, ignoreCase = true) == true
+                        t.tag?.contains(query, ignoreCase = true) == true ||
+                        t.minutes?.contains(query, ignoreCase = true) == true ||
+                        t.summary?.contains(query, ignoreCase = true) == true
                 }
                 .let { sortList(it, sort) }
                 .map { HomeItem(it, progress[it.id], waveforms[it.id]) }
@@ -140,9 +154,7 @@ class HomeViewModel @Inject constructor(
         _selection.value = emptySet()
         viewModelScope.launch {
             ids.forEach { id ->
-                transcriptRepository.deleteForUndo(id)?.let {
-                    transcriptRepository.purgeDeletedFiles(it)
-                }
+                transcriptRepository.moveToTrash(id)
                 _waveforms.value = _waveforms.value - id
             }
         }
@@ -185,48 +197,34 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private var lastDeleted: com.vocatim.app.data.repository.DeletedTranscript? = null
+    private var lastDeletedId: Long? = null
 
     /** Emits the deleted transcript's title so the UI can offer an undo. */
     private val _deletedEvent = MutableStateFlow<String?>(null)
     val deletedEvent: StateFlow<String?> = _deletedEvent
 
+    /** Soft delete: the note moves to the trash (30-day retention). */
     fun delete(id: Long) {
         viewModelScope.launch {
-            // Finalize any prior pending delete before starting a new one.
-            lastDeleted?.let { transcriptRepository.purgeDeletedFiles(it) }
-            val deleted = transcriptRepository.deleteForUndo(id)
+            val entity = transcriptRepository.getById(id) ?: return@launch
+            transcriptRepository.moveToTrash(id)
             _waveforms.value = _waveforms.value - id
-            if (deleted != null) {
-                lastDeleted = deleted
-                _deletedEvent.value = deleted.transcript.title
-            }
+            lastDeletedId = id
+            _deletedEvent.value = entity.title
         }
     }
 
     fun undoDelete() {
-        val deleted = lastDeleted ?: return
-        lastDeleted = null
+        val id = lastDeletedId ?: return
+        lastDeletedId = null
         _deletedEvent.value = null
-        viewModelScope.launch { transcriptRepository.restore(deleted) }
+        viewModelScope.launch { transcriptRepository.restoreFromTrash(id) }
     }
 
-    /** Undo window closed: really remove the files. */
+    /** Undo window closed; the note simply stays in the trash. */
     fun finalizeDelete() {
-        val deleted = lastDeleted ?: return
-        lastDeleted = null
+        lastDeletedId = null
         _deletedEvent.value = null
-        viewModelScope.launch { transcriptRepository.purgeDeletedFiles(deleted) }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        lastDeleted?.let { d ->
-            // App scope: files must still be purged even after the VM dies.
-            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-                transcriptRepository.purgeDeletedFiles(d)
-            }
-        }
     }
 
     fun importTextFile(uri: Uri) {

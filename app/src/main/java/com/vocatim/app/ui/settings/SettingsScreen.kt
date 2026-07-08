@@ -66,6 +66,7 @@ private val LANGUAGES = listOf(
 fun SettingsScreen(
     onBack: () -> Unit,
     onUpgradeClick: () -> Unit = {},
+    onTrashClick: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -310,6 +311,21 @@ fun SettingsScreen(
                 Switch(checked = s.blockScreenshots, onCheckedChange = viewModel::setBlockScreenshots)
             }
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_compress_audio))
+                    Text(
+                        stringResource(R.string.settings_compress_audio_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = s.compressAudio, onCheckedChange = viewModel::setCompressAudio)
+            }
+
             Text(stringResource(R.string.settings_storage), style = MaterialTheme.typography.titleMedium)
             storage?.let { usage ->
                 Text(
@@ -392,6 +408,27 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             CloudAiSection(viewModel)
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onTrashClick),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.trash_title))
+                    Text(
+                        stringResource(R.string.trash_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             Text(stringResource(R.string.settings_backup_section), style = MaterialTheme.typography.titleMedium)
             Text(
@@ -537,6 +574,74 @@ private fun BackupSection(viewModel: SettingsViewModel) {
         OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
             Text(stringResource(R.string.settings_restore))
         }
+    }
+
+    // Weekly automatic backup into a user-chosen folder.
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val autoBackupOn = settings?.autoBackupUri?.isNotBlank() == true
+    var pendingAutoTree by remember { mutableStateOf<android.net.Uri?>(null) }
+    var autoPassword by remember { mutableStateOf("") }
+    val treeLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+    ) { uri -> uri?.let { pendingAutoTree = it; autoPassword = "" } }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.settings_auto_backup))
+            Text(
+                if (autoBackupOn && (settings?.autoBackupLast ?: 0L) > 0L) {
+                    stringResource(
+                        R.string.settings_auto_backup_last,
+                        java.text.DateFormat.getDateInstance()
+                            .format(java.util.Date(settings?.autoBackupLast ?: 0L)),
+                    )
+                } else {
+                    stringResource(R.string.settings_auto_backup_desc)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = autoBackupOn,
+            onCheckedChange = { on ->
+                if (on) treeLauncher.launch(null) else viewModel.disableAutoBackup()
+            },
+        )
+    }
+
+    pendingAutoTree?.let { treeUri ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pendingAutoTree = null },
+            title = { Text(stringResource(R.string.backup_password_title)) },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = autoPassword,
+                    onValueChange = { autoPassword = it },
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.backup_password_hint)) },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    enabled = autoPassword.length >= 4,
+                    onClick = {
+                        viewModel.enableAutoBackup(treeUri, autoPassword)
+                        pendingAutoTree = null
+                        autoPassword = ""
+                    },
+                ) { Text(stringResource(R.string.action_save)) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { pendingAutoTree = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 
     val activeUri = pendingExportUri ?: pendingImportUri
