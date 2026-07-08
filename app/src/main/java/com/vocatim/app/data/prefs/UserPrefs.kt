@@ -44,6 +44,8 @@ data class UserSettings(
     val autoBackupPw: String,
     /** Epoch ms of the last successful automatic backup. */
     val autoBackupLast: Long,
+    /** Selected on-device summarization model id (SummaryModel.id). */
+    val summaryModel: String,
 )
 
 /** User settings applied to new recordings and imports. */
@@ -70,6 +72,7 @@ class UserPrefs(private val context: Context) {
             autoBackupUri = prefs[AUTO_BACKUP_URI_KEY] ?: "",
             autoBackupPw = prefs[AUTO_BACKUP_PW_KEY] ?: "",
             autoBackupLast = prefs[AUTO_BACKUP_LAST_KEY] ?: 0L,
+            summaryModel = prefs[SUMMARY_MODEL_KEY] ?: "qwen2.5-1.5b",
         )
     }
 
@@ -157,6 +160,10 @@ class UserPrefs(private val context: Context) {
         context.prefsDataStore.edit { it[AUTO_BACKUP_LAST_KEY] = ts }
     }
 
+    suspend fun setSummaryModel(id: String) {
+        context.prefsDataStore.edit { it[SUMMARY_MODEL_KEY] = id }
+    }
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
@@ -181,5 +188,6 @@ class UserPrefs(private val context: Context) {
         private val AUTO_BACKUP_PW_KEY = stringPreferencesKey("auto_backup_pw")
         private val AUTO_BACKUP_LAST_KEY =
             androidx.datastore.preferences.core.longPreferencesKey("auto_backup_last")
+        private val SUMMARY_MODEL_KEY = stringPreferencesKey("summary_model")
     }
 }

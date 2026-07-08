@@ -154,7 +154,8 @@ class SummaryService : Service() {
             summarizerFactory.useDiagDir(filesDir)
         }
         val summarizer = summarizerFactory.create(
-            ThreadPolicy(this).threadsFor(settings.threads)
+            ThreadPolicy(this).threadsFor(settings.threads),
+            com.vocatim.app.data.summary.SummaryModel.fromId(settings.summaryModel),
         )
         val summary = summarizer.summarize(
             text = entity.text,
@@ -212,7 +213,8 @@ class SummaryService : Service() {
             summarizerFactory.useDiagDir(filesDir)
         }
         val summarizer = summarizerFactory.create(
-            ThreadPolicy(this).threadsFor(settings.threads)
+            ThreadPolicy(this).threadsFor(settings.threads),
+            com.vocatim.app.data.summary.SummaryModel.fromId(settings.summaryModel),
         )
         val minutes = summarizer.summarize(
             text = entity.text,
@@ -329,8 +331,12 @@ class SummarizerFactory @Inject constructor(
         diagFile = java.io.File(dir, "llm_diag.txt")
     }
 
-    fun create(threads: Int): Summarizer =
-        Summarizer(modelManager, threads, diagFile).also { active = it }
+    fun create(
+        threads: Int,
+        model: com.vocatim.app.data.summary.SummaryModel =
+            com.vocatim.app.data.summary.SummaryModel.DEFAULT,
+    ): Summarizer =
+        Summarizer(modelManager, threads, diagFile, model).also { active = it }
 
     fun cancelActive() {
         active?.cancel()

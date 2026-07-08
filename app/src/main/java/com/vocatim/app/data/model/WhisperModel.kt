@@ -41,6 +41,16 @@ enum class WhisperModel(
         url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
         approxSizeBytes = 190_085_487L,
         sha256 = "ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb",
+    ),
+
+    /** large-v3-turbo: near large-v3 accuracy with a distilled 4-layer
+     *  decoder. The best quality available; noticeably slower than small. */
+    LARGE_TURBO_Q5(
+        id = "large-v3-turbo-q5_0",
+        fileName = "ggml-large-v3-turbo-q5_0.bin",
+        url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin",
+        approxSizeBytes = 574_041_195L,
+        sha256 = "394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2",
     );
 
     companion object {

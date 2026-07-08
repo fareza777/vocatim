@@ -5,7 +5,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -15,31 +14,35 @@ import java.io.RandomAccessFile
 import java.security.MessageDigest
 
 /**
- * Downloads and manages the single summarization GGUF model. Mirrors
+ * Downloads and manages the summarization GGUF models. Mirrors
  * [com.vocatim.app.data.model.ModelManager]: streams to a `.part` file,
- * resumes via HTTP Range, verifies the GGUF magic and (when pinned) SHA-256.
+ * resumes via HTTP Range, verifies the GGUF magic and the pinned SHA-256.
  */
 class SummaryModelManager(
     private val modelsDir: File,
     private val client: OkHttpClient,
-    private val url: String = SummaryModel.URL,
-    private val expectedSha256: String? = SummaryModel.SHA256.takeIf { it.matches(Regex("[0-9a-fA-F]{64}")) },
 ) {
-    private val _state = MutableStateFlow(initialState())
-    val state: StateFlow<ModelState> = _state.asStateFlow()
+    private val states: Map<SummaryModel, MutableStateFlow<ModelState>> =
+        SummaryModel.entries.associateWith { MutableStateFlow(initialState(it)) }
 
-    val modelFile: File get() = File(modelsDir, SummaryModel.FILE_NAME)
-    private val partFile: File get() = File(modelsDir, SummaryModel.FILE_NAME + ".part")
+    fun state(model: SummaryModel): StateFlow<ModelState> = states.getValue(model)
 
-    fun isDownloaded(): Boolean = modelFile.exists()
+    fun modelFile(model: SummaryModel): File = File(modelsDir, model.fileName)
+    private fun partFile(model: SummaryModel): File =
+        File(modelsDir, model.fileName + ".part")
 
-    private fun initialState(): ModelState =
-        if (modelFile.exists()) ModelState.Downloaded else ModelState.NotDownloaded
+    fun isDownloaded(model: SummaryModel): Boolean = modelFile(model).exists()
 
-    suspend fun download() = withContext(Dispatchers.IO) {
-        if (_state.value is ModelState.Downloading) return@withContext
+    private fun initialState(model: SummaryModel): ModelState =
+        if (modelFile(model).exists()) ModelState.Downloaded else ModelState.NotDownloaded
+
+    suspend fun download(model: SummaryModel) = withContext(Dispatchers.IO) {
+        val state = states.getValue(model)
+        if (state.value is ModelState.Downloading) return@withContext
+        val modelFile = modelFile(model)
+        val partFile = partFile(model)
         if (modelFile.exists()) {
-            _state.value = ModelState.Downloaded
+            state.value = ModelState.Downloaded
             return@withContext
         }
         try {
@@ -47,10 +50,10 @@ class SummaryModelManager(
                 throw IOException("Couldn't create models directory")
             }
             val already = if (partFile.exists()) partFile.length() else 0L
-            _state.value = ModelState.Downloading(already, 0L)
+            state.value = ModelState.Downloading(already, 0L)
 
             val request = Request.Builder()
-                .url(url)
+                .url(model.url)
                 .apply { if (already > 0) header("Range", "bytes=$already-") }
                 .build()
 
@@ -70,33 +73,33 @@ class SummaryModelManager(
                             if (read == -1) break
                             out.write(buffer, 0, read)
                             written += read
-                            _state.value = ModelState.Downloading(written, total)
+                            state.value = ModelState.Downloading(written, total)
                         }
                     }
                 }
                 if (total > 0 && partFile.length() != total) {
                     throw IOException("Incomplete download")
                 }
-                verify(partFile)
+                verify(partFile, model.sha256)
             }
             if (!partFile.renameTo(modelFile)) throw IOException("Couldn't finalize model")
-            _state.value = ModelState.Downloaded
+            state.value = ModelState.Downloaded
         } catch (e: CancellationException) {
-            _state.value = initialState()
+            state.value = initialState(model)
             throw e
         } catch (e: Exception) {
-            _state.value = ModelState.Failed(e.message ?: e.javaClass.simpleName)
+            state.value = ModelState.Failed(e.message ?: e.javaClass.simpleName)
             throw e
         }
     }
 
-    fun delete() {
-        modelFile.delete()
-        partFile.delete()
-        _state.value = ModelState.NotDownloaded
+    fun delete(model: SummaryModel) {
+        modelFile(model).delete()
+        partFile(model).delete()
+        states.getValue(model).value = ModelState.NotDownloaded
     }
 
-    private fun verify(file: File) {
+    private fun verify(file: File, expectedSha256: String) {
         try {
             val magic = ByteArray(4)
             file.inputStream().use { if (it.read(magic) != 4) throw IOException("Truncated file") }
@@ -106,11 +109,9 @@ class SummaryModelManager(
             ) {
                 throw IOException("Not a GGUF model file")
             }
-            if (expectedSha256 != null) {
-                val actual = sha256(file)
-                if (!actual.equals(expectedSha256, ignoreCase = true)) {
-                    throw IOException("Checksum mismatch")
-                }
+            val actual = sha256(file)
+            if (!actual.equals(expectedSha256, ignoreCase = true)) {
+                throw IOException("Checksum mismatch")
             }
         } catch (e: Exception) {
             file.delete()

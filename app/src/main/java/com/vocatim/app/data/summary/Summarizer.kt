@@ -15,6 +15,7 @@ class Summarizer(
     private val modelManager: SummaryModelManager,
     private val threads: Int,
     private val diagFile: java.io.File? = null,
+    private val model: SummaryModel = SummaryModel.DEFAULT,
 ) {
     @Volatile private var engine: LlamaSummarizer? = null
 
@@ -38,7 +39,7 @@ class Summarizer(
         if (cleaned.length < MIN_CHARS) {
             throw SummaryException("TOO_SHORT")
         }
-        val modelPath = modelManager.modelFile
+        val modelPath = modelManager.modelFile(model)
         if (!modelPath.exists()) throw SummaryException("MODEL_MISSING")
 
         // Fresh diagnostic trace for this run.
@@ -53,7 +54,10 @@ class Summarizer(
             engine.loadIfNeeded(modelPath.absolutePath)
             onProgress(0.05f)
 
-            val system = systemPrompt(language)
+            // Qwen3 is a hybrid-thinking model: without the soft switch it
+            // spends its whole token budget inside a <think> block.
+            val system = systemPrompt(language) +
+                if (model == SummaryModel.QWEN3) " /no_think" else ""
             val chunks = chunk(cleaned)
 
             val indonesian = language == "id"
@@ -71,7 +75,7 @@ class Summarizer(
                     user = "$transcriptLabel:\n\n$chunkText\n\n$summaryLabel",
                     maxTokens = MAP_TOKENS,
                 )
-                partials.add(partial)
+                partials.add(stripThink(partial))
                 // Map phase occupies the first 85% of the bar.
                 onProgress(0.05f + 0.80f * (i + 1) / chunks.size)
             }
@@ -102,8 +106,9 @@ class Summarizer(
                 }
             }
             onProgress(1f)
-            if (result.isBlank()) throw SummaryException("EMPTY")
-            return result.trim()
+            val cleanedResult = stripThink(result)
+            if (cleanedResult.isBlank()) throw SummaryException("EMPTY")
+            return cleanedResult
         } catch (e: CancellationException) {
             engine.cancel()
             throw e
@@ -127,6 +132,13 @@ class Summarizer(
                 "(write \"None\" if none), ## Action Items. Be faithful; do not " +
                 "invent information:"
         }
+
+    /** Drops Qwen3 reasoning blocks (and stray tags) from model output. */
+    private fun stripThink(text: String): String = text
+        .replace(Regex("(?s)<think>.*?</think>"), "")
+        .replace("<think>", "")
+        .replace("</think>", "")
+        .trim()
 
     /** English display name of a language code, e.g. "id" -> "Indonesian". */
     private fun languageName(code: String): String =

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -69,11 +70,31 @@ class DetailViewModel @Inject constructor(
     val isPro: StateFlow<Boolean> = quotaStore.isProCached
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    val summaryModelState: StateFlow<com.vocatim.app.data.model.ModelState> =
-        summaryModelManager.state
+    /** The user-selected on-device model, from Settings. */
+    private val selectedSummaryModel:
+        StateFlow<com.vocatim.app.data.summary.SummaryModel> =
+        userPrefs.settings
+            .map { com.vocatim.app.data.summary.SummaryModel.fromId(it.summaryModel) }
             .stateIn(
                 viewModelScope, SharingStarted.WhileSubscribed(5_000),
-                summaryModelManager.state.value,
+                com.vocatim.app.data.summary.SummaryModel.DEFAULT,
+            )
+
+    /** Approximate download size of the selected model, for UI copy. */
+    val summaryModelSizeBytes: StateFlow<Long> =
+        selectedSummaryModel.map { it.approxSizeBytes }
+            .stateIn(
+                viewModelScope, SharingStarted.WhileSubscribed(5_000),
+                com.vocatim.app.data.summary.SummaryModel.DEFAULT.approxSizeBytes,
+            )
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val summaryModelState: StateFlow<com.vocatim.app.data.model.ModelState> =
+        selectedSummaryModel
+            .flatMapLatest { summaryModelManager.state(it) }
+            .stateIn(
+                viewModelScope, SharingStarted.WhileSubscribed(5_000),
+                com.vocatim.app.data.model.ModelState.NotDownloaded,
             )
 
     /** null when idle; 0f..1f while a summary job for this transcript runs. */
@@ -86,7 +107,7 @@ class DetailViewModel @Inject constructor(
     fun downloadSummaryModel() {
         if (summaryDownloadJob?.isActive == true) return
         summaryDownloadJob = viewModelScope.launch {
-            runCatching { summaryModelManager.download() }
+            runCatching { summaryModelManager.download(selectedSummaryModel.value) }
         }
     }
 

@@ -312,8 +312,15 @@
     <string name="summary_notif_title">Vocatim AI Summary</string>
     <string name="summary_notif_running">Summarizing…</string>
     <string name="summary_notif_progress">Summarizing… %1$d%%</string>
-    <string name="settings_summary_model">AI summary model</string>
+    <string name="settings_summary_model">On-device AI model</string>
     <string name="settings_summary_model_size">Qwen 1.5B · ±1 GB</string>
+    <string name="settings_summary_model_desc">Powers offline summaries and meeting minutes. Download one, then select it.</string>
+    <string name="summary_model_qwen25">Core</string>
+    <string name="summary_model_qwen25_desc">Qwen2.5 1.5B — proven, stable</string>
+    <string name="summary_model_qwen3">Core+ (recommended)</string>
+    <string name="summary_model_qwen3_desc">Qwen3 1.7B — newer generation, smarter summaries</string>
+    <string name="model_name_turbo">Ultra</string>
+    <string name="model_speed_turbo">Best accuracy available, slow — for important recordings</string>
 
     <!-- Home enhancements -->
     <string name="home_import_cta">Import audio</string>

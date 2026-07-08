@@ -1,0 +1,25 @@
+Vocatim — Play Store assets (ready to upload)
+==============================================
+
+FOLDER: C:\Vocatim\store-assets\
+
+APP ICON (512×512)
+  screenshots\..\vocatim-icon-512x512.png  (copy from assets/ if needed)
+
+FEATURE GRAPHIC (1024×500)
+  ..\assets\vocatim-feature-graphic-1024x500.png
+
+PHONE SCREENSHOTS — upload in this order (1080×2400 JPG, all valid)
+  screenshots\01-home-transcripts.jpg
+  screenshots\02-record-ready.jpg
+  screenshots\03-detail-ai-summary.jpg
+  screenshots\04-export-srt-pdf.jpg
+  screenshots\05-settings-models-id.jpg
+  screenshots\06-calendar.jpg
+  screenshots\07-privacy-settings.jpg
+
+PLAY CONSOLE PATH
+  Grow users → Store presence → Main store listing → Phone screenshots
+
+PRIVACY POLICY URL
+  https://github.com/fareza777/vocatim/blob/main/PRIVACY_POLICY.md

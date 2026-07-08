@@ -1717,6 +1717,7 @@ private fun SummaryBody(
     val isPro by viewModel.isPro.collectAsStateWithLifecycle()
     val modelState by viewModel.summaryModelState.collectAsStateWithLifecycle()
     val progress by viewModel.summaryProgress.collectAsStateWithLifecycle()
+    val modelSizeBytes by viewModel.summaryModelSizeBytes.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1786,7 +1787,7 @@ private fun SummaryBody(
                         stringResource(
                             R.string.summary_downloading,
                             d.downloadedBytes / (1024 * 1024),
-                            (d.totalBytes.takeIf { it > 0 } ?: SummaryModel.APPROX_SIZE_BYTES) / (1024 * 1024),
+                            (d.totalBytes.takeIf { it > 0 } ?: modelSizeBytes) / (1024 * 1024),
                         ),
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -1807,7 +1808,7 @@ private fun SummaryBody(
                     Text(
                         stringResource(
                             R.string.summary_download_pitch,
-                            SummaryModel.APPROX_SIZE_BYTES / (1024 * 1024),
+                            modelSizeBytes / (1024 * 1024),
                         ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

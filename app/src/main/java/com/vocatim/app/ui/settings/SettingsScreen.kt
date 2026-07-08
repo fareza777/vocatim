@@ -338,25 +338,27 @@ fun SettingsScreen(
                 )
             }
 
-            val summaryModelState by viewModel.summaryModelState.collectAsStateWithLifecycle()
-            if (summaryModelState is ModelState.Downloaded) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_summary_model))
-                        Text(
-                            stringResource(R.string.settings_summary_model_size),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text(stringResource(R.string.settings_summary_model), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_summary_model_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val summaryModelStates by viewModel.summaryModelStates.collectAsStateWithLifecycle()
+            Card {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    val models = com.vocatim.app.data.summary.SummaryModel.entries
+                    models.forEachIndexed { index, model ->
+                        SummaryModelRow(
+                            model = model,
+                            state = summaryModelStates[model] ?: ModelState.NotDownloaded,
+                            selected = s.summaryModel == model.id,
+                            onSelect = { viewModel.selectSummaryModel(model) },
+                            onDownload = { viewModel.downloadSummaryModel(model) },
+                            onCancel = { viewModel.cancelSummaryDownload(model) },
+                            onDelete = { viewModel.deleteSummaryModel(model) },
                         )
-                    }
-                    IconButton(onClick = viewModel::deleteSummaryModel) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.debug_delete_model),
-                        )
+                        if (index < models.size - 1) HorizontalDivider()
                     }
                 }
             }
@@ -754,6 +756,84 @@ private fun ModelRow(
     }
 }
 
+@Composable
+private fun SummaryModelRow(
+    model: com.vocatim.app.data.summary.SummaryModel,
+    state: ModelState,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+                selected = selected,
+                onClick = onSelect,
+                enabled = state is ModelState.Downloaded,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(
+                        when (model) {
+                            com.vocatim.app.data.summary.SummaryModel.QWEN25 ->
+                                R.string.summary_model_qwen25
+                            com.vocatim.app.data.summary.SummaryModel.QWEN3 ->
+                                R.string.summary_model_qwen3
+                        }
+                    ),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    stringResource(
+                        when (model) {
+                            com.vocatim.app.data.summary.SummaryModel.QWEN25 ->
+                                R.string.summary_model_qwen25_desc
+                            com.vocatim.app.data.summary.SummaryModel.QWEN3 ->
+                                R.string.summary_model_qwen3_desc
+                        }
+                    ) + " · " + formatMb(model.approxSizeBytes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            when (state) {
+                is ModelState.NotDownloaded ->
+                    Button(onClick = onDownload) { Text(stringResource(R.string.debug_download)) }
+                is ModelState.Downloading ->
+                    OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.debug_cancel)) }
+                is ModelState.Downloaded ->
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.debug_delete_model),
+                        )
+                    }
+                is ModelState.Failed ->
+                    Button(onClick = onDownload) { Text(stringResource(R.string.debug_retry)) }
+            }
+        }
+        if (state is ModelState.Downloading) {
+            if (state.totalBytes > 0) {
+                LinearProgressIndicator(
+                    progress = { state.progress },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+        }
+        if (state is ModelState.Failed) {
+            Text(
+                state.message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LanguagePickerSheet(current: String, onSelect: (String) -> Unit) {
@@ -820,6 +900,7 @@ private fun speedLabel(model: WhisperModel): Int = when (model) {
     WhisperModel.BASE -> R.string.model_speed_base
     WhisperModel.SMALL -> R.string.model_speed_small
     WhisperModel.SMALL_Q5 -> R.string.model_speed_small_q5
+    WhisperModel.LARGE_TURBO_Q5 -> R.string.model_speed_turbo
 }
 
 private fun formatMb(bytes: Long): String = "${bytes / (1024 * 1024)} MB"

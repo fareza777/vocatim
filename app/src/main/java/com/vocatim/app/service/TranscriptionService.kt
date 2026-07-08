@@ -194,9 +194,11 @@ class TranscriptionService : Service() {
         val settings = userPrefs.current()
         if (!settings.autoSummarize) return
         if (!quotaStore.currentIsPro()) return
+        val localModel = com.vocatim.app.data.summary.SummaryModel.fromId(settings.summaryModel)
         val mode = when {
             cloudAiPrefs.config.first().isConfigured -> SummaryService.MODE_CLOUD
-            summaryModelManager.state.value is com.vocatim.app.data.model.ModelState.Downloaded ->
+            summaryModelManager.state(localModel).value
+                is com.vocatim.app.data.model.ModelState.Downloaded ->
                 SummaryService.MODE_LOCAL
             else -> return
         }

@@ -90,12 +90,48 @@ class SettingsViewModel @Inject constructor(
         _cloudTest.value = CloudTestState.Idle
     }
 
-    val summaryModelState: StateFlow<ModelState> =
-        summaryModelManager.state
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), summaryModelManager.state.value)
+    val summaryModelStates:
+        StateFlow<Map<com.vocatim.app.data.summary.SummaryModel, ModelState>> =
+        combine(
+            com.vocatim.app.data.summary.SummaryModel.entries
+                .map { summaryModelManager.state(it) }
+        ) { states ->
+            com.vocatim.app.data.summary.SummaryModel.entries
+                .zip(states.toList()).toMap()
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            com.vocatim.app.data.summary.SummaryModel.entries
+                .associateWith { summaryModelManager.state(it).value },
+        )
 
-    fun deleteSummaryModel() {
-        summaryModelManager.delete()
+    private val summaryDownloadJobs =
+        mutableMapOf<com.vocatim.app.data.summary.SummaryModel, Job>()
+
+    fun selectSummaryModel(model: com.vocatim.app.data.summary.SummaryModel) {
+        viewModelScope.launch { userPrefs.setSummaryModel(model.id) }
+    }
+
+    fun downloadSummaryModel(model: com.vocatim.app.data.summary.SummaryModel) {
+        if (summaryDownloadJobs[model]?.isActive == true) return
+        summaryDownloadJobs[model] = viewModelScope.launch {
+            try {
+                summaryModelManager.download(model)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // ModelState.Failed carries the message.
+            }
+            refreshStorage()
+        }
+    }
+
+    fun cancelSummaryDownload(model: com.vocatim.app.data.summary.SummaryModel) {
+        summaryDownloadJobs.remove(model)?.cancel()
+    }
+
+    fun deleteSummaryModel(model: com.vocatim.app.data.summary.SummaryModel) {
+        summaryModelManager.delete(model)
         refreshStorage()
     }
 
