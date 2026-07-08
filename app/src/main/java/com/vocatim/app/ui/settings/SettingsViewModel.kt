@@ -74,13 +74,10 @@ class SettingsViewModel @Inject constructor(
             _cloudTest.value = CloudTestState.Testing
             val start = System.currentTimeMillis()
             _cloudTest.value = try {
-                cloudClient.chat(
-                    config = com.vocatim.app.data.cloud.CloudAiConfig(
+                cloudClient.ping(
+                    com.vocatim.app.data.cloud.CloudAiConfig(
                         baseUrl.trim(), apiKey.trim(), model.trim()
-                    ),
-                    system = "You are a connectivity check.",
-                    user = "Reply with the single word OK.",
-                    maxTokens = 5,
+                    )
                 )
                 CloudTestState.Ok(System.currentTimeMillis() - start)
             } catch (e: Exception) {

@@ -77,4 +77,43 @@ class CloudAiClient(baseClient: OkHttpClient) {
                 ?: throw CloudAiException("Empty response from provider")
         }
     }
+
+    /**
+     * Connectivity check: verifies the endpoint, key, and model without
+     * requiring non-empty content. Reasoning models (e.g. MiniMax M-series)
+     * can spend a tiny token budget entirely on their <think> block and
+     * return no visible text — that is still a successful connection.
+     */
+    suspend fun ping(config: CloudAiConfig) = withContext(Dispatchers.IO) {
+        if (!config.isConfigured) throw CloudAiException("NOT_CONFIGURED")
+
+        val body = JSONObject().apply {
+            put("model", config.model)
+            put("max_tokens", 16)
+            put("messages", JSONArray().apply {
+                put(JSONObject().put("role", "user").put("content", "ping"))
+            })
+        }
+        val request = Request.Builder()
+            .url(config.baseUrl + "/chat/completions")
+            .header("Authorization", "Bearer " + config.apiKey)
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                val providerMessage = runCatching {
+                    JSONObject(text).optJSONObject("error")?.optString("message")
+                }.getOrNull()
+                throw CloudAiException(
+                    providerMessage?.takeIf { it.isNotBlank() } ?: "HTTP ${response.code}"
+                )
+            }
+            // A well-formed success carries a choices array; anything else
+            // means the endpoint isn't OpenAI-compatible.
+            val ok = runCatching { JSONObject(text).has("choices") }.getOrDefault(false)
+            if (!ok) throw CloudAiException("Unexpected response from provider")
+        }
+    }
 }
