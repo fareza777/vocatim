@@ -238,12 +238,12 @@
     <string name="settings_cloud_test_fail">Failed: %1$s</string>
     <string name="summary_generate_cloud">Summarize (Cloud)</string>
     <string name="action_minutes">Create meeting minutes (AI)</string>
-    <string name="minutes_started">Creating minutes… the result will appear as a new note.</string>
+    <string name="minutes_started">Creating minutes… they will appear on this page when ready.</string>
     <string name="minutes_need_byok">Set up Cloud AI in Settings first.</string>
     <string name="cloud_need_pro">Cloud AI is a Pro feature. Unlock unlimited to use it.</string>
     <string name="minutes_title_prefix">Minutes:</string>
     <string name="minutes_ready_title">Meeting minutes ready</string>
-    <string name="minutes_ready_body">Tap to open the new note.</string>
+    <string name="minutes_ready_body">Tap to view them.</string>
     <string name="summary_failed_title">AI job failed</string>
     <string name="settings_backup_section">Encrypted backup</string>
     <string name="settings_backup_desc">Transcript texts, titles, and settings — AES-encrypted with your password. Audio files are not included.</string>

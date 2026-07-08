@@ -52,6 +52,8 @@ data class TranscriptEntity(
     val summary: String? = null,
     /** Which engine produced [summary]: "local" or "cloud"; null if none. */
     val summarySource: String? = null,
+    /** AI meeting minutes for THIS transcript; null until generated. */
+    val minutes: String? = null,
     /** Recording bookmarks as comma-separated millisecond offsets; null if none. */
     val markers: String? = null,
     val createdAt: Long = System.currentTimeMillis(),

@@ -16,15 +16,15 @@ val InkBorder = Color(0xFF262B3D)
 val TextPrimaryDark = Color(0xFFEDEEF4)
 val TextSecondaryDark = Color(0xFF9AA0B5)
 
-// Light
-val Snow = Color(0xFFF6F7FB)
-val SnowSurface = Color(0xFFFFFFFF)
-val SnowCard = Color(0xFFFFFFFF)
-// Subtle gray so chips/pills separate from white cards in light mode.
-val SnowVariant = Color(0xFFEBECF3)
-val SnowBorder = Color(0xFFE4E6F0)
-val TextPrimaryLight = Color(0xFF171A26)
-val TextSecondaryLight = Color(0xFF5D6373)
+// Light — soft lavender-tinted porcelain, deliberately NOT bright white.
+val Snow = Color(0xFFEFEDF5)
+val SnowSurface = Color(0xFFF6F4FA)
+val SnowCard = Color(0xFFFAF9FD)
+// Subtle gray so chips/pills separate from the cards in light mode.
+val SnowVariant = Color(0xFFE2DFEC)
+val SnowBorder = Color(0xFFD8D4E4)
+val TextPrimaryLight = Color(0xFF1C1B26)
+val TextSecondaryLight = Color(0xFF585667)
 
 val ErrorRed = Color(0xFFFF6B6B)
 val ErrorRedDim = Color(0xFFBA1A1A)

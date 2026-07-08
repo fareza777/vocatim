@@ -177,37 +177,20 @@ class SummaryService : Service() {
         repository.updateSummary(entity.id, summary, SUMMARY_SOURCE_CLOUD)
     }
 
-    /** Formats the transcript into tidy meeting minutes as a NEW note. */
+    /** Formats the transcript into tidy meeting minutes, stored on the
+     *  transcript itself so everything lives on one detail page. */
     private suspend fun runCloudMinutes(
         entity: com.vocatim.app.data.db.TranscriptEntity,
         language: String,
     ) {
-        progressHolder.set(entity.id, 0.3f)
         val minutes = cloudClient.chat(
             config = cloudAiPrefs.current(),
             system = CloudPrompts.minutesSystem(language),
             user = entity.text.take(CloudPrompts.MAX_INPUT_CHARS),
             maxTokens = 8192,
         )
-        val prefix = getString(R.string.minutes_title_prefix)
-        val newId = repository.create(
-            entity.copy(
-                id = 0,
-                title = "$prefix ${entity.title}".take(80),
-                text = minutes,
-                modelId = MODEL_ID_MINUTES,
-                audioPath = null,
-                audioDurationMs = 0,
-                processingTimeMs = 0,
-                summary = null,
-                sourceUri = null,
-                sourceName = null,
-                customTitle = true,
-                completedChunks = 0,
-                createdAt = System.currentTimeMillis(),
-            )
-        )
-        notifyMinutesReady(newId)
+        repository.updateMinutes(entity.id, minutes)
+        notifyMinutesReady(entity.id)
     }
 
     private fun notifyMinutesReady(noteId: Long) {

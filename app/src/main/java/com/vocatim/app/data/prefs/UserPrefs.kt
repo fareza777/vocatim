@@ -45,7 +45,8 @@ class UserPrefs(private val context: Context) {
             threads = prefs[THREADS_KEY] ?: 0,
             appLock = prefs[APP_LOCK_KEY] ?: false,
             blockScreenshots = prefs[BLOCK_SCREENSHOTS_KEY] ?: false,
-            themeMode = prefs[THEME_MODE_KEY] ?: THEME_SYSTEM,
+            // Default identity is the soft light theme; dark stays selectable.
+            themeMode = prefs[THEME_MODE_KEY] ?: THEME_LIGHT,
             textScale = prefs[TEXT_SCALE_KEY] ?: 1.0f,
             onboardingDone = prefs[ONBOARDING_KEY] ?: false,
             customVocab = prefs[CUSTOM_VOCAB_KEY] ?: "",

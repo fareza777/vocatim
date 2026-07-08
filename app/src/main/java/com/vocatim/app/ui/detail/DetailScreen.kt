@@ -316,6 +316,32 @@ fun DetailScreen(
                     val hasAudio = t.audioPath != null
 
                     if (!isMinutes) {
+                        // One page, three tidy collapsible layers:
+                        // minutes -> AI summary -> transcript.
+                        t.minutes?.let { minutesText ->
+                            MinutesSection(
+                                minutes = minutesText,
+                                onCopy = {
+                                    copyToClipboard(context, minutesText)
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.copied),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                },
+                                onShare = { shareText(context, minutesText) },
+                                onRegenerate = {
+                                    if (isProTop && cloudConfiguredTop) {
+                                        viewModel.createMinutes()
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.minutes_started),
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    }
+                                },
+                            )
+                        }
                         SummarySection(
                             summary = t.summary,
                             summarySource = t.summarySource,
@@ -1307,6 +1333,78 @@ private fun SegmentList(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MinutesSection(
+    minutes: String,
+    onCopy: () -> Unit,
+    onShare: () -> Unit,
+    onRegenerate: () -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(true) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { expanded = !expanded },
+            ) {
+                Icon(
+                    Icons.Default.Description,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.width(20.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.detail_minutes_section),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                Pill(stringResource(R.string.summary_cloud_badge))
+                Spacer(Modifier.width(6.dp))
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = stringResource(
+                        if (expanded) R.string.action_collapse else R.string.action_expand
+                    ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (expanded) {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(minutes, style = MaterialTheme.typography.bodyMedium)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(onClick = onCopy) {
+                        Text(stringResource(R.string.action_copy))
+                    }
+                    OutlinedButton(onClick = onShare) {
+                        Text(stringResource(R.string.action_share))
+                    }
+                    OutlinedButton(onClick = onRegenerate) {
+                        Text(stringResource(R.string.summary_regenerate))
+                    }
+                }
+            } else {
+                Text(
+                    minutes,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable { expanded = true },
+                )
             }
         }
     }

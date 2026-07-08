@@ -71,6 +71,9 @@ class TranscriptRepository(private val dao: TranscriptDao) {
     suspend fun setMarkers(id: Long, markers: String?) =
         dao.setMarkers(id, markers)
 
+    suspend fun updateMinutes(id: Long, minutes: String?) =
+        dao.updateMinutes(id, minutes)
+
     suspend fun getByStatuses(statuses: List<String>): List<TranscriptEntity> =
         dao.getByStatuses(statuses)
 

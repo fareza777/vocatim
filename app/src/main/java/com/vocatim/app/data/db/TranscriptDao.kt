@@ -61,6 +61,9 @@ interface TranscriptDao {
     @Query("UPDATE transcripts SET markers = :markers WHERE id = :id")
     suspend fun setMarkers(id: Long, markers: String?)
 
+    @Query("UPDATE transcripts SET minutes = :minutes WHERE id = :id")
+    suspend fun updateMinutes(id: Long, minutes: String?)
+
     @Query("SELECT * FROM transcripts WHERE status IN (:statuses)")
     suspend fun getByStatuses(statuses: List<String>): List<TranscriptEntity>
 

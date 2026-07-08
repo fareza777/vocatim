@@ -36,7 +36,7 @@ class MainActivity : FragmentActivity() {
     /** null = prefs not loaded yet (render nothing to avoid content flash). */
     private var locked by mutableStateOf<Boolean?>(null)
     private var appLockEnabled = false
-    private var themeMode by mutableStateOf(UserPrefs.THEME_SYSTEM)
+    private var themeMode by mutableStateOf(UserPrefs.THEME_LIGHT)
     private var onboardingDone by mutableStateOf<Boolean?>(null)
     /** Set by the Quick Settings tile: jump straight into recording. */
     private var startRecordRequest by mutableStateOf(false)
