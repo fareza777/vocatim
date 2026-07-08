@@ -345,6 +345,46 @@ fun SettingsScreen(
                 }
             }
 
+            Text(stringResource(R.string.settings_minutes_template), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.settings_minutes_template_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                val templates = listOf(
+                    com.vocatim.app.data.cloud.CloudPrompts.TEMPLATE_GENERAL to R.string.minutes_template_general,
+                    com.vocatim.app.data.cloud.CloudPrompts.TEMPLATE_ONE_ON_ONE to R.string.minutes_template_one_on_one,
+                    com.vocatim.app.data.cloud.CloudPrompts.TEMPLATE_INTERVIEW to R.string.minutes_template_interview,
+                    com.vocatim.app.data.cloud.CloudPrompts.TEMPLATE_CUSTOM to R.string.minutes_template_custom,
+                )
+                templates.forEach { (id, label) ->
+                    androidx.compose.material3.FilterChip(
+                        selected = s.minutesTemplate == id,
+                        onClick = { viewModel.setMinutesTemplate(id) },
+                        label = { Text(stringResource(label)) },
+                    )
+                }
+            }
+            if (s.minutesTemplate == com.vocatim.app.data.cloud.CloudPrompts.TEMPLATE_CUSTOM) {
+                var customPrompt by remember(s.customMinutesPrompt) {
+                    mutableStateOf(s.customMinutesPrompt)
+                }
+                androidx.compose.material3.OutlinedTextField(
+                    value = customPrompt,
+                    onValueChange = { customPrompt = it; viewModel.setCustomMinutesPrompt(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    label = { Text(stringResource(R.string.minutes_template_custom)) },
+                    placeholder = { Text(stringResource(R.string.settings_custom_prompt_hint)) },
+                )
+            }
+
             Text(stringResource(R.string.settings_cloud_section), style = MaterialTheme.typography.titleMedium)
             Text(
                 stringResource(R.string.settings_cloud_desc),

@@ -103,7 +103,13 @@ class SummaryService : Service() {
                     }
                     // Minutes are NOT a summary: don't drive the summary
                     // card's progress; the notification carries the status.
-                    MODE_MINUTES -> runCloudMinutes(entity, effectiveLanguage)
+                    // Cloud when configured, otherwise the on-device model.
+                    MODE_MINUTES ->
+                        if (cloudAiPrefs.current().isConfigured) {
+                            runCloudMinutes(entity, effectiveLanguage)
+                        } else {
+                            runLocalMinutes(entity, effectiveLanguage)
+                        }
                     else -> {
                         progressHolder.set(transcriptId, 0f)
                         runLocalSummary(entity, effectiveLanguage)
@@ -183,12 +189,41 @@ class SummaryService : Service() {
         entity: com.vocatim.app.data.db.TranscriptEntity,
         language: String,
     ) {
+        val settings = userPrefs.current()
         val minutes = cloudClient.chat(
             config = cloudAiPrefs.current(),
-            system = CloudPrompts.minutesSystem(language),
+            system = CloudPrompts.minutesSystem(
+                language, settings.minutesTemplate, settings.customMinutesPrompt
+            ),
             user = entity.text.take(CloudPrompts.MAX_INPUT_CHARS),
             maxTokens = 8192,
         )
+        repository.updateMinutes(entity.id, minutes)
+        notifyMinutesReady(entity.id)
+    }
+
+    /** On-device minutes via the local LLM when no cloud key is set up. */
+    private suspend fun runLocalMinutes(
+        entity: com.vocatim.app.data.db.TranscriptEntity,
+        language: String,
+    ) {
+        val settings = userPrefs.current()
+        if (com.vocatim.app.BuildConfig.DEBUG) {
+            summarizerFactory.useDiagDir(filesDir)
+        }
+        val summarizer = summarizerFactory.create(
+            ThreadPolicy(this).threadsFor(settings.threads)
+        )
+        val minutes = summarizer.summarize(
+            text = entity.text,
+            language = language,
+            minutes = true,
+        ) { fraction ->
+            updateNotification(
+                getString(R.string.summary_notif_progress, (fraction * 100).toInt()),
+                entity.id,
+            )
+        }
         repository.updateMinutes(entity.id, minutes)
         notifyMinutesReady(entity.id)
     }

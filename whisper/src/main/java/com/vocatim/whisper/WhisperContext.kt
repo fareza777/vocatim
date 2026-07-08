@@ -48,9 +48,39 @@ class WhisperContext private constructor(private var ptr: Long) {
                 startMs = WhisperLib.getTextSegmentT0(ptr, i) * 10,
                 endMs = WhisperLib.getTextSegmentT1(ptr, i) * 10,
                 text = WhisperLib.getTextSegment(ptr, i),
+                words = extractWords(i),
             )
         }
         WhisperResult(segments, WhisperLib.getDetectedLanguage(ptr))
+    }
+
+    /**
+     * Merges whisper's subword tokens into whole words with time ranges.
+     * Tokens starting with a space begin a new word; bracketed specials
+     * like "[_BEG_]" are metadata, not speech.
+     */
+    private fun extractWords(segment: Int): List<WhisperWord> {
+        val tokenCount = WhisperLib.getTokenCount(ptr, segment)
+        if (tokenCount <= 0) return emptyList()
+        val words = mutableListOf<WhisperWord>()
+        var text = StringBuilder()
+        var start = 0L
+        var end = 0L
+        for (t in 0 until tokenCount) {
+            val tokenText = WhisperLib.getTokenText(ptr, segment, t)
+            if (tokenText.startsWith("[_") || tokenText.startsWith("<|")) continue
+            val t0 = WhisperLib.getTokenT0(ptr, segment, t) * 10
+            val t1 = WhisperLib.getTokenT1(ptr, segment, t) * 10
+            if (tokenText.startsWith(" ") && text.isNotEmpty()) {
+                words.add(WhisperWord(start, end, text.toString()))
+                text = StringBuilder()
+            }
+            if (text.isEmpty()) start = t0
+            text.append(tokenText.trimStart())
+            end = t1
+        }
+        if (text.isNotEmpty()) words.add(WhisperWord(start, end, text.toString()))
+        return words
     }
 
     suspend fun release() = withContext(dispatcher) {

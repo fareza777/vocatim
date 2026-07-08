@@ -51,6 +51,7 @@ class RecordingService : Service() {
     @Inject lateinit var stateHolder: RecordingStateHolder
     @Inject lateinit var repository: TranscriptRepository
     @Inject lateinit var userPrefs: UserPrefs
+    @Inject lateinit var transcriber: com.vocatim.app.data.transcribe.WhisperTranscriber
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var recordJob: Job? = null
@@ -100,7 +101,8 @@ class RecordingService : Service() {
         )
         val record = try {
             AudioRecord(
-                MediaRecorder.AudioSource.MIC,
+                // Speech-tuned input path; the OS applies its own filtering.
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
                 SAMPLE_RATE,
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
@@ -115,9 +117,37 @@ class RecordingService : Service() {
             fail(getString(R.string.record_error_mic))
             return
         }
+        // Hardware DSP where the device offers it: cleaner input -> better
+        // transcription. Effects die with the session; keep refs to release.
+        val effects = buildList {
+            if (android.media.audiofx.NoiseSuppressor.isAvailable()) {
+                runCatching {
+                    android.media.audiofx.NoiseSuppressor.create(record.audioSessionId)
+                        ?.apply { enabled = true }
+                }.getOrNull()?.let(::add)
+            }
+            if (android.media.audiofx.AutomaticGainControl.isAvailable()) {
+                runCatching {
+                    android.media.audiofx.AutomaticGainControl.create(record.audioSessionId)
+                        ?.apply { enabled = true }
+                }.getOrNull()?.let(::add)
+            }
+            if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) {
+                runCatching {
+                    android.media.audiofx.AcousticEchoCanceler.create(record.audioSessionId)
+                        ?.apply { enabled = true }
+                }.getOrNull()?.let(::add)
+            }
+        }
 
         val dir = File(filesDir, "recordings").apply { mkdirs() }
         val outFile = File(dir, "rec_${System.currentTimeMillis()}.wav")
+
+        // Warm the whisper model in parallel so transcription starts the
+        // moment recording stops instead of paying seconds of load time.
+        scope.launch {
+            runCatching { transcriber.preload(userPrefs.model()) }
+        }
 
         recordJob = scope.launch {
             var writer: WavFileWriter? = null
@@ -153,6 +183,7 @@ class RecordingService : Service() {
             } finally {
                 runCatching { record.stop() }
                 record.release()
+                effects.forEach { runCatching { it.release() } }
                 runCatching { writer?.close() }
             }
 

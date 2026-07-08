@@ -125,10 +125,16 @@ fun DetailScreen(
     val cloudConfiguredTop by viewModel.cloudConfigured.collectAsStateWithLifecycle()
     var keyPointsDialog by remember { mutableStateOf<List<String>?>(null) }
     var showMergeDialog by remember { mutableStateOf(false) }
+    var showAskAiDialog by remember { mutableStateOf(false) }
+    var showTranslateDialog by remember { mutableStateOf(false) }
     val isMinutesNote =
         transcript?.modelId == com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES
     // Cloud AI (summaries + minutes) is a paid Pro feature.
     val isProTop by viewModel.isPro.collectAsStateWithLifecycle()
+    val summaryModelStateTop by viewModel.summaryModelState.collectAsStateWithLifecycle()
+    // Minutes run on cloud when configured, else on the local model.
+    val minutesEngineReady = cloudConfiguredTop ||
+        summaryModelStateTop is com.vocatim.app.data.model.ModelState.Downloaded
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     LaunchedEffect(exportEvent) {
@@ -246,6 +252,50 @@ fun DetailScreen(
                                         showMergeDialog = true
                                     },
                                 )
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_ask_ai)) },
+                                    onClick = {
+                                        overflowOpen = false
+                                        when {
+                                            !isProTop -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.cloud_need_pro),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                                onUpgrade()
+                                            }
+                                            cloudConfiguredTop -> showAskAiDialog = true
+                                            else -> Toast.makeText(
+                                                context,
+                                                context.getString(R.string.minutes_need_byok),
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                        }
+                                    },
+                                )
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_translate)) },
+                                    onClick = {
+                                        overflowOpen = false
+                                        when {
+                                            !isProTop -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.cloud_need_pro),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                                onUpgrade()
+                                            }
+                                            cloudConfiguredTop -> showTranslateDialog = true
+                                            else -> Toast.makeText(
+                                                context,
+                                                context.getString(R.string.minutes_need_byok),
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                        }
+                                    },
+                                )
                                 if (!isMinutesNote) androidx.compose.material3.DropdownMenuItem(
                                     text = { Text(stringResource(R.string.action_minutes)) },
                                     onClick = {
@@ -259,7 +309,7 @@ fun DetailScreen(
                                                 ).show()
                                                 onUpgrade()
                                             }
-                                            cloudConfiguredTop -> {
+                                            minutesEngineReady -> {
                                                 viewModel.createMinutes()
                                                 Toast.makeText(
                                                     context,
@@ -269,7 +319,7 @@ fun DetailScreen(
                                             }
                                             else -> Toast.makeText(
                                                 context,
-                                                context.getString(R.string.minutes_need_byok),
+                                                context.getString(R.string.minutes_need_engine),
                                                 Toast.LENGTH_LONG,
                                             ).show()
                                         }
@@ -331,7 +381,7 @@ fun DetailScreen(
                                 },
                                 onShare = { shareText(context, minutesText) },
                                 onRegenerate = {
-                                    if (isProTop && cloudConfiguredTop) {
+                                    if (isProTop && minutesEngineReady) {
                                         viewModel.createMinutes()
                                         Toast.makeText(
                                             context,
@@ -802,6 +852,24 @@ fun DetailScreen(
         )
     }
 
+    if (showAskAiDialog) {
+        AskAiDialog(viewModel = viewModel, onDismiss = { showAskAiDialog = false })
+    }
+
+    if (showTranslateDialog) {
+        TranslateDialog(
+            viewModel = viewModel,
+            onDismiss = {
+                showTranslateDialog = false
+                viewModel.clearTranslation()
+            },
+            onCopy = { text ->
+                copyToClipboard(context, text)
+                Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+            },
+        )
+    }
+
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -938,6 +1006,137 @@ private fun PlaybackWaveform(
 }
 
 @Composable
+private fun AskAiDialog(viewModel: DetailViewModel, onDismiss: () -> Unit) {
+    val history by viewModel.qaHistory.collectAsStateWithLifecycle()
+    val busy by viewModel.qaBusy.collectAsStateWithLifecycle()
+    var question by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.action_ask_ai)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 380.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (history.isEmpty() && !busy) {
+                    Text(
+                        stringResource(R.string.ask_ai_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                history.forEach { entry ->
+                    Text(
+                        entry.question,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(entry.answer, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                if (busy) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                OutlinedTextField(
+                    value = question,
+                    onValueChange = { question = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(stringResource(R.string.ask_ai_hint)) },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = question.isNotBlank() && !busy,
+                onClick = {
+                    viewModel.askAi(question)
+                    question = ""
+                },
+            ) { Text(stringResource(R.string.ask_ai_send)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+private val TRANSLATE_TARGETS = listOf(
+    "English", "Indonesian", "Chinese", "Japanese", "Korean", "Arabic",
+    "Spanish", "French", "German",
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TranslateDialog(
+    viewModel: DetailViewModel,
+    onDismiss: () -> Unit,
+    onCopy: (String) -> Unit,
+) {
+    val translation by viewModel.translation.collectAsStateWithLifecycle()
+    val busy by viewModel.translateBusy.collectAsStateWithLifecycle()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.action_translate)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 380.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                when {
+                    busy -> {
+                        Text(
+                            stringResource(R.string.translate_busy),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                    translation != null -> {
+                        androidx.compose.foundation.text.selection.SelectionContainer {
+                            Text(translation.orEmpty(), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    else -> {
+                        Text(
+                            stringResource(R.string.translate_pick),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            TRANSLATE_TARGETS.forEach { target ->
+                                androidx.compose.material3.AssistChip(
+                                    onClick = { viewModel.translate(target) },
+                                    label = { Text(target) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (translation != null) {
+                TextButton(onClick = { onCopy(translation.orEmpty()) }) {
+                    Text(stringResource(R.string.action_copy))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+@Composable
 private fun ReadingModeDialog(
     title: String,
     text: String,
@@ -1058,6 +1257,30 @@ private fun TranscriptSearchField(query: String, onQuery: (String) -> Unit, matc
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         ),
     )
+}
+
+/** Segment text with the currently-spoken word highlighted. */
+private fun karaokeText(
+    segment: com.vocatim.app.data.db.SegmentEntity,
+    positionMs: Long,
+    highlight: Color,
+): AnnotatedString {
+    val words = com.vocatim.app.data.transcribe.WordTimings.decode(segment.words)
+    val plain = segment.text.trim()
+    if (words.isEmpty()) return AnnotatedString(plain)
+    return buildAnnotatedString {
+        append(plain)
+        val current = words.firstOrNull { positionMs in it.startMs..it.endMs } ?: return@buildAnnotatedString
+        // Locate that word's characters inside the segment text.
+        val idx = plain.indexOf(current.text.trim())
+        if (idx >= 0) {
+            addStyle(
+                SpanStyle(background = highlight),
+                idx,
+                (idx + current.text.trim().length).coerceAtMost(plain.length),
+            )
+        }
+    }
 }
 
 private fun countMatches(text: String, query: String): Int {
@@ -1315,7 +1538,13 @@ private fun SegmentList(
                         else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        segment.text.trim(),
+                        // Karaoke: inside the active segment, the word being
+                        // spoken right now is highlighted.
+                        if (active) karaokeText(
+                            segment,
+                            positionMs,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                        ) else AnnotatedString(segment.text.trim()),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = MaterialTheme.typography.bodyMedium.fontSize * textScale,
                             lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * textScale,
@@ -1371,7 +1600,7 @@ private fun MinutesSection(
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f),
                 )
-                Pill(stringResource(R.string.summary_cloud_badge))
+                Pill(stringResource(R.string.card_badge_ai))
                 Spacer(Modifier.width(6.dp))
                 Icon(
                     if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,

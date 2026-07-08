@@ -204,6 +204,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPrefs.setAutoSummarize(enabled) }
     }
 
+    fun setMinutesTemplate(template: String) {
+        viewModelScope.launch { userPrefs.setMinutesTemplate(template) }
+    }
+
+    fun setCustomMinutesPrompt(prompt: String) {
+        viewModelScope.launch { userPrefs.setCustomMinutesPrompt(prompt) }
+    }
+
     fun download(model: WhisperModel) {
         if (downloadJobs[model]?.isActive == true) return
         downloadJobs[model] = viewModelScope.launch {

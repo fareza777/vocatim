@@ -300,9 +300,9 @@ fun HomeScreen(
                             item(key = "header_$label") {
                                 Text(
                                     label,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(start = 4.dp, top = 8.dp),
                                 )
                             }
                         }
@@ -736,6 +736,8 @@ private fun TranscriptCard(
         border = if (selected) androidx.compose.foundation.BorderStroke(
             1.dp, MaterialTheme.colorScheme.primary
         ) else null,
+        // Soft lift so cards read as layers on the porcelain background.
+        shadowElevation = 1.dp,
     ) {
         Column(
             modifier = Modifier.padding(18.dp),

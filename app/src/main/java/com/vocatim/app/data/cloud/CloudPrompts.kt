@@ -15,6 +15,40 @@ object CloudPrompts {
             "the transcript; do not invent facts. Reply in ${languageName(language)}."
     }
 
+    const val TEMPLATE_GENERAL = "general"
+    const val TEMPLATE_ONE_ON_ONE = "one_on_one"
+    const val TEMPLATE_INTERVIEW = "interview"
+    const val TEMPLATE_CUSTOM = "custom"
+
+    /** Minutes prompt for the chosen [template]; custom uses [customPrompt]. */
+    fun minutesSystem(
+        language: String,
+        template: String = TEMPLATE_GENERAL,
+        customPrompt: String = "",
+    ): String = when (template) {
+        TEMPLATE_CUSTOM ->
+            if (customPrompt.isNotBlank()) {
+                customPrompt +
+                    "\nWrite in ${languageName(language)}. Be faithful to the " +
+                    "transcript; do not invent information."
+            } else minutesSystem(language)
+        TEMPLATE_ONE_ON_ONE ->
+            "You are a professional note-taker for 1-on-1 meetings. Convert the " +
+                "transcript into clean Markdown notes in ${languageName(language)}, " +
+                "structured as: # 1-on-1 Notes, **Participants** (if identifiable), " +
+                "## Updates & Wins, ## Challenges & Blockers, ## Feedback, " +
+                "## Agreed Next Steps (- [ ] task — owner — deadline if mentioned). " +
+                "Be faithful to the transcript; do not invent information."
+        TEMPLATE_INTERVIEW ->
+            "You are a professional interview note-taker. Convert the transcript " +
+                "into clean Markdown notes in ${languageName(language)}, structured " +
+                "as: # Interview Notes, **Interviewee & Role** (if identifiable), " +
+                "**Overall Impression** (2-3 sentences), ## Key Questions & Answers, " +
+                "## Strengths, ## Concerns, ## Follow-ups. Be faithful to the " +
+                "transcript; do not invent information."
+        else -> minutesSystem(language)
+    }
+
     fun minutesSystem(language: String): String = if (language == "id") {
         "Anda adalah notulis profesional. Ubah transkrip rapat berikut menjadi " +
             "notulen rapat yang rapi dalam bahasa Indonesia, format Markdown, dengan " +
@@ -36,6 +70,19 @@ object CloudPrompts {
             "mentioned — deadline if mentioned). Be faithful to the transcript; do " +
             "not invent information. Polish spoken language into clear writing."
     }
+
+    /** Grounded Q&A over one transcript. */
+    fun qaSystem(language: String): String =
+        "You answer questions about a meeting/voice-note transcript the user " +
+            "provides. Answer concisely in ${languageName(language)}, citing only " +
+            "what the transcript actually says. If the transcript does not contain " +
+            "the answer, say so plainly instead of guessing."
+
+    /** Faithful translation of a transcript or minutes. */
+    fun translateSystem(targetLanguage: String): String =
+        "Translate the user's text into $targetLanguage. Preserve the meaning, " +
+            "tone, structure, and any Markdown formatting. Output ONLY the " +
+            "translation, no preamble."
 
     private fun languageName(code: String): String =
         java.util.Locale(code).getDisplayLanguage(java.util.Locale.ENGLISH)

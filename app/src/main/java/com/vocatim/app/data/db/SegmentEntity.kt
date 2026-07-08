@@ -24,4 +24,6 @@ data class SegmentEntity(
     val startMs: Long,
     val endMs: Long,
     val text: String,
+    /** Word timings as JSON [[startMs,endMs,"word"],...]; null when absent. */
+    val words: String? = null,
 )

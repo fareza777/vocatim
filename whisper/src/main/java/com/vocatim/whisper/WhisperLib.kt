@@ -54,6 +54,10 @@ internal class WhisperLib {
         external fun getTextSegment(contextPtr: Long, index: Int): String
         external fun getTextSegmentT0(contextPtr: Long, index: Int): Long
         external fun getTextSegmentT1(contextPtr: Long, index: Int): Long
+        external fun getTokenCount(contextPtr: Long, segment: Int): Int
+        external fun getTokenText(contextPtr: Long, segment: Int, token: Int): String
+        external fun getTokenT0(contextPtr: Long, segment: Int, token: Int): Long
+        external fun getTokenT1(contextPtr: Long, segment: Int, token: Int): Long
         external fun getDetectedLanguage(contextPtr: Long): String?
         external fun getSystemInfo(): String
     }

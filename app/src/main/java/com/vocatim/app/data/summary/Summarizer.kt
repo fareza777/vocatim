@@ -31,6 +31,7 @@ class Summarizer(
     suspend fun summarize(
         text: String,
         language: String,
+        minutes: Boolean = false,
         onProgress: (Float) -> Unit,
     ): String {
         val cleaned = text.trim()
@@ -75,21 +76,30 @@ class Summarizer(
                 onProgress(0.05f + 0.80f * (i + 1) / chunks.size)
             }
 
-            val result = if (partials.size == 1) {
-                partials.first()
-            } else {
-                val reduceInstruction = if (indonesian) {
-                    "Gabungkan ringkasan-ringkasan bagian ini menjadi satu set poin " +
-                        "akhir yang berbeda dan tidak tumpang tindih, dalam bahasa Indonesia:"
-                } else {
-                    "Combine these partial summaries into one final set of distinct, " +
-                        "non-overlapping bullet points, written in ${languageName(language)}:"
-                }
-                engine.chat(
+            val result = when {
+                // Minutes: reshape the (partial) summaries into a structured
+                // document. A 1.5B model handles this best as a final pass.
+                minutes -> engine.chat(
                     system = system,
-                    user = "$reduceInstruction\n\n" + partials.joinToString("\n\n"),
-                    maxTokens = REDUCE_TOKENS,
+                    user = minutesInstruction(indonesian, language) + "\n\n" +
+                        partials.joinToString("\n\n"),
+                    maxTokens = MINUTES_TOKENS,
                 )
+                partials.size == 1 -> partials.first()
+                else -> {
+                    val reduceInstruction = if (indonesian) {
+                        "Gabungkan ringkasan-ringkasan bagian ini menjadi satu set poin " +
+                            "akhir yang berbeda dan tidak tumpang tindih, dalam bahasa Indonesia:"
+                    } else {
+                        "Combine these partial summaries into one final set of distinct, " +
+                            "non-overlapping bullet points, written in ${languageName(language)}:"
+                    }
+                    engine.chat(
+                        system = system,
+                        user = "$reduceInstruction\n\n" + partials.joinToString("\n\n"),
+                        maxTokens = REDUCE_TOKENS,
+                    )
+                }
             }
             onProgress(1f)
             if (result.isBlank()) throw SummaryException("EMPTY")
@@ -102,6 +112,21 @@ class Summarizer(
             this.engine = null
         }
     }
+
+    private fun minutesInstruction(indonesian: Boolean, language: String): String =
+        if (indonesian) {
+            "Susun poin-poin berikut menjadi notulen rapat rapi berformat Markdown " +
+                "dalam bahasa Indonesia dengan bagian: # Notulen Rapat, **Topik**, " +
+                "**Ringkasan** (2-3 kalimat), ## Poin Pembahasan, ## Keputusan " +
+                "(tulis \"Tidak ada\" bila tidak ada), ## Action Item. " +
+                "Setia pada isi; jangan menambah informasi:"
+        } else {
+            "Turn the following points into clean Markdown meeting minutes in " +
+                "${languageName(language)} with sections: # Meeting Minutes, **Topic**, " +
+                "**Summary** (2-3 sentences), ## Discussion Points, ## Decisions " +
+                "(write \"None\" if none), ## Action Items. Be faithful; do not " +
+                "invent information:"
+        }
 
     /** English display name of a language code, e.g. "id" -> "Indonesian". */
     private fun languageName(code: String): String =
@@ -150,5 +175,6 @@ class Summarizer(
         const val CHUNK_CHARS = 8_800
         const val MAP_TOKENS = 320
         const val REDUCE_TOKENS = 480
+        const val MINUTES_TOKENS = 700
     }
 }

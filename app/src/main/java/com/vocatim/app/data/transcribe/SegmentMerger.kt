@@ -16,6 +16,13 @@ object SegmentMerger {
                     startMs = s.startMs + chunk.startMs,
                     endMs = s.endMs + chunk.startMs,
                     text = s.text,
+                    words = s.words.map { w ->
+                        com.vocatim.whisper.WhisperWord(
+                            startMs = w.startMs + chunk.startMs,
+                            endMs = w.endMs + chunk.startMs,
+                            text = w.text,
+                        )
+                    },
                 )
             }
             .filter { s ->

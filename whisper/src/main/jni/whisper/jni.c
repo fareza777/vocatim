@@ -67,6 +67,8 @@ Java_com_vocatim_whisper_WhisperLib_00024Companion_fullTranscribe(
     // Anti-hallucination: drop blanks and non-speech tokens on silence/music.
     params.suppress_blank   = true;
     params.suppress_nst     = true;
+    // Per-token times enable word-level highlighting during playback.
+    params.token_timestamps = true;
     if (beam_size > 0) {
         params.beam_search.beam_size = beam_size;
     }
@@ -127,6 +129,42 @@ Java_com_vocatim_whisper_WhisperLib_00024Companion_getTextSegmentT1(
     UNUSED(thiz);
     struct whisper_context *context = (struct whisper_context *) context_ptr;
     return whisper_full_get_segment_t1(context, index);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_vocatim_whisper_WhisperLib_00024Companion_getTokenCount(
+        JNIEnv *env, jobject thiz, jlong context_ptr, jint segment) {
+    UNUSED(env);
+    UNUSED(thiz);
+    struct whisper_context *context = (struct whisper_context *) context_ptr;
+    return whisper_full_n_tokens(context, segment);
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_vocatim_whisper_WhisperLib_00024Companion_getTokenText(
+        JNIEnv *env, jobject thiz, jlong context_ptr, jint segment, jint token) {
+    UNUSED(thiz);
+    struct whisper_context *context = (struct whisper_context *) context_ptr;
+    const char *text = whisper_full_get_token_text(context, segment, token);
+    return (*env)->NewStringUTF(env, text);
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_vocatim_whisper_WhisperLib_00024Companion_getTokenT0(
+        JNIEnv *env, jobject thiz, jlong context_ptr, jint segment, jint token) {
+    UNUSED(env);
+    UNUSED(thiz);
+    struct whisper_context *context = (struct whisper_context *) context_ptr;
+    return whisper_full_get_token_data(context, segment, token).t0;
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_vocatim_whisper_WhisperLib_00024Companion_getTokenT1(
+        JNIEnv *env, jobject thiz, jlong context_ptr, jint segment, jint token) {
+    UNUSED(env);
+    UNUSED(thiz);
+    struct whisper_context *context = (struct whisper_context *) context_ptr;
+    return whisper_full_get_token_data(context, segment, token).t1;
 }
 
 JNIEXPORT jstring JNICALL

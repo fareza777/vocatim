@@ -52,7 +52,8 @@ class DetailViewModel @Inject constructor(
     summaryProgressHolder: com.vocatim.app.data.summary.SummaryProgressHolder,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
     userPrefs: com.vocatim.app.data.prefs.UserPrefs,
-    cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
+    private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
+    private val cloudClient: com.vocatim.app.data.cloud.CloudAiClient,
 ) : ViewModel() {
 
     /** True when the user has set up a BYOK cloud provider in Settings. */
@@ -107,6 +108,67 @@ class DetailViewModel @Inject constructor(
 
     fun cancelSummary() {
         com.vocatim.app.service.SummaryService.cancel(appContext)
+    }
+
+    // --- Ask AI: grounded Q&A over this transcript (BYOK) ---
+    data class QaEntry(val question: String, val answer: String)
+
+    private val _qaHistory = MutableStateFlow<List<QaEntry>>(emptyList())
+    val qaHistory: StateFlow<List<QaEntry>> = _qaHistory.asStateFlow()
+
+    private val _qaBusy = MutableStateFlow(false)
+    val qaBusy: StateFlow<Boolean> = _qaBusy.asStateFlow()
+
+    fun askAi(question: String) {
+        val text = currentText()
+        if (question.isBlank() || text.isBlank() || _qaBusy.value) return
+        viewModelScope.launch {
+            _qaBusy.value = true
+            val language = transcript.value?.let {
+                it.language.takeIf { l -> l != "auto" } ?: it.detectedLanguage
+            } ?: "en"
+            val answer = runCatching {
+                cloudClient.chat(
+                    config = cloudAiPrefs.current(),
+                    system = com.vocatim.app.data.cloud.CloudPrompts.qaSystem(language),
+                    user = "Transcript:\n" +
+                        text.take(com.vocatim.app.data.cloud.CloudPrompts.MAX_INPUT_CHARS) +
+                        "\n\nQuestion: " + question.trim(),
+                    maxTokens = 2048,
+                )
+            }.getOrElse { it.message ?: "Request failed" }
+            _qaHistory.value = _qaHistory.value + QaEntry(question.trim(), answer)
+            _qaBusy.value = false
+        }
+    }
+
+    // --- Translate transcript/minutes to any language (BYOK) ---
+    private val _translation = MutableStateFlow<String?>(null)
+    val translation: StateFlow<String?> = _translation.asStateFlow()
+
+    private val _translateBusy = MutableStateFlow(false)
+    val translateBusy: StateFlow<Boolean> = _translateBusy.asStateFlow()
+
+    fun translate(targetLanguage: String) {
+        val text = currentText()
+        if (text.isBlank() || _translateBusy.value) return
+        viewModelScope.launch {
+            _translateBusy.value = true
+            _translation.value = runCatching {
+                cloudClient.chat(
+                    config = cloudAiPrefs.current(),
+                    system = com.vocatim.app.data.cloud.CloudPrompts
+                        .translateSystem(targetLanguage),
+                    user = text.take(com.vocatim.app.data.cloud.CloudPrompts.MAX_INPUT_CHARS),
+                    maxTokens = 8192,
+                )
+            }.getOrElse { it.message ?: "Translation failed" }
+            _translateBusy.value = false
+        }
+    }
+
+    fun clearTranslation() {
+        _translation.value = null
     }
 
     fun clearSummary() {

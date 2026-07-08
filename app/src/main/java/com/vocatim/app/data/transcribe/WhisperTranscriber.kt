@@ -49,6 +49,11 @@ class WhisperTranscriber(
         )
     }
 
+    /** Loads the model ahead of time so the first chunk starts instantly. */
+    suspend fun preload(model: WhisperModel) = mutex.withLock {
+        runCatching { loadContextLocked(model) }
+    }
+
     suspend fun release() = mutex.withLock {
         context?.release()
         context = null

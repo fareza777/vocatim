@@ -184,6 +184,7 @@ class TranscriptionRunner(
                                 startMs = it.startMs,
                                 endMs = it.endMs,
                                 text = it.text,
+                                words = WordTimings.encode(it.words),
                             )
                         },
                         text = SegmentMerger.mergeText(allSegments),

@@ -32,6 +32,10 @@ data class UserSettings(
     val highAccuracy: Boolean,
     /** Run the AI summary automatically once transcription finishes (Pro). */
     val autoSummarize: Boolean,
+    /** Minutes format: general, one_on_one, interview, or custom. */
+    val minutesTemplate: String,
+    /** User-written minutes prompt, used when [minutesTemplate] is custom. */
+    val customMinutesPrompt: String,
 )
 
 /** User settings applied to new recordings and imports. */
@@ -52,6 +56,8 @@ class UserPrefs(private val context: Context) {
             customVocab = prefs[CUSTOM_VOCAB_KEY] ?: "",
             highAccuracy = prefs[HIGH_ACCURACY_KEY] ?: false,
             autoSummarize = prefs[AUTO_SUMMARIZE_KEY] ?: false,
+            minutesTemplate = prefs[MINUTES_TEMPLATE_KEY] ?: "general",
+            customMinutesPrompt = prefs[CUSTOM_MINUTES_PROMPT_KEY] ?: "",
         )
     }
 
@@ -109,6 +115,14 @@ class UserPrefs(private val context: Context) {
         context.prefsDataStore.edit { it[AUTO_SUMMARIZE_KEY] = enabled }
     }
 
+    suspend fun setMinutesTemplate(template: String) {
+        context.prefsDataStore.edit { it[MINUTES_TEMPLATE_KEY] = template }
+    }
+
+    suspend fun setCustomMinutesPrompt(prompt: String) {
+        context.prefsDataStore.edit { it[CUSTOM_MINUTES_PROMPT_KEY] = prompt.take(1000) }
+    }
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
@@ -126,5 +140,7 @@ class UserPrefs(private val context: Context) {
         private val CUSTOM_VOCAB_KEY = stringPreferencesKey("custom_vocab")
         private val HIGH_ACCURACY_KEY = booleanPreferencesKey("high_accuracy")
         private val AUTO_SUMMARIZE_KEY = booleanPreferencesKey("auto_summarize")
+        private val MINUTES_TEMPLATE_KEY = stringPreferencesKey("minutes_template")
+        private val CUSTOM_MINUTES_PROMPT_KEY = stringPreferencesKey("custom_minutes_prompt")
     }
 }
