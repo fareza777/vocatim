@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [TranscriptEntity::class, SegmentEntity::class, AttachmentEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class VocatimDatabase : RoomDatabase() {
@@ -54,6 +54,13 @@ abstract class VocatimDatabase : RoomDatabase() {
                     "CREATE INDEX IF NOT EXISTS index_attachments_transcriptId " +
                         "ON attachments(transcriptId)"
                 )
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transcripts ADD COLUMN summarySource TEXT")
+                db.execSQL("ALTER TABLE transcripts ADD COLUMN markers TEXT")
             }
         }
     }

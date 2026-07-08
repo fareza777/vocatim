@@ -110,7 +110,7 @@ class DetailViewModel @Inject constructor(
     }
 
     fun clearSummary() {
-        viewModelScope.launch { repository.updateSummary(transcriptId, null) }
+        viewModelScope.launch { repository.updateSummary(transcriptId, null, null) }
     }
 
     /** Reading-comfort multiplier for the transcript text. */
@@ -379,16 +379,56 @@ class DetailViewModel @Inject constructor(
     fun exportPdf(uri: Uri) {
         viewModelScope.launch {
             try {
-                val title = transcript.value?.title ?: "Transcript"
+                val t = transcript.value
+                val title = t?.title ?: "Transcript"
                 val photos = repository.getAttachments(transcriptId).map { it.path }
+                val meta = t?.let(::exportMeta)
                 withContext(Dispatchers.IO) {
-                    PdfExporter.write(appContext, uri, title, currentText(), photos)
+                    PdfExporter.write(appContext, uri, title, currentText(), photos, meta)
                 }
                 _exportEvent.value = ExportEvent.Success
             } catch (e: Exception) {
                 _exportEvent.value = ExportEvent.Failure(e.message ?: "export failed")
             }
         }
+    }
+
+    private fun exportMeta(t: TranscriptEntity): String {
+        val date = java.text.SimpleDateFormat("MMMM d, yyyy · HH:mm", java.util.Locale.US)
+            .format(java.util.Date(t.createdAt))
+        return if (t.audioDurationMs > 0) "$date · ${formatClock(t.audioDurationMs)}" else date
+    }
+
+    /** Renders the note to a cached PDF and hands back a shareable URI. */
+    fun sharePdf(onReady: (Uri) -> Unit) {
+        viewModelScope.launch {
+            val t = transcript.value ?: return@launch
+            val uri = withContext(Dispatchers.IO) {
+                runCatching {
+                    val dir = java.io.File(appContext.cacheDir, "share").apply { mkdirs() }
+                    val file = java.io.File(
+                        dir, com.vocatim.app.ui.common.exportFileName(t.title, "pdf")
+                    )
+                    val provider = androidx.core.content.FileProvider.getUriForFile(
+                        appContext, "${appContext.packageName}.fileprovider", file
+                    )
+                    val photos = repository.getAttachments(transcriptId).map { it.path }
+                    PdfExporter.write(appContext, provider, t.title, currentText(), photos, exportMeta(t))
+                    provider
+                }.getOrNull()
+            } ?: return@launch
+            onReady(uri)
+        }
+    }
+
+    /** FileProvider URI for the audio file, or null if there is none. */
+    fun shareAudioUri(): Uri? {
+        val path = transcript.value?.audioPath ?: return null
+        return runCatching {
+            androidx.core.content.FileProvider.getUriForFile(
+                appContext, "${appContext.packageName}.fileprovider", java.io.File(path)
+            )
+        }.getOrNull()
     }
 
     fun copyWithTimestamps(): String {

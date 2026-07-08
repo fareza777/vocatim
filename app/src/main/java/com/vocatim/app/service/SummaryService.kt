@@ -160,7 +160,7 @@ class SummaryService : Service() {
                 entity.id,
             )
         }
-        repository.updateSummary(entity.id, summary)
+        repository.updateSummary(entity.id, summary, SUMMARY_SOURCE_LOCAL)
     }
 
     private suspend fun runCloudSummary(
@@ -174,7 +174,7 @@ class SummaryService : Service() {
             user = entity.text.take(CloudPrompts.MAX_INPUT_CHARS),
             maxTokens = 2048,
         )
-        repository.updateSummary(entity.id, summary)
+        repository.updateSummary(entity.id, summary, SUMMARY_SOURCE_CLOUD)
     }
 
     /** Formats the transcript into tidy meeting minutes as a NEW note. */
@@ -276,6 +276,10 @@ class SummaryService : Service() {
         /** Sentinel [TranscriptEntity.modelId] marking an AI meeting-minutes
          *  note, so the detail screen renders it as minutes, not a transcript. */
         const val MODEL_ID_MINUTES = "minutes"
+
+        /** [TranscriptEntity.summarySource] values. */
+        const val SUMMARY_SOURCE_LOCAL = "local"
+        const val SUMMARY_SOURCE_CLOUD = "cloud"
 
         fun start(context: Context, transcriptId: Long, mode: String = MODE_LOCAL) {
             context.startForegroundService(

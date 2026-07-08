@@ -65,8 +65,11 @@ class TranscriptRepository(private val dao: TranscriptDao) {
     suspend fun updateCheckpoint(id: Long, completedChunks: Int) =
         dao.updateCheckpoint(id, completedChunks)
 
-    suspend fun updateSummary(id: Long, summary: String?) =
-        dao.updateSummary(id, summary)
+    suspend fun updateSummary(id: Long, summary: String?, source: String? = null) =
+        dao.updateSummary(id, summary, source)
+
+    suspend fun setMarkers(id: Long, markers: String?) =
+        dao.setMarkers(id, markers)
 
     suspend fun getByStatuses(statuses: List<String>): List<TranscriptEntity> =
         dao.getByStatuses(statuses)

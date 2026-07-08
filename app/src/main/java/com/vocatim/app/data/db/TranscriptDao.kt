@@ -55,8 +55,11 @@ interface TranscriptDao {
     @Query("UPDATE transcripts SET completedChunks = :completedChunks WHERE id = :id")
     suspend fun updateCheckpoint(id: Long, completedChunks: Int)
 
-    @Query("UPDATE transcripts SET summary = :summary WHERE id = :id")
-    suspend fun updateSummary(id: Long, summary: String?)
+    @Query("UPDATE transcripts SET summary = :summary, summarySource = :source WHERE id = :id")
+    suspend fun updateSummary(id: Long, summary: String?, source: String?)
+
+    @Query("UPDATE transcripts SET markers = :markers WHERE id = :id")
+    suspend fun setMarkers(id: Long, markers: String?)
 
     @Query("SELECT * FROM transcripts WHERE status IN (:statuses)")
     suspend fun getByStatuses(statuses: List<String>): List<TranscriptEntity>

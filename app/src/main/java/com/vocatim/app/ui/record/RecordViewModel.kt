@@ -3,6 +3,8 @@ package com.vocatim.app.ui.record
 import android.content.Context
 import android.os.StatFs
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.vocatim.app.data.repository.TranscriptRepository
 import com.vocatim.app.service.RecordingService
 import com.vocatim.app.service.RecordingState
 import com.vocatim.app.service.RecordingStateHolder
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 enum class StorageStatus { OK, LOW, FULL }
@@ -19,11 +22,35 @@ enum class StorageStatus { OK, LOW, FULL }
 @HiltViewModel
 class RecordViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
+    private val repository: TranscriptRepository,
     stateHolder: RecordingStateHolder,
 ) : ViewModel() {
 
     val state: StateFlow<RecordingState> = stateHolder.state
     val finished: SharedFlow<Long> = stateHolder.finished
+
+    // Bookmarks captured during this recording (elapsed ms), saved on finish.
+    private val markerTimes = mutableListOf<Long>()
+    private val _markers = MutableStateFlow<List<Long>>(emptyList())
+    val markers: StateFlow<List<Long>> = _markers.asStateFlow()
+
+    /** Records a bookmark at the current elapsed time. */
+    fun addMarker() {
+        val s = state.value
+        if (s is RecordingState.Active) {
+            markerTimes.add(s.elapsedMs)
+            _markers.value = markerTimes.toList()
+        }
+    }
+
+    /** Persists captured bookmarks onto the finished transcript. */
+    fun saveMarkers(transcriptId: Long) {
+        if (markerTimes.isEmpty()) return
+        val csv = markerTimes.sorted().joinToString(",")
+        viewModelScope.launch { repository.setMarkers(transcriptId, csv) }
+        markerTimes.clear()
+        _markers.value = emptyList()
+    }
 
     private val _storageStatus = MutableStateFlow(checkStorage())
     val storageStatus: StateFlow<StorageStatus> = _storageStatus.asStateFlow()

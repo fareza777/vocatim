@@ -34,11 +34,13 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.AlertDialog
@@ -77,6 +79,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -209,6 +214,26 @@ fun DetailScreen(
                                     },
                                 )
                                 androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_share_pdf)) },
+                                    onClick = {
+                                        overflowOpen = false
+                                        viewModel.sharePdf { uri ->
+                                            shareStream(context, uri, "application/pdf")
+                                        }
+                                    },
+                                )
+                                if (transcript?.audioPath != null) {
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_share_audio)) },
+                                        onClick = {
+                                            overflowOpen = false
+                                            viewModel.shareAudioUri()?.let {
+                                                shareStream(context, it, "audio/*")
+                                            }
+                                        },
+                                    )
+                                }
+                                androidx.compose.material3.DropdownMenuItem(
                                     text = { Text(stringResource(R.string.action_merge)) },
                                     onClick = {
                                         overflowOpen = false
@@ -284,6 +309,7 @@ fun DetailScreen(
                     if (!isMinutes) {
                         SummarySection(
                             summary = t.summary,
+                            summarySource = t.summarySource,
                             viewModel = viewModel,
                             onUpgrade = onUpgrade,
                         )
@@ -301,6 +327,15 @@ fun DetailScreen(
                             onSeek = viewModel::seekToFraction,
                             onSpeedClick = viewModel::cyclePlaybackSpeed,
                         )
+                        val markerTimes = remember(t.markers) {
+                            t.markers?.split(",")
+                                ?.mapNotNull { it.trim().toLongOrNull() }
+                                ?.sorted()
+                                .orEmpty()
+                        }
+                        if (markerTimes.isNotEmpty()) {
+                            MarkersRow(markerTimes) { viewModel.playFromMs(it) }
+                        }
                     }
 
                     // Actions live ABOVE the (potentially very long) text so
@@ -350,6 +385,7 @@ fun DetailScreen(
                     var transcriptExpanded by rememberSaveable(t.id) {
                         mutableStateOf(isTextNote || t.text.length <= COLLAPSE_THRESHOLD_CHARS)
                     }
+                    var searchQuery by rememberSaveable(t.id) { mutableStateOf("") }
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -373,7 +409,10 @@ fun DetailScreen(
                             Icon(
                                 if (transcriptExpanded) Icons.Default.ExpandLess
                                 else Icons.Default.ExpandMore,
-                                contentDescription = null,
+                                contentDescription = stringResource(
+                                    if (transcriptExpanded) R.string.action_collapse
+                                    else R.string.action_expand
+                                ),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -402,6 +441,17 @@ fun DetailScreen(
                             )
                         }
 
+                        // Find-in-transcript (text mode only).
+                        if (!(hasAudio && segmentMode)) {
+                            TranscriptSearchField(
+                                query = searchQuery,
+                                onQuery = { searchQuery = it },
+                                matches = if (searchQuery.isNotBlank()) {
+                                    countMatches(editedText ?: t.text, searchQuery)
+                                } else 0,
+                            )
+                        }
+
                         if (hasAudio && segmentMode) {
                             SegmentList(
                                 segments = segments,
@@ -414,6 +464,22 @@ fun DetailScreen(
                                     Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
                                 },
                             )
+                        } else if (searchQuery.isNotBlank()) {
+                            // Read-only highlighted view while searching.
+                            androidx.compose.foundation.text.selection.SelectionContainer {
+                                Text(
+                                    highlightMatches(
+                                        editedText ?: t.text,
+                                        searchQuery,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.30f),
+                                    ),
+                                    style = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = MaterialTheme.typography.bodyLarge.fontSize * textScale,
+                                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * textScale,
+                                    ),
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
                         } else {
                             OutlinedTextField(
                                 value = editedText ?: t.text,
@@ -435,7 +501,7 @@ fun DetailScreen(
                                 ),
                             )
                         }
-                        if (editedText != null && editedText != t.text) {
+                        if (searchQuery.isBlank() && editedText != null && editedText != t.text) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = viewModel::saveEdits) {
                                     Text(stringResource(R.string.action_save))
@@ -805,6 +871,96 @@ private fun PlaybackWaveform(
 }
 
 @Composable
+private fun MarkersRow(markers: List<Long>, onSeek: (Long) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Default.Flag,
+            contentDescription = stringResource(R.string.detail_markers),
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(18.dp),
+        )
+        markers.forEach { ms ->
+            Surface(
+                onClick = { onSeek(ms) },
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f),
+            ) {
+                Text(
+                    formatClock(ms),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranscriptSearchField(query: String, onQuery: (String) -> Unit, matches: Int) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQuery,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text(stringResource(R.string.detail_search_hint)) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        trailingIcon = {
+            if (query.isNotBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        matches.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    IconButton(onClick = { onQuery("") }) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.action_cancel),
+                        )
+                    }
+                }
+            }
+        },
+        shape = MaterialTheme.shapes.large,
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    )
+}
+
+private fun countMatches(text: String, query: String): Int {
+    if (query.isBlank()) return 0
+    var count = 0
+    var idx = text.indexOf(query, 0, ignoreCase = true)
+    while (idx >= 0) {
+        count++
+        idx = text.indexOf(query, idx + query.length, ignoreCase = true)
+    }
+    return count
+}
+
+private fun highlightMatches(text: String, query: String, bg: Color): AnnotatedString =
+    buildAnnotatedString {
+        append(text)
+        if (query.isBlank()) return@buildAnnotatedString
+        var idx = text.indexOf(query, 0, ignoreCase = true)
+        while (idx >= 0) {
+            addStyle(SpanStyle(background = bg), idx, idx + query.length)
+            idx = text.indexOf(query, idx + query.length, ignoreCase = true)
+        }
+    }
+
+@Composable
 private fun ViewModeToggle(segmentMode: Boolean, onChange: (Boolean) -> Unit) {
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
         SegmentedButton(
@@ -1063,6 +1219,7 @@ private fun SegmentList(
 @Composable
 private fun SummarySection(
     summary: String?,
+    summarySource: String?,
     viewModel: DetailViewModel,
     onUpgrade: () -> Unit,
 ) {
@@ -1101,13 +1258,23 @@ private fun SummarySection(
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f),
                 )
-                Pill(stringResource(R.string.summary_offline_badge))
+                Pill(
+                    stringResource(
+                        if (summary != null &&
+                            summarySource == com.vocatim.app.service.SummaryService.SUMMARY_SOURCE_CLOUD
+                        ) R.string.summary_cloud_badge
+                        else R.string.summary_offline_badge
+                    )
+                )
                 if (collapsible) {
                     Spacer(Modifier.width(6.dp))
                     Icon(
                         if (summaryExpanded) Icons.Default.ExpandLess
                         else Icons.Default.ExpandMore,
-                        contentDescription = null,
+                        contentDescription = stringResource(
+                            if (summaryExpanded) R.string.action_collapse
+                            else R.string.action_expand
+                        ),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -1427,6 +1594,17 @@ private fun shareText(context: Context, text: String) {
     val intent = Intent(Intent.ACTION_SEND)
         .setType("text/plain")
         .putExtra(Intent.EXTRA_TEXT, text)
+    context.startActivity(
+        Intent.createChooser(intent, context.getString(R.string.action_share))
+    )
+}
+
+/** Shares a content URI (PDF, audio) to another app. */
+private fun shareStream(context: Context, uri: android.net.Uri, mime: String) {
+    val intent = Intent(Intent.ACTION_SEND)
+        .setType(mime)
+        .putExtra(Intent.EXTRA_STREAM, uri)
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     context.startActivity(
         Intent.createChooser(intent, context.getString(R.string.action_share))
     )

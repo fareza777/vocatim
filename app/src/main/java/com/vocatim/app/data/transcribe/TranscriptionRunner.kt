@@ -207,9 +207,15 @@ class TranscriptionRunner(
                     if (!finished.customTitle && finished.sourceName == null) {
                         TitleGenerator.fromText(finished.text)
                     } else null
+                // Reflow the raw text into paragraphs at speaker pauses.
+                val segments = repository.getSegments(transcriptId)
+                val readableText =
+                    if (segments.isNotEmpty()) TranscriptFormatter.paragraphed(segments)
+                    else finished.text
                 repository.update(
                     finished.copy(
                         status = TranscriptStatus.DONE,
+                        text = readableText,
                         // Accumulates across resumed runs.
                         processingTimeMs = finished.processingTimeMs + elapsed,
                         errorMessage = null,

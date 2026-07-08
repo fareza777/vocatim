@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -79,8 +80,13 @@ fun RecordScreen(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val amplitudes = remember { mutableStateListOf<Float>() }
 
+    val markers by viewModel.markers.collectAsStateWithLifecycle()
+
     LaunchedEffect(Unit) {
-        viewModel.finished.collect { id -> onFinished(id) }
+        viewModel.finished.collect { id ->
+            viewModel.saveMarkers(id)
+            onFinished(id)
+        }
     }
 
     LaunchedEffect(state) {
@@ -218,8 +224,18 @@ fun RecordScreen(
 
                     AmplitudeBars(amplitudes, paused = s.paused)
 
+                    if (markers.isNotEmpty()) {
+                        Pill(
+                            stringResource(R.string.record_markers_count, markers.size),
+                            color = MaterialTheme.colorScheme.tertiary,
+                            background = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
+                            dot = true,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(28.dp),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(bottom = 72.dp),
                     ) {
@@ -236,6 +252,27 @@ fun RecordScreen(
                                         if (s.paused) R.string.record_resume else R.string.record_pause
                                     ),
                                     modifier = Modifier.size(28.dp),
+                                )
+                            }
+                        }
+                        Surface(
+                            onClick = {
+                                viewModel.addMarker()
+                                haptic.performHapticFeedback(
+                                    androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
+                                )
+                            },
+                            enabled = !s.paused,
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.size(64.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Flag,
+                                    contentDescription = stringResource(R.string.record_add_marker),
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(26.dp),
                                 )
                             }
                         }

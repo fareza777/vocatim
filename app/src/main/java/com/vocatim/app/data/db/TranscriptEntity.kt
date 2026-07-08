@@ -50,5 +50,9 @@ data class TranscriptEntity(
     val tag: String? = null,
     /** AI-generated summary; null until the user runs it. */
     val summary: String? = null,
+    /** Which engine produced [summary]: "local" or "cloud"; null if none. */
+    val summarySource: String? = null,
+    /** Recording bookmarks as comma-separated millisecond offsets; null if none. */
+    val markers: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

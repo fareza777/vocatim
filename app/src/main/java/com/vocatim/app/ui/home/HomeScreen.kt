@@ -659,7 +659,11 @@ private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
                     Pill(formatClock(t.audioDurationMs))
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Pill(stringResource(cardTypeLabel(t)))
                 Text(
                     formatDate(t.createdAt),
                     style = MaterialTheme.typography.bodySmall,
@@ -670,6 +674,14 @@ private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
                         tagLabel(tag),
                         color = MaterialTheme.colorScheme.secondary,
                         background = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
+                    )
+                }
+                if (t.summary != null) {
+                    Pill(
+                        stringResource(R.string.card_badge_ai),
+                        color = MaterialTheme.colorScheme.primary,
+                        background = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        dot = true,
                     )
                 }
             }
@@ -713,7 +725,12 @@ private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
                             dot = true,
                         )
                     }
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(4.dp))
+                    // Skeleton lines hint at the transcript still coming in.
+                    com.vocatim.app.ui.common.ShimmerLine(widthFraction = 0.95f)
+                    Spacer(Modifier.height(6.dp))
+                    com.vocatim.app.ui.common.ShimmerLine(widthFraction = 0.7f)
+                    Spacer(Modifier.height(6.dp))
                     if (p != null && p.fraction > 0f) {
                         LinearProgressIndicator(
                             progress = { p.fraction },
@@ -730,6 +747,12 @@ private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
             }
         }
     }
+}
+
+private fun cardTypeLabel(t: com.vocatim.app.data.db.TranscriptEntity): Int = when {
+    t.modelId == com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES -> R.string.card_type_minutes
+    t.audioPath == null && t.audioDurationMs == 0L -> R.string.card_type_note
+    else -> R.string.card_type_recording
 }
 
 @Composable

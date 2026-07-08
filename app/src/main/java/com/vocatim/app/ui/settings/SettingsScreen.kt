@@ -323,6 +323,7 @@ fun SettingsScreen(
 @Composable
 private fun CloudAiSection(viewModel: SettingsViewModel) {
     val saved by viewModel.cloudConfig.collectAsStateWithLifecycle()
+    val cloudTest by viewModel.cloudTest.collectAsStateWithLifecycle()
     var baseUrl by remember(saved?.baseUrl) { mutableStateOf(saved?.baseUrl ?: "") }
     var apiKey by remember(saved?.apiKey) { mutableStateOf(saved?.apiKey ?: "") }
     var model by remember(saved?.model) { mutableStateOf(saved?.model ?: "") }
@@ -367,9 +368,10 @@ private fun CloudAiSection(viewModel: SettingsViewModel) {
             label = { Text(stringResource(R.string.settings_cloud_model)) },
             placeholder = { Text("MiniMax-M3") },
         )
+        val complete = baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank()
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
-                enabled = baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank(),
+                enabled = complete,
                 onClick = {
                     viewModel.saveCloudConfig(baseUrl, apiKey, model)
                     android.widget.Toast.makeText(
@@ -379,11 +381,33 @@ private fun CloudAiSection(viewModel: SettingsViewModel) {
                     ).show()
                 },
             ) { Text(stringResource(R.string.action_save)) }
+            OutlinedButton(
+                enabled = complete && cloudTest !is CloudTestState.Testing,
+                onClick = { viewModel.testCloud(baseUrl, apiKey, model) },
+            ) { Text(stringResource(R.string.settings_cloud_test)) }
             if (saved?.isConfigured == true) {
                 OutlinedButton(onClick = viewModel::clearCloudConfig) {
                     Text(stringResource(R.string.settings_cloud_clear))
                 }
             }
+        }
+        when (val t = cloudTest) {
+            is CloudTestState.Testing -> Text(
+                stringResource(R.string.settings_cloud_testing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            is CloudTestState.Ok -> Text(
+                stringResource(R.string.settings_cloud_test_ok, t.latencyMs),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+            is CloudTestState.Error -> Text(
+                stringResource(R.string.settings_cloud_test_fail, t.message),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            CloudTestState.Idle -> Unit
         }
     }
 }

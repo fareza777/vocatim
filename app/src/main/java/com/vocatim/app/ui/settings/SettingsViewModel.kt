@@ -34,6 +34,13 @@ sealed interface BackupEvent {
     data class Error(val message: String) : BackupEvent
 }
 
+sealed interface CloudTestState {
+    data object Idle : CloudTestState
+    data object Testing : CloudTestState
+    data class Ok(val latencyMs: Long) : CloudTestState
+    data class Error(val message: String) : CloudTestState
+}
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
@@ -42,6 +49,7 @@ class SettingsViewModel @Inject constructor(
     private val userPrefs: UserPrefs,
     private val backupManager: com.vocatim.app.data.backup.BackupManager,
     private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
+    private val cloudClient: com.vocatim.app.data.cloud.CloudAiClient,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
 ) : ViewModel() {
 
@@ -55,6 +63,34 @@ class SettingsViewModel @Inject constructor(
 
     fun clearCloudConfig() {
         viewModelScope.launch { cloudAiPrefs.clear() }
+    }
+
+    private val _cloudTest = MutableStateFlow<CloudTestState>(CloudTestState.Idle)
+    val cloudTest: StateFlow<CloudTestState> = _cloudTest.asStateFlow()
+
+    /** Sends a tiny prompt to verify the BYOK endpoint/key/model work. */
+    fun testCloud(baseUrl: String, apiKey: String, model: String) {
+        viewModelScope.launch {
+            _cloudTest.value = CloudTestState.Testing
+            val start = System.currentTimeMillis()
+            _cloudTest.value = try {
+                cloudClient.chat(
+                    config = com.vocatim.app.data.cloud.CloudAiConfig(
+                        baseUrl.trim(), apiKey.trim(), model.trim()
+                    ),
+                    system = "You are a connectivity check.",
+                    user = "Reply with the single word OK.",
+                    maxTokens = 5,
+                )
+                CloudTestState.Ok(System.currentTimeMillis() - start)
+            } catch (e: Exception) {
+                CloudTestState.Error(e.message ?: "failed")
+            }
+        }
+    }
+
+    fun resetCloudTest() {
+        _cloudTest.value = CloudTestState.Idle
     }
 
     val summaryModelState: StateFlow<ModelState> =

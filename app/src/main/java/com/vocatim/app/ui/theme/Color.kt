@@ -20,6 +20,8 @@ val TextSecondaryDark = Color(0xFF9AA0B5)
 val Snow = Color(0xFFF6F7FB)
 val SnowSurface = Color(0xFFFFFFFF)
 val SnowCard = Color(0xFFFFFFFF)
+// Subtle gray so chips/pills separate from white cards in light mode.
+val SnowVariant = Color(0xFFEBECF3)
 val SnowBorder = Color(0xFFE4E6F0)
 val TextPrimaryLight = Color(0xFF171A26)
 val TextSecondaryLight = Color(0xFF5D6373)
