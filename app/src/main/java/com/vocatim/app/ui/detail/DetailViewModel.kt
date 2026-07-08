@@ -445,7 +445,15 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    fun exportTxt(uri: Uri) = export(uri) { currentText() }
+    /** Resolves which body of text an export carries. */
+    private fun textFor(source: String): String = when (source) {
+        "minutes" -> transcript.value?.minutes ?: currentText()
+        "summary" -> transcript.value?.summary ?: currentText()
+        else -> currentText()
+    }
+
+    fun exportTxt(uri: Uri, source: String = "transcript") =
+        export(uri) { textFor(source) }
 
     fun exportSrt(uri: Uri) = export(uri) {
         SrtFormatter.format(repository.getSegments(transcriptId))
@@ -455,16 +463,20 @@ class DetailViewModel @Inject constructor(
         VttFormatter.format(repository.getSegments(transcriptId))
     }
 
-    fun exportMarkdown(uri: Uri, withTimestamps: Boolean) = export(uri) {
+    fun exportMarkdown(
+        uri: Uri,
+        withTimestamps: Boolean,
+        source: String = "transcript",
+    ) = export(uri) {
         val title = transcript.value?.title ?: "Transcript"
-        if (withTimestamps) {
+        if (source == "transcript" && withTimestamps) {
             MarkdownFormatter.formatWithTimestamps(title, repository.getSegments(transcriptId))
         } else {
-            MarkdownFormatter.formatPlain(title, currentText())
+            MarkdownFormatter.formatPlain(title, textFor(source))
         }
     }
 
-    fun exportPdf(uri: Uri) {
+    fun exportPdf(uri: Uri, source: String = "transcript") {
         viewModelScope.launch {
             try {
                 val t = transcript.value
@@ -472,7 +484,7 @@ class DetailViewModel @Inject constructor(
                 val photos = repository.getAttachments(transcriptId).map { it.path }
                 val meta = t?.let(::exportMeta)
                 withContext(Dispatchers.IO) {
-                    PdfExporter.write(appContext, uri, title, currentText(), photos, meta)
+                    PdfExporter.write(appContext, uri, title, textFor(source), photos, meta)
                 }
                 _exportEvent.value = ExportEvent.Success
             } catch (e: Exception) {

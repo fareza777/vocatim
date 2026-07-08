@@ -112,7 +112,7 @@ fun OnboardingScreen(
                     title = stringResource(R.string.onboarding_model_title),
                     body = stringResource(
                         R.string.onboarding_model_body,
-                        recommendedModel.id,
+                        com.vocatim.app.ui.common.modelDisplayName(recommendedModel.id),
                         recommendedModel.approxSizeBytes / (1024 * 1024),
                     ),
                 ) {

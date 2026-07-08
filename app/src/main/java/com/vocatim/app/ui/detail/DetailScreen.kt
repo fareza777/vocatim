@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Description
@@ -100,8 +101,10 @@ import com.vocatim.app.ui.common.formatClock
 import com.vocatim.app.ui.common.formatDate
 import java.util.Locale
 
-/** Transcripts longer than this start collapsed in the detail screen. */
-private const val COLLAPSE_THRESHOLD_CHARS = 800
+/** Content choices for TXT/MD/PDF export. */
+const val EXPORT_SOURCE_TRANSCRIPT = "transcript"
+const val EXPORT_SOURCE_MINUTES = "minutes"
+const val EXPORT_SOURCE_SUMMARY = "summary"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,9 +152,11 @@ fun DetailScreen(
         }
     }
 
+    // Which content the next TXT/MD/PDF export carries.
+    var exportSource by remember { mutableStateOf(EXPORT_SOURCE_TRANSCRIPT) }
     val exportTxtLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")
-    ) { uri -> uri?.let(viewModel::exportTxt) }
+    ) { uri -> uri?.let { viewModel.exportTxt(it, exportSource) } }
     val exportSrtLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/x-subrip")
     ) { uri -> uri?.let(viewModel::exportSrt) }
@@ -160,10 +165,18 @@ fun DetailScreen(
     ) { uri -> uri?.let(viewModel::exportVtt) }
     val exportMdLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/markdown")
-    ) { uri -> uri?.let { viewModel.exportMarkdown(it, withTimestamps = true) } }
+    ) { uri ->
+        uri?.let {
+            viewModel.exportMarkdown(
+                it,
+                withTimestamps = exportSource == EXPORT_SOURCE_TRANSCRIPT,
+                source = exportSource,
+            )
+        }
+    }
     val exportPdfLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
-    ) { uri -> uri?.let(viewModel::exportPdf) }
+    ) { uri -> uri?.let { viewModel.exportPdf(it, exportSource) } }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -364,171 +377,89 @@ fun DetailScreen(
                     val isMinutes =
                         t.modelId == com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES
                     val hasAudio = t.audioPath != null
+                    var exportPickerFormat by remember { mutableStateOf<String?>(null) }
 
+                    // One page of uniform collapsible cards, all starting
+                    // closed: minutes -> AI summary -> transcript -> audio
+                    // -> export.
                     if (!isMinutes) {
-                        // One page, three tidy collapsible layers:
-                        // minutes -> AI summary -> transcript.
                         t.minutes?.let { minutesText ->
-                            MinutesSection(
-                                minutes = minutesText,
-                                onCopy = {
-                                    copyToClipboard(context, minutesText)
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.copied),
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                },
-                                onShare = { shareText(context, minutesText) },
-                                onRegenerate = {
-                                    if (isProTop && minutesEngineReady) {
-                                        viewModel.createMinutes()
+                            SectionCard(
+                                title = stringResource(R.string.detail_minutes_section),
+                                icon = Icons.Default.Description,
+                                iconTint = MaterialTheme.colorScheme.tertiary,
+                                badge = stringResource(R.string.card_badge_ai),
+                            ) {
+                                androidx.compose.foundation.text.selection.SelectionContainer {
+                                    Text(minutesText, style = MaterialTheme.typography.bodyMedium)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    FilledTonalButton(onClick = {
+                                        copyToClipboard(context, minutesText)
                                         Toast.makeText(
                                             context,
-                                            context.getString(R.string.minutes_started),
-                                            Toast.LENGTH_LONG,
+                                            context.getString(R.string.copied),
+                                            Toast.LENGTH_SHORT,
                                         ).show()
+                                    }) { Text(stringResource(R.string.action_copy)) }
+                                    OutlinedButton(onClick = { shareText(context, minutesText) }) {
+                                        Text(stringResource(R.string.action_share))
                                     }
-                                },
-                            )
-                        }
-                        SummarySection(
-                            summary = t.summary,
-                            summarySource = t.summarySource,
-                            viewModel = viewModel,
-                            onUpgrade = onUpgrade,
-                        )
-                    }
-
-                    if (t.audioPath != null) {
-                        LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
-                        val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
-                        val skipSilence by viewModel.skipSilence.collectAsStateWithLifecycle()
-                        PlayerCard(
-                            state = playerState,
-                            waveform = waveform,
-                            durationMs = t.audioDurationMs,
-                            speed = playbackSpeed,
-                            skipSilence = skipSilence,
-                            onToggle = viewModel::togglePlayback,
-                            onSeek = viewModel::seekToFraction,
-                            onSpeedClick = viewModel::cyclePlaybackSpeed,
-                            onSkipSilenceClick = viewModel::toggleSkipSilence,
-                        )
-                        val markerTimes = remember(t.markers) {
-                            t.markers?.split(",")
-                                ?.mapNotNull { it.trim().toLongOrNull() }
-                                ?.sorted()
-                                .orEmpty()
-                        }
-                        if (markerTimes.isNotEmpty()) {
-                            MarkersRow(markerTimes) { viewModel.playFromMs(it) }
-                        }
-                    }
-
-                    // Actions live ABOVE the (potentially very long) text so
-                    // export/copy never require scrolling to the bottom.
-                    ActionGrid(
-                        onCopy = {
-                            copyToClipboard(context, viewModel.currentText())
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.copied),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        },
-                        onCopyTimestamps = {
-                            viewModel.copyWithTimestampsAsync { text ->
-                                copyToClipboard(context, text)
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.copied),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
-                        },
-                        onShare = { shareText(context, viewModel.currentText()) },
-                        onExportTxt = {
-                            runCatching { exportTxtLauncher.launch(exportFileName(t.title, "txt")) }
-                        },
-                        onExportSrt = {
-                            runCatching { exportSrtLauncher.launch(exportFileName(t.title, "srt")) }
-                        },
-                        onExportVtt = {
-                            runCatching { exportVttLauncher.launch(exportFileName(t.title, "vtt")) }
-                        },
-                        onExportMd = {
-                            runCatching { exportMdLauncher.launch(exportFileName(t.title, "md")) }
-                        },
-                        onExportPdf = {
-                            runCatching { exportPdfLauncher.launch(exportFileName(t.title, "pdf")) }
-                        },
-                        showTimestamped = hasAudio,
-                    )
-                    // Long transcripts collapse by default; the header row
-                    // toggles them open without endless scrolling.
-                    // Text-only notes (minutes, imported text) ARE the
-                    // content — always start them expanded.
-                    val isTextNote = t.audioPath == null && t.audioDurationMs == 0L
-                    var transcriptExpanded by rememberSaveable(t.id) {
-                        mutableStateOf(isTextNote || t.text.length <= COLLAPSE_THRESHOLD_CHARS)
-                    }
-                    var searchQuery by rememberSaveable(t.id) { mutableStateOf("") }
-                    var readingMode by rememberSaveable(t.id) { mutableStateOf(false) }
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.medium)
-                            .clickable { transcriptExpanded = !transcriptExpanded },
-                        shape = MaterialTheme.shapes.medium,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                stringResource(
-                                    if (isMinutes) R.string.detail_minutes_section
-                                    else R.string.detail_transcript_section
-                                ),
-                                style = MaterialTheme.typography.titleSmall,
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (t.text.isNotBlank()) {
-                                IconButton(onClick = { readingMode = true }) {
-                                    Icon(
-                                        Icons.Default.Fullscreen,
-                                        contentDescription = stringResource(R.string.detail_reading_mode),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                    OutlinedButton(onClick = {
+                                        if (isProTop && minutesEngineReady) {
+                                            viewModel.createMinutes()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.minutes_started),
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                        }
+                                    }) { Text(stringResource(R.string.summary_regenerate)) }
                                 }
                             }
-                            Icon(
-                                if (transcriptExpanded) Icons.Default.ExpandLess
-                                else Icons.Default.ExpandMore,
-                                contentDescription = stringResource(
-                                    if (transcriptExpanded) R.string.action_collapse
-                                    else R.string.action_expand
-                                ),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        }
+                        SectionCard(
+                            title = stringResource(R.string.summary_title),
+                            icon = Icons.Default.AutoAwesome,
+                            badge = if (t.summary != null) {
+                                stringResource(
+                                    if (t.summarySource ==
+                                        com.vocatim.app.service.SummaryService.SUMMARY_SOURCE_CLOUD
+                                    ) R.string.summary_cloud_badge
+                                    else R.string.summary_offline_badge
+                                )
+                            } else null,
+                        ) {
+                            SummaryBody(
+                                summary = t.summary,
+                                viewModel = viewModel,
+                                onUpgrade = onUpgrade,
                             )
                         }
                     }
 
-                    if (!transcriptExpanded) {
-                        // Teaser: first lines, tap to expand.
-                        Text(
-                            t.text,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.clickable { transcriptExpanded = true },
-                        )
-                    } else {
-                        // Segment (timestamp) view only exists for audio.
+                    var searchQuery by rememberSaveable(t.id) { mutableStateOf("") }
+                    var readingMode by rememberSaveable(t.id) { mutableStateOf(false) }
+
+                    SectionCard(
+                        title = stringResource(
+                            if (isMinutes) R.string.detail_minutes_section
+                            else R.string.detail_transcript_section
+                        ),
+                        icon = Icons.Default.Subtitles,
+                    ) {
                         var segmentMode by remember { mutableStateOf(false) }
+                        if (t.text.isNotBlank()) {
+                            TextButton(onClick = { readingMode = true }) {
+                                Icon(
+                                    Icons.Default.Fullscreen,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.detail_reading_mode))
+                            }
+                        }
                         if (hasAudio) {
                             ViewModeToggle(
                                 segmentMode = segmentMode,
@@ -611,6 +542,116 @@ fun DetailScreen(
                         }
                     }
 
+                    if (hasAudio) {
+                        SectionCard(
+                            title = stringResource(R.string.detail_audio_section),
+                            icon = Icons.Default.GraphicEq,
+                        ) {
+                            LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
+                            val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
+                            val skipSilence by viewModel.skipSilence.collectAsStateWithLifecycle()
+                            PlayerCard(
+                                state = playerState,
+                                waveform = waveform,
+                                durationMs = t.audioDurationMs,
+                                speed = playbackSpeed,
+                                skipSilence = skipSilence,
+                                onToggle = viewModel::togglePlayback,
+                                onSeek = viewModel::seekToFraction,
+                                onSpeedClick = viewModel::cyclePlaybackSpeed,
+                                onSkipSilenceClick = viewModel::toggleSkipSilence,
+                            )
+                            val markerTimes = remember(t.markers) {
+                                t.markers?.split(",")
+                                    ?.mapNotNull { it.trim().toLongOrNull() }
+                                    ?.sorted()
+                                    .orEmpty()
+                            }
+                            if (markerTimes.isNotEmpty()) {
+                                MarkersRow(markerTimes) { viewModel.playFromMs(it) }
+                            }
+                            TextButton(onClick = viewModel::deleteAudioOnly) {
+                                Text(
+                                    stringResource(R.string.action_delete_audio),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+
+                    SectionCard(
+                        title = stringResource(R.string.detail_export_section),
+                        icon = Icons.Default.Share,
+                    ) {
+                        // TXT/MD/PDF can carry the transcript, the minutes, or
+                        // the AI summary — ask which when there is a choice.
+                        val multiSource = t.minutes != null || t.summary != null
+                        fun startExport(format: String) {
+                            if (multiSource) {
+                                exportPickerFormat = format
+                            } else {
+                                exportSource = EXPORT_SOURCE_TRANSCRIPT
+                                runCatching {
+                                    when (format) {
+                                        "txt" -> exportTxtLauncher.launch(exportFileName(t.title, "txt"))
+                                        "md" -> exportMdLauncher.launch(exportFileName(t.title, "md"))
+                                        else -> exportPdfLauncher.launch(exportFileName(t.title, "pdf"))
+                                    }
+                                }
+                            }
+                        }
+                        ActionGrid(
+                            onCopy = {
+                                copyToClipboard(context, viewModel.currentText())
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.copied),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            },
+                            onCopyTimestamps = {
+                                viewModel.copyWithTimestampsAsync { text ->
+                                    copyToClipboard(context, text)
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.copied),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            },
+                            onShare = { shareText(context, viewModel.currentText()) },
+                            onExportTxt = { startExport("txt") },
+                            onExportSrt = {
+                                runCatching { exportSrtLauncher.launch(exportFileName(t.title, "srt")) }
+                            },
+                            onExportVtt = {
+                                runCatching { exportVttLauncher.launch(exportFileName(t.title, "vtt")) }
+                            },
+                            onExportMd = { startExport("md") },
+                            onExportPdf = { startExport("pdf") },
+                            showTimestamped = hasAudio,
+                        )
+                    }
+
+                    exportPickerFormat?.let { format ->
+                        ExportSourceDialog(
+                            hasMinutes = t.minutes != null,
+                            hasSummary = t.summary != null,
+                            onPick = { source ->
+                                exportPickerFormat = null
+                                exportSource = source
+                                runCatching {
+                                    when (format) {
+                                        "txt" -> exportTxtLauncher.launch(exportFileName(t.title, "txt"))
+                                        "md" -> exportMdLauncher.launch(exportFileName(t.title, "md"))
+                                        else -> exportPdfLauncher.launch(exportFileName(t.title, "pdf"))
+                                    }
+                                }
+                            },
+                            onDismiss = { exportPickerFormat = null },
+                        )
+                    }
+
                     if (readingMode) {
                         ReadingModeDialog(
                             title = t.title,
@@ -618,15 +659,6 @@ fun DetailScreen(
                             textScale = textScale,
                             onDismiss = { readingMode = false },
                         )
-                    }
-
-                    if (t.audioPath != null) {
-                        TextButton(onClick = viewModel::deleteAudioOnly) {
-                            Text(
-                                stringResource(R.string.action_delete_audio),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
                     }
                     Spacer(Modifier.padding(bottom = 12.dp))
                 }
@@ -1567,18 +1599,25 @@ private fun SegmentList(
     }
 }
 
+/**
+ * The uniform collapsible card every detail section uses: an icon + title
+ * header with an optional badge, tap anywhere on it to reveal the content
+ * below. Starts closed so the page opens as a tidy stack of headers.
+ */
 @Composable
-private fun MinutesSection(
-    minutes: String,
-    onCopy: () -> Unit,
-    onShare: () -> Unit,
-    onRegenerate: () -> Unit,
+private fun SectionCard(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    badge: String? = null,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
-    var expanded by rememberSaveable { mutableStateOf(true) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 1.dp,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1589,19 +1628,21 @@ private fun MinutesSection(
                 modifier = Modifier.clickable { expanded = !expanded },
             ) {
                 Icon(
-                    Icons.Default.Description,
+                    icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
+                    tint = iconTint,
                     modifier = Modifier.width(20.dp),
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    stringResource(R.string.detail_minutes_section),
+                    title,
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f),
                 )
-                Pill(stringResource(R.string.card_badge_ai))
-                Spacer(Modifier.width(6.dp))
+                badge?.let {
+                    Pill(it)
+                    Spacer(Modifier.width(6.dp))
+                }
                 Icon(
                     if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = stringResource(
@@ -1610,39 +1651,56 @@ private fun MinutesSection(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (expanded) {
-                androidx.compose.foundation.text.selection.SelectionContainer {
-                    Text(minutes, style = MaterialTheme.typography.bodyMedium)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(onClick = onCopy) {
-                        Text(stringResource(R.string.action_copy))
-                    }
-                    OutlinedButton(onClick = onShare) {
-                        Text(stringResource(R.string.action_share))
-                    }
-                    OutlinedButton(onClick = onRegenerate) {
-                        Text(stringResource(R.string.summary_regenerate))
-                    }
-                }
-            } else {
-                Text(
-                    minutes,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.clickable { expanded = true },
-                )
-            }
+            if (expanded) content()
         }
     }
 }
 
+/** "Export as X — of what?" chooser for notes that carry more than a transcript. */
 @Composable
-private fun SummarySection(
+private fun ExportSourceDialog(
+    hasMinutes: Boolean,
+    hasSummary: Boolean,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.export_pick_source)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val options = buildList {
+                    add(EXPORT_SOURCE_TRANSCRIPT to R.string.detail_transcript_section)
+                    if (hasMinutes) add(EXPORT_SOURCE_MINUTES to R.string.detail_minutes_section)
+                    if (hasSummary) add(EXPORT_SOURCE_SUMMARY to R.string.summary_title)
+                }
+                options.forEach { (source, label) ->
+                    Surface(
+                        onClick = { onPick(source) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ) {
+                        Text(
+                            stringResource(label),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+/** AI-summary card content: result, progress, or the generate/unlock pitch. */
+@Composable
+private fun SummaryBody(
     summary: String?,
-    summarySource: String?,
     viewModel: DetailViewModel,
     onUpgrade: () -> Unit,
 ) {
@@ -1650,59 +1708,8 @@ private fun SummarySection(
     val modelState by viewModel.summaryModelState.collectAsStateWithLifecycle()
     val progress by viewModel.summaryProgress.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    // A finished summary can be collapsed so it never buries the transcript.
-    var summaryExpanded by rememberSaveable { mutableStateOf(true) }
-    val collapsible = summary != null && progress == null
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = if (collapsible) {
-                    Modifier.clickable { summaryExpanded = !summaryExpanded }
-                } else Modifier,
-            ) {
-                Icon(
-                    Icons.Default.AutoAwesome,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.width(20.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    stringResource(R.string.summary_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f),
-                )
-                Pill(
-                    stringResource(
-                        if (summary != null &&
-                            summarySource == com.vocatim.app.service.SummaryService.SUMMARY_SOURCE_CLOUD
-                        ) R.string.summary_cloud_badge
-                        else R.string.summary_offline_badge
-                    )
-                )
-                if (collapsible) {
-                    Spacer(Modifier.width(6.dp))
-                    Icon(
-                        if (summaryExpanded) Icons.Default.ExpandLess
-                        else Icons.Default.ExpandMore,
-                        contentDescription = stringResource(
-                            if (summaryExpanded) R.string.action_collapse
-                            else R.string.action_expand
-                        ),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when {
                 progress != null -> {
                     LinearProgressIndicator(
@@ -1720,30 +1727,19 @@ private fun SummarySection(
                     }
                 }
                 summary != null -> {
-                    if (summaryExpanded) {
-                        androidx.compose.foundation.text.selection.SelectionContainer {
-                            Text(summary, style = MaterialTheme.typography.bodyMedium)
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(summary, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilledTonalButton(onClick = {
+                            copyToClipboard(context, summary)
+                            Toast.makeText(
+                                context, context.getString(R.string.copied), Toast.LENGTH_SHORT
+                            ).show()
+                        }) { Text(stringResource(R.string.action_copy)) }
+                        OutlinedButton(onClick = viewModel::startSummary) {
+                            Text(stringResource(R.string.summary_regenerate))
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilledTonalButton(onClick = {
-                                copyToClipboard(context, summary)
-                                Toast.makeText(
-                                    context, context.getString(R.string.copied), Toast.LENGTH_SHORT
-                                ).show()
-                            }) { Text(stringResource(R.string.action_copy)) }
-                            OutlinedButton(onClick = viewModel::startSummary) {
-                                Text(stringResource(R.string.summary_regenerate))
-                            }
-                        }
-                    } else {
-                        Text(
-                            summary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.clickable { summaryExpanded = true },
-                        )
                     }
                 }
                 !isPro -> {
@@ -1820,7 +1816,6 @@ private fun SummarySection(
                     }
                 }
             }
-        }
     }
 }
 
@@ -1847,7 +1842,7 @@ private fun MetaRow(t: TranscriptEntity) {
         if (t.audioDurationMs > 0) Pill(formatClock(t.audioDurationMs))
         // The "minutes" sentinel model id is internal — don't surface it.
         if (t.modelId != com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES) {
-            Pill(t.modelId)
+            Pill(com.vocatim.app.ui.common.modelDisplayName(t.modelId))
         }
         if (t.language == "auto" && t.detectedLanguage != null) {
             Pill(

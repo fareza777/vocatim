@@ -602,7 +602,10 @@ private fun ModelRow(
                 enabled = state is ModelState.Downloaded,
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(model.id, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    com.vocatim.app.ui.common.modelDisplayName(model.id),
+                    style = MaterialTheme.typography.titleSmall,
+                )
                 Text(
                     stringResource(speedLabel(model)) + " · " +
                         formatMb(model.approxSizeBytes),

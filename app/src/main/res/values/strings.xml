@@ -208,6 +208,13 @@
     <string name="detail_transcript_section">Transcript</string>
     <string name="detail_minutes_section">Meeting minutes</string>
     <string name="detail_search_hint">Find in transcript</string>
+    <string name="detail_audio_section">Audio</string>
+    <string name="detail_export_section">Export &amp; share</string>
+    <string name="export_pick_source">What do you want to export?</string>
+    <string name="model_name_tiny">Swift</string>
+    <string name="model_name_base">Balanced</string>
+    <string name="model_name_small_q5">Precise</string>
+    <string name="model_name_small">Precise Max</string>
     <string name="detail_markers">Bookmarks</string>
     <string name="player_skip_silence">Skip silence</string>
     <string name="detail_reading_mode">Reading mode</string>
