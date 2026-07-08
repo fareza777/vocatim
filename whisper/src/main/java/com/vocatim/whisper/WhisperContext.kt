@@ -32,9 +32,13 @@ class WhisperContext private constructor(private var ptr: Long) {
         language: String = "auto",
         translate: Boolean = false,
         numThreads: Int = WhisperCpuConfig.preferredThreadCount,
+        initialPrompt: String? = null,
+        beamSize: Int = 0,
     ): WhisperResult = withContext(dispatcher) {
         if (ptr == 0L) throw WhisperException("Whisper context already released")
-        val result = WhisperLib.fullTranscribe(ptr, numThreads, language, translate, audioData)
+        val result = WhisperLib.fullTranscribe(
+            ptr, numThreads, language, translate, audioData, initialPrompt, beamSize
+        )
         if (result != 0) throw WhisperException("whisper_full failed with code $result")
 
         val count = WhisperLib.getTextSegmentCount(ptr)

@@ -122,6 +122,40 @@ class HomeViewModel @Inject constructor(
         _selectedFolder.value = folder
     }
 
+    // --- Multi-select (batch actions) ---
+    private val _selection = MutableStateFlow<Set<Long>>(emptySet())
+    val selection: StateFlow<Set<Long>> = _selection
+
+    fun toggleSelection(id: Long) {
+        _selection.value = if (id in _selection.value) _selection.value - id
+        else _selection.value + id
+    }
+
+    fun clearSelection() {
+        _selection.value = emptySet()
+    }
+
+    fun deleteSelected() {
+        val ids = _selection.value
+        _selection.value = emptySet()
+        viewModelScope.launch {
+            ids.forEach { id ->
+                transcriptRepository.deleteForUndo(id)?.let {
+                    transcriptRepository.purgeDeletedFiles(it)
+                }
+                _waveforms.value = _waveforms.value - id
+            }
+        }
+    }
+
+    fun moveSelectedToFolder(folder: String?) {
+        val ids = _selection.value
+        _selection.value = emptySet()
+        viewModelScope.launch {
+            ids.forEach { transcriptRepository.setTag(it, folder) }
+        }
+    }
+
     init {
         viewModelScope.launch {
             repository.observeAll().collect { list ->

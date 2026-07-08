@@ -141,6 +141,13 @@ class DetailViewModel @Inject constructor(
     private val _playbackSpeed = MutableStateFlow(1.0f)
     val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
 
+    private val _skipSilence = MutableStateFlow(false)
+    val skipSilence: StateFlow<Boolean> = _skipSilence.asStateFlow()
+
+    fun toggleSkipSilence() {
+        _skipSilence.value = !_skipSilence.value
+    }
+
     fun cyclePlaybackSpeed() {
         val next = when (_playbackSpeed.value) {
             1.0f -> 1.25f
@@ -288,6 +295,7 @@ class DetailViewModel @Inject constructor(
         positionJob = viewModelScope.launch {
             while (true) {
                 val p = player ?: break
+                if (_skipSilence.value) skipSilentRegion(p)
                 _playerState.value = PlayerState(
                     playing = p.isPlaying,
                     positionMs = p.currentPosition,
@@ -295,6 +303,24 @@ class DetailViewModel @Inject constructor(
                 )
                 kotlinx.coroutines.delay(200)
             }
+        }
+    }
+
+    /** When the playhead sits in a quiet stretch, jump to the next audible part. */
+    private fun skipSilentRegion(p: android.media.MediaPlayer) {
+        val wf = _waveform.value ?: return
+        val dur = p.duration
+        if (dur <= 0 || wf.isEmpty()) return
+        val max = wf.maxOrNull()?.takeIf { it > 0f } ?: return
+        val thresh = max * 0.12f
+        val bucket = (p.currentPosition.toLong() * wf.size / dur)
+            .toInt().coerceIn(0, wf.size - 1)
+        if (wf[bucket] >= thresh) return
+        var next = bucket + 1
+        while (next < wf.size && wf[next] < thresh) next++
+        // Only jump over a real gap (more than one bucket ~ a few seconds).
+        if (next < wf.size && next > bucket + 1) {
+            p.seekTo((next.toLong() * dur / wf.size).toInt())
         }
     }
 

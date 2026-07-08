@@ -192,6 +192,18 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPrefs.setTextScale(scale) }
     }
 
+    fun setCustomVocab(text: String) {
+        viewModelScope.launch { userPrefs.setCustomVocab(text) }
+    }
+
+    fun setHighAccuracy(enabled: Boolean) {
+        viewModelScope.launch { userPrefs.setHighAccuracy(enabled) }
+    }
+
+    fun setAutoSummarize(enabled: Boolean) {
+        viewModelScope.launch { userPrefs.setAutoSummarize(enabled) }
+    }
+
     fun download(model: WhisperModel) {
         if (downloadJobs[model]?.isActive == true) return
         downloadJobs[model] = viewModelScope.launch {

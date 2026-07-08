@@ -209,6 +209,8 @@
     <string name="detail_minutes_section">Meeting minutes</string>
     <string name="detail_search_hint">Find in transcript</string>
     <string name="detail_markers">Bookmarks</string>
+    <string name="player_skip_silence">Skip silence</string>
+    <string name="detail_reading_mode">Reading mode</string>
     <string name="action_expand">Expand</string>
     <string name="action_collapse">Collapse</string>
     <string name="record_add_marker">Add bookmark</string>
@@ -222,6 +224,14 @@
     <string name="settings_cloud_model">Model name</string>
     <string name="settings_cloud_saved">Cloud AI saved</string>
     <string name="settings_cloud_clear">Remove</string>
+    <string name="settings_accuracy">Transcription accuracy</string>
+    <string name="settings_custom_vocab">Custom vocabulary</string>
+    <string name="settings_custom_vocab_desc">Names and terms Whisper should spell correctly, separated by commas.</string>
+    <string name="settings_custom_vocab_hint">e.g. Vocatim, Fareza, Kubernetes</string>
+    <string name="settings_high_accuracy">High accuracy mode</string>
+    <string name="settings_high_accuracy_desc">Beam search — more accurate, noticeably slower.</string>
+    <string name="settings_auto_summarize">Auto-summarize when done</string>
+    <string name="settings_auto_summarize_desc">Create an AI summary automatically after transcription (Unlimited).</string>
     <string name="settings_cloud_test">Test</string>
     <string name="settings_cloud_testing">Testing connection…</string>
     <string name="settings_cloud_test_ok">Connected · %1$d ms</string>
@@ -251,6 +261,8 @@
     <string name="card_type_note">Note</string>
     <string name="card_type_minutes">Minutes</string>
     <string name="card_badge_ai">AI</string>
+    <string name="home_selected_count">%1$d selected</string>
+    <string name="home_move">Move to folder</string>
     <string name="summary_running">Summarizing on your phone… this can take a few minutes.</string>
     <string name="summary_generate">Summarize</string>
     <string name="summary_regenerate">Regenerate</string>

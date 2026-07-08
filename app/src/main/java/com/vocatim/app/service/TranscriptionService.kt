@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
@@ -36,6 +37,10 @@ class TranscriptionService : Service() {
 
     @Inject lateinit var runner: TranscriptionRunner
     @Inject lateinit var progressHolder: TranscriptionProgressHolder
+    @Inject lateinit var userPrefs: com.vocatim.app.data.prefs.UserPrefs
+    @Inject lateinit var quotaStore: com.vocatim.app.data.billing.QuotaStore
+    @Inject lateinit var cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs
+    @Inject lateinit var summaryModelManager: com.vocatim.app.data.summary.SummaryModelManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val queue = ConcurrentLinkedQueue<JobSpec>()
@@ -98,9 +103,11 @@ class TranscriptionService : Service() {
                 startNotifier(job.transcriptId)
                 currentTranscriptId = job.transcriptId
                 // Child job so a per-transcript cancel doesn't kill the queue.
+                var succeeded = false
                 val child = launch {
                     try {
                         runner.run(job.transcriptId, job.sourceUri)
+                        succeeded = true
                     } catch (e: Exception) {
                         // Failure state is persisted by the runner; keep draining.
                     }
@@ -110,6 +117,7 @@ class TranscriptionService : Service() {
                 currentJob = null
                 currentTranscriptId = -1
                 stopNotifier()
+                if (succeeded) maybeAutoSummarize(job.transcriptId)
             }
             wakeLock?.let { if (it.isHeld) it.release() }
             wakeLock = null
@@ -157,6 +165,20 @@ class TranscriptionService : Service() {
     private fun stopNotifier() {
         notifierJob?.cancel()
         notifierJob = null
+    }
+
+    /** Optionally kick off an AI summary once a transcript finishes (Pro). */
+    private suspend fun maybeAutoSummarize(transcriptId: Long) {
+        val settings = userPrefs.current()
+        if (!settings.autoSummarize) return
+        if (!quotaStore.currentIsPro()) return
+        val mode = when {
+            cloudAiPrefs.config.first().isConfigured -> SummaryService.MODE_CLOUD
+            summaryModelManager.state.value is com.vocatim.app.data.model.ModelState.Downloaded ->
+                SummaryService.MODE_LOCAL
+            else -> return
+        }
+        SummaryService.start(this, transcriptId, mode)
     }
 
     private fun formatEta(ms: Long): String {

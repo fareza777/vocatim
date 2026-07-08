@@ -155,13 +155,21 @@ class TranscriptionRunner(
 
                     val settings = userPrefs.current()
                     val samples = reader.read(chunk.startSample, chunk.sampleCount)
-                    val result = transcriber.transcribe(
-                        model = model,
-                        samples = samples,
-                        language = entity.language,
-                        translate = entity.translate,
-                        numThreads = threadPolicy.threadsFor(settings.threads),
-                    )
+                    // Near-silent chunks produce nothing but hallucinated
+                    // filler; skip inference entirely (also a big speed-up).
+                    val result = if (isNearSilent(samples)) {
+                        TranscriptionResult(emptyList(), 0L, null)
+                    } else {
+                        transcriber.transcribe(
+                            model = model,
+                            samples = samples,
+                            language = entity.language,
+                            translate = entity.translate,
+                            numThreads = threadPolicy.threadsFor(settings.threads),
+                            initialPrompt = settings.customVocab.trim().ifBlank { null },
+                            beamSize = if (settings.highAccuracy) 5 else 0,
+                        )
+                    }
 
                     if (detectedLanguage == null) {
                         detectedLanguage = result.detectedLanguage
@@ -236,4 +244,24 @@ class TranscriptionRunner(
 
     private fun remainingAudioMs(chunks: List<Chunk>, fromChunk: Int, audioDurationMs: Long): Long =
         ChunkPlanner.remainingAudioMs(chunks, fromChunk, audioDurationMs)
+
+    /** True when a chunk is quiet enough that Whisper would only hallucinate. */
+    private fun isNearSilent(samples: FloatArray): Boolean {
+        if (samples.isEmpty()) return true
+        var sumSq = 0.0
+        var peak = 0f
+        // Stride-sample long chunks: 16kHz * 30s is 480k floats.
+        val step = (samples.size / 8000).coerceAtLeast(1)
+        var n = 0
+        var i = 0
+        while (i < samples.size) {
+            val a = kotlin.math.abs(samples[i])
+            if (a > peak) peak = a
+            sumSq += (a * a).toDouble()
+            n++
+            i += step
+        }
+        val rms = kotlin.math.sqrt(sumSq / n)
+        return peak < 0.02f && rms < 0.005
+    }
 }

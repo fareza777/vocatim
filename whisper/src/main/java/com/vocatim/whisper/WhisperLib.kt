@@ -47,6 +47,8 @@ internal class WhisperLib {
             language: String,
             translate: Boolean,
             audioData: FloatArray,
+            initialPrompt: String?,
+            beamSize: Int,
         ): Int
         external fun getTextSegmentCount(contextPtr: Long): Int
         external fun getTextSegment(contextPtr: Long, index: Int): String

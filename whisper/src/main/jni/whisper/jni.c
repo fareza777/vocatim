@@ -37,15 +37,23 @@ Java_com_vocatim_whisper_WhisperLib_00024Companion_freeContext(
 JNIEXPORT jint JNICALL
 Java_com_vocatim_whisper_WhisperLib_00024Companion_fullTranscribe(
         JNIEnv *env, jobject thiz, jlong context_ptr, jint num_threads,
-        jstring language_str, jboolean translate, jfloatArray audio_data) {
+        jstring language_str, jboolean translate, jfloatArray audio_data,
+        jstring initial_prompt_str, jint beam_size) {
     UNUSED(thiz);
     struct whisper_context *context = (struct whisper_context *) context_ptr;
     jfloat *audio_data_arr = (*env)->GetFloatArrayElements(env, audio_data, NULL);
     const jsize audio_data_length = (*env)->GetArrayLength(env, audio_data);
     // Held for the whole whisper_full call: params.language keeps the pointer.
     const char *language_chars = (*env)->GetStringUTFChars(env, language_str, NULL);
+    // Optional custom-vocabulary prompt; also held for the whole call.
+    const char *prompt_chars = NULL;
+    if (initial_prompt_str != NULL) {
+        prompt_chars = (*env)->GetStringUTFChars(env, initial_prompt_str, NULL);
+    }
 
-    struct whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+    // beam_size > 0 selects beam search (more accurate, slower); else greedy.
+    struct whisper_full_params params = whisper_full_default_params(
+            beam_size > 0 ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
     params.print_realtime   = false;
     params.print_progress   = false;
     params.print_timestamps = false;
@@ -56,11 +64,20 @@ Java_com_vocatim_whisper_WhisperLib_00024Companion_fullTranscribe(
     params.offset_ms        = 0;
     params.no_context       = true;
     params.single_segment   = false;
+    // Anti-hallucination: drop blanks and non-speech tokens on silence/music.
+    params.suppress_blank   = true;
+    params.suppress_nst     = true;
+    if (beam_size > 0) {
+        params.beam_search.beam_size = beam_size;
+    }
+    if (prompt_chars != NULL && prompt_chars[0] != '\0') {
+        params.initial_prompt = prompt_chars;
+    }
 
     whisper_reset_timings(context);
 
-    LOGI("About to run whisper_full (lang=%s, threads=%d, samples=%d)",
-         language_chars, num_threads, audio_data_length);
+    LOGI("About to run whisper_full (lang=%s, threads=%d, beam=%d, samples=%d)",
+         language_chars, num_threads, beam_size, audio_data_length);
     const int result = whisper_full(context, params, audio_data_arr, audio_data_length);
     if (result != 0) {
         LOGW("whisper_full failed with %d", result);
@@ -69,6 +86,9 @@ Java_com_vocatim_whisper_WhisperLib_00024Companion_fullTranscribe(
     }
 
     (*env)->ReleaseStringUTFChars(env, language_str, language_chars);
+    if (prompt_chars != NULL) {
+        (*env)->ReleaseStringUTFChars(env, initial_prompt_str, prompt_chars);
+    }
     (*env)->ReleaseFloatArrayElements(env, audio_data, audio_data_arr, JNI_ABORT);
     return result;
 }

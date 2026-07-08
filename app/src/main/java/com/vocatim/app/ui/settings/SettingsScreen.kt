@@ -189,6 +189,50 @@ fun SettingsScreen(
                 )
             }
 
+            Text(stringResource(R.string.settings_accuracy), style = MaterialTheme.typography.titleMedium)
+            var vocab by remember(s.customVocab) { mutableStateOf(s.customVocab) }
+            androidx.compose.material3.OutlinedTextField(
+                value = vocab,
+                onValueChange = { vocab = it; viewModel.setCustomVocab(it) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                label = { Text(stringResource(R.string.settings_custom_vocab)) },
+                placeholder = { Text(stringResource(R.string.settings_custom_vocab_hint)) },
+            )
+            Text(
+                stringResource(R.string.settings_custom_vocab_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_high_accuracy))
+                    Text(
+                        stringResource(R.string.settings_high_accuracy_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = s.highAccuracy, onCheckedChange = viewModel::setHighAccuracy)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_auto_summarize))
+                    Text(
+                        stringResource(R.string.settings_auto_summarize_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = s.autoSummarize, onCheckedChange = viewModel::setAutoSummarize)
+            }
+
             Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 val modes = listOf(

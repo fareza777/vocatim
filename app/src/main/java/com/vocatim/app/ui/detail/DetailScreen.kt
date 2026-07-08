@@ -34,7 +34,9 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Description
@@ -76,6 +78,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -126,6 +129,7 @@ fun DetailScreen(
         transcript?.modelId == com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES
     // Cloud AI (summaries + minutes) is a paid Pro feature.
     val isProTop by viewModel.isPro.collectAsStateWithLifecycle()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     LaunchedEffect(exportEvent) {
         exportEvent?.let { event ->
@@ -156,9 +160,11 @@ fun DetailScreen(
     ) { uri -> uri?.let(viewModel::exportPdf) }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
+                scrollBehavior = scrollBehavior,
                 title = {
                     Text(
                         transcript?.title ?: "",
@@ -273,7 +279,10 @@ fun DetailScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
             )
         },
     ) { padding ->
@@ -318,14 +327,17 @@ fun DetailScreen(
                     if (t.audioPath != null) {
                         LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
                         val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
+                        val skipSilence by viewModel.skipSilence.collectAsStateWithLifecycle()
                         PlayerCard(
                             state = playerState,
                             waveform = waveform,
                             durationMs = t.audioDurationMs,
                             speed = playbackSpeed,
+                            skipSilence = skipSilence,
                             onToggle = viewModel::togglePlayback,
                             onSeek = viewModel::seekToFraction,
                             onSpeedClick = viewModel::cyclePlaybackSpeed,
+                            onSkipSilenceClick = viewModel::toggleSkipSilence,
                         )
                         val markerTimes = remember(t.markers) {
                             t.markers?.split(",")
@@ -386,6 +398,7 @@ fun DetailScreen(
                         mutableStateOf(isTextNote || t.text.length <= COLLAPSE_THRESHOLD_CHARS)
                     }
                     var searchQuery by rememberSaveable(t.id) { mutableStateOf("") }
+                    var readingMode by rememberSaveable(t.id) { mutableStateOf(false) }
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -406,6 +419,15 @@ fun DetailScreen(
                                 style = MaterialTheme.typography.titleSmall,
                                 modifier = Modifier.weight(1f),
                             )
+                            if (t.text.isNotBlank()) {
+                                IconButton(onClick = { readingMode = true }) {
+                                    Icon(
+                                        Icons.Default.Fullscreen,
+                                        contentDescription = stringResource(R.string.detail_reading_mode),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                             Icon(
                                 if (transcriptExpanded) Icons.Default.ExpandLess
                                 else Icons.Default.ExpandMore,
@@ -511,6 +533,15 @@ fun DetailScreen(
                                 }
                             }
                         }
+                    }
+
+                    if (readingMode) {
+                        ReadingModeDialog(
+                            title = t.title,
+                            text = editedText ?: t.text,
+                            textScale = textScale,
+                            onDismiss = { readingMode = false },
+                        )
                     }
 
                     if (t.audioPath != null) {
@@ -776,9 +807,11 @@ private fun PlayerCard(
     waveform: FloatArray?,
     durationMs: Long,
     speed: Float,
+    skipSilence: Boolean,
     onToggle: () -> Unit,
     onSeek: (Float) -> Unit,
     onSpeedClick: () -> Unit,
+    onSkipSilenceClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -830,6 +863,14 @@ private fun PlayerCard(
                     else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            IconButton(onClick = onSkipSilenceClick) {
+                Icon(
+                    Icons.Default.FastForward,
+                    contentDescription = stringResource(R.string.player_skip_silence),
+                    tint = if (skipSilence) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -866,6 +907,61 @@ private fun PlaybackWaveform(
                 strokeWidth = barWidth * 0.55f,
                 cap = StrokeCap.Round,
             )
+        }
+    }
+}
+
+@Composable
+private fun ReadingModeDialog(
+    title: String,
+    text: String,
+    textScale: Float,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 8.dp, top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.action_cancel),
+                        )
+                    }
+                }
+                androidx.compose.foundation.text.selection.SelectionContainer(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(
+                        text,
+                        modifier = Modifier.padding(20.dp),
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = MaterialTheme.typography.headlineSmall.fontSize * textScale,
+                            lineHeight = MaterialTheme.typography.headlineSmall.lineHeight * textScale,
+                        ),
+                    )
+                }
+            }
         }
     }
 }

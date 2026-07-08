@@ -35,7 +35,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -201,6 +203,16 @@ private fun Page(
     body: String,
     content: @Composable () -> Unit = {},
 ) {
+    val infinite = androidx.compose.animation.core.rememberInfiniteTransition(label = "hero")
+    val pulse by infinite.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.06f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(1400),
+            androidx.compose.animation.core.RepeatMode.Reverse,
+        ),
+        label = "heroPulse",
+    )
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -209,6 +221,7 @@ private fun Page(
         Box(
             modifier = Modifier
                 .size(96.dp)
+                .scale(pulse)
                 .clip(CircleShape)
                 .background(BrandGradient),
             contentAlignment = Alignment.Center,

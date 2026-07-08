@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PushPin
@@ -100,9 +103,15 @@ fun HomeScreen(
     val folders by viewModel.folders.collectAsStateWithLifecycle()
     val selectedFolder by viewModel.selectedFolder.collectAsStateWithLifecycle()
     val deletedEvent by viewModel.deletedEvent.collectAsStateWithLifecycle()
+    val selection by viewModel.selection.collectAsStateWithLifecycle()
+    val selectionMode = selection.isNotEmpty()
     var sortMenuOpen by remember { mutableStateOf(false) }
     val snackbarHost = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    androidx.activity.compose.BackHandler(enabled = selectionMode) {
+        viewModel.clearSelection()
+    }
 
     val pickAudio = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -152,13 +161,23 @@ fun HomeScreen(
                 .padding(padding)
                 .statusBarsPadding()
         ) {
-            HomeHeader(
-                onImportAudio = { pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg")) },
-                onImportText = { pickText.launch(arrayOf("text/*")) },
-                onSettings = onSettingsClick,
-                onCalendar = onCalendarClick,
-                onDebug = onDebugClick,
-            )
+            if (selectionMode) {
+                SelectionBar(
+                    count = selection.size,
+                    folders = folders,
+                    onClose = viewModel::clearSelection,
+                    onDelete = viewModel::deleteSelected,
+                    onMove = viewModel::moveSelectedToFolder,
+                )
+            } else {
+                HomeHeader(
+                    onImportAudio = { pickAudio.launch(arrayOf("audio/*", "video/mp4", "application/ogg")) },
+                    onImportText = { pickText.launch(arrayOf("text/*")) },
+                    onSettings = onSettingsClick,
+                    onCalendar = onCalendarClick,
+                    onDebug = onDebugClick,
+                )
+            }
 
             if (stats.transcriptCount > 0) {
                 StatsBar(stats)
@@ -288,11 +307,18 @@ fun HomeScreen(
                             }
                         }
                         items(groupItems, key = { it.transcript.id }) { item ->
+                            val id = item.transcript.id
                             SwipeableTranscriptCard(
                                 item = item,
-                                onClick = { onTranscriptClick(item.transcript.id) },
-                                onPin = { viewModel.togglePin(item.transcript.id) },
-                                onDelete = { viewModel.delete(item.transcript.id) },
+                                selectionMode = selectionMode,
+                                selected = id in selection,
+                                onClick = {
+                                    if (selectionMode) viewModel.toggleSelection(id)
+                                    else onTranscriptClick(id)
+                                },
+                                onLongClick = { viewModel.toggleSelection(id) },
+                                onPin = { viewModel.togglePin(id) },
+                                onDelete = { viewModel.delete(id) },
                             )
                         }
                     }
@@ -340,10 +366,24 @@ private fun StatsBar(stats: HomeStats) {
 @Composable
 private fun SwipeableTranscriptCard(
     item: HomeItem,
+    selectionMode: Boolean,
+    selected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onPin: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    // Swiping is disabled while multi-selecting so taps toggle instead.
+    if (selectionMode) {
+        TranscriptCard(
+            item,
+            onClick = onClick,
+            onLongClick = onLongClick,
+            selectionMode = true,
+            selected = selected,
+        )
+        return
+    }
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {
@@ -395,7 +435,7 @@ private fun SwipeableTranscriptCard(
             }
         },
     ) {
-        TranscriptCard(item, onClick = onClick)
+        TranscriptCard(item, onClick = onClick, onLongClick = onLongClick)
     }
 }
 
@@ -510,6 +550,60 @@ private fun SearchField(
 }
 
 @Composable
+private fun SelectionBar(
+    count: Int,
+    folders: List<String>,
+    onClose: () -> Unit,
+    onDelete: () -> Unit,
+    onMove: (String?) -> Unit,
+) {
+    var moveOpen by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onClose) {
+            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_cancel))
+        }
+        Text(
+            stringResource(R.string.home_selected_count, count),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+        )
+        Box {
+            IconButton(onClick = { moveOpen = true }) {
+                Icon(
+                    Icons.AutoMirrored.Filled.DriveFileMove,
+                    contentDescription = stringResource(R.string.home_move),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(expanded = moveOpen, onDismissRequest = { moveOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.folder_none)) },
+                    onClick = { onMove(null); moveOpen = false },
+                )
+                folders.forEach { folder ->
+                    DropdownMenuItem(
+                        text = { Text(folder) },
+                        onClick = { onMove(folder); moveOpen = false },
+                    )
+                }
+            }
+        }
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = stringResource(R.string.action_delete),
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+@Composable
 private fun HomeHeader(
     onImportAudio: () -> Unit,
     onImportText: () -> Unit,
@@ -621,16 +715,27 @@ private fun EmptyState(onImport: () -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun TranscriptCard(item: HomeItem, onClick: () -> Unit) {
+private fun TranscriptCard(
+    item: HomeItem,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
+    selectionMode: Boolean = false,
+    selected: Boolean = false,
+) {
     val t = item.transcript
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        else MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = if (selected) androidx.compose.foundation.BorderStroke(
+            1.dp, MaterialTheme.colorScheme.primary
+        ) else null,
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
