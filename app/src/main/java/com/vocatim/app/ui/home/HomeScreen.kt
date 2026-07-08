@@ -48,8 +48,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.SnackbarDuration
@@ -60,7 +58,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -308,18 +305,75 @@ fun HomeScreen(
                         }
                         items(groupItems, key = { it.transcript.id }) { item ->
                             val id = item.transcript.id
-                            SwipeableTranscriptCard(
-                                item = item,
-                                selectionMode = selectionMode,
-                                selected = id in selection,
-                                onClick = {
-                                    if (selectionMode) viewModel.toggleSelection(id)
-                                    else onTranscriptClick(id)
-                                },
-                                onLongClick = { viewModel.toggleSelection(id) },
-                                onPin = { viewModel.togglePin(id) },
-                                onDelete = { viewModel.delete(id) },
-                            )
+                            // No swipe gestures: they fired accidentally.
+                            // Long-press opens an explicit menu instead.
+                            var cardMenuOpen by remember { mutableStateOf(false) }
+                            Box {
+                                TranscriptCard(
+                                    item,
+                                    onClick = {
+                                        if (selectionMode) viewModel.toggleSelection(id)
+                                        else onTranscriptClick(id)
+                                    },
+                                    onLongClick = {
+                                        if (selectionMode) viewModel.toggleSelection(id)
+                                        else cardMenuOpen = true
+                                    },
+                                    selectionMode = selectionMode,
+                                    selected = id in selection,
+                                )
+                                DropdownMenu(
+                                    expanded = cardMenuOpen,
+                                    onDismissRequest = { cardMenuOpen = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                stringResource(
+                                                    if (item.transcript.pinned) R.string.action_unpin
+                                                    else R.string.action_pin
+                                                )
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.PushPin, contentDescription = null)
+                                        },
+                                        onClick = {
+                                            cardMenuOpen = false
+                                            viewModel.togglePin(id)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_select)) },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Check, contentDescription = null)
+                                        },
+                                        onClick = {
+                                            cardMenuOpen = false
+                                            viewModel.toggleSelection(id)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                stringResource(R.string.action_delete),
+                                                color = MaterialTheme.colorScheme.error,
+                                            )
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error,
+                                            )
+                                        },
+                                        onClick = {
+                                            cardMenuOpen = false
+                                            viewModel.delete(id)
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -359,83 +413,6 @@ private fun StatsBar(stats: HomeStats) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary,
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SwipeableTranscriptCard(
-    item: HomeItem,
-    selectionMode: Boolean,
-    selected: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onPin: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    // Swiping is disabled while multi-selecting so taps toggle instead.
-    if (selectionMode) {
-        TranscriptCard(
-            item,
-            onClick = onClick,
-            onLongClick = onLongClick,
-            selectionMode = true,
-            selected = selected,
-        )
-        return
-    }
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    onPin()
-                    false
-                }
-                SwipeToDismissBoxValue.EndToStart -> {
-                    onDelete()
-                    true
-                }
-                else -> false
-            }
-        },
-    )
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = true,
-        backgroundContent = {
-            val direction = dismissState.dismissDirection
-            val color = when (direction) {
-                SwipeToDismissBoxValue.StartToEnd ->
-                    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
-                SwipeToDismissBoxValue.EndToStart ->
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-                else -> Color.Transparent
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(MaterialTheme.shapes.large)
-                    .background(color)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = when (direction) {
-                    SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                    SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                    else -> Alignment.Center
-                },
-            ) {
-                Text(
-                    when (direction) {
-                        SwipeToDismissBoxValue.StartToEnd -> stringResource(R.string.home_swipe_pin)
-                        SwipeToDismissBoxValue.EndToStart -> stringResource(R.string.home_swipe_delete)
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        },
-    ) {
-        TranscriptCard(item, onClick = onClick, onLongClick = onLongClick)
     }
 }
 

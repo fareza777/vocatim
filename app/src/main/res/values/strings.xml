@@ -307,8 +307,9 @@
     <string name="home_sort_oldest">Oldest</string>
     <string name="home_sort_longest">Longest</string>
     <string name="home_sort_title">A–Z</string>
-    <string name="home_swipe_pin">Pin</string>
-    <string name="home_swipe_delete">Delete</string>
+    <string name="action_pin">Pin</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="action_select">Select</string>
 
     <!-- Tags -->
     <string name="tag_none">No tag</string>
