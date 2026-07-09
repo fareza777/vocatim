@@ -1708,6 +1708,7 @@ private fun ExportSourceDialog(
 }
 
 /** AI-summary card content: result, progress, or the generate/unlock pitch. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SummaryBody(
     summary: String?,
@@ -1741,15 +1742,27 @@ private fun SummaryBody(
                     androidx.compose.foundation.text.selection.SelectionContainer {
                         Text(summary, style = MaterialTheme.typography.bodyMedium)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Both engines stay one tap away even after a summary
+                    // exists — regenerating with the other one is common.
+                    val cloudConfigured by viewModel.cloudConfigured.collectAsStateWithLifecycle()
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         FilledTonalButton(onClick = {
                             copyToClipboard(context, summary)
                             Toast.makeText(
                                 context, context.getString(R.string.copied), Toast.LENGTH_SHORT
                             ).show()
                         }) { Text(stringResource(R.string.action_copy)) }
-                        OutlinedButton(onClick = viewModel::startSummary) {
-                            Text(stringResource(R.string.summary_regenerate))
+                        if (modelState is ModelState.Downloaded) {
+                            OutlinedButton(onClick = viewModel::startSummary) {
+                                Text(stringResource(R.string.summary_regenerate_local))
+                            }
+                        }
+                        if (cloudConfigured) {
+                            OutlinedButton(onClick = viewModel::startCloudSummary) {
+                                Text(stringResource(R.string.summary_generate_cloud))
+                            }
                         }
                     }
                 }

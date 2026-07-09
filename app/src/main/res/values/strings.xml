@@ -303,6 +303,7 @@
     <string name="summary_running">Summarizing on your phone… this can take a few minutes.</string>
     <string name="summary_generate">Summarize</string>
     <string name="summary_regenerate">Regenerate</string>
+    <string name="summary_regenerate_local">Regenerate (On-device)</string>
     <string name="summary_ready_pitch">Generate a concise summary with key points and action items — fully offline.</string>
     <string name="summary_pro_pitch">AI summaries are part of Vocatim Unlimited — offline, private, pay once.</string>
     <string name="summary_unlock">Unlock AI Summary</string>
