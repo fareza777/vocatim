@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Description
@@ -241,6 +242,23 @@ fun DetailScreen(
                                     },
                                 )
                                 androidx.compose.material3.DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (transcript?.locked == true) R.string.action_unlock_note
+                                                else R.string.action_lock_note
+                                            )
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Lock, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        overflowOpen = false
+                                        viewModel.setLocked(transcript?.locked != true)
+                                    },
+                                )
+                                androidx.compose.material3.DropdownMenuItem(
                                     text = { Text(stringResource(R.string.action_share_pdf)) },
                                     onClick = {
                                         overflowOpen = false
@@ -352,6 +370,14 @@ fun DetailScreen(
         },
     ) { padding ->
         val t = transcript ?: return@Scaffold
+        var unlocked by rememberSaveable(t.id) { mutableStateOf(false) }
+        if (t.locked && !unlocked) {
+            LockedNoteGate(
+                modifier = Modifier.padding(padding),
+                onUnlock = { promptUnlock(context) { unlocked = true } },
+            )
+            return@Scaffold
+        }
         val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
@@ -484,11 +510,18 @@ fun DetailScreen(
                         }
 
                         if (hasAudio && segmentMode) {
+                            var showSpeakers by rememberSaveable(t.id) { mutableStateOf(false) }
+                            androidx.compose.material3.FilterChip(
+                                selected = showSpeakers,
+                                onClick = { showSpeakers = !showSpeakers },
+                                label = { Text(stringResource(R.string.detail_speakers)) },
+                            )
                             SegmentList(
                                 segments = segments,
                                 positionMs = playerState?.positionMs?.toLong() ?: -1L,
                                 canSeek = t.audioPath != null,
                                 textScale = textScale,
+                                showSpeakers = showSpeakers,
                                 onSegmentClick = { viewModel.playFromMs(it) },
                                 onCopySegment = { text ->
                                     copyToClipboard(context, text)
@@ -630,7 +663,18 @@ fun DetailScreen(
                                 runCatching { exportVttLauncher.launch(exportFileName(t.title, "vtt")) }
                             },
                             onExportMd = { startExport("md") },
-                            onExportPdf = { startExport("pdf") },
+                            // PDF is a Pro perk; free plan keeps TXT/SRT/VTT/MD.
+                            onExportPdf = {
+                                if (isProTop) startExport("pdf")
+                                else {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.export_pdf_pro),
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                    onUpgrade()
+                                }
+                            },
                             showTimestamped = hasAudio,
                         )
                     }
@@ -639,6 +683,16 @@ fun DetailScreen(
                         ExportSourceDialog(
                             hasMinutes = t.minutes != null,
                             hasSummary = t.summary != null,
+                            isPro = isProTop,
+                            onNeedPro = {
+                                exportPickerFormat = null
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.export_ai_pro),
+                                    Toast.LENGTH_LONG,
+                                ).show()
+                                onUpgrade()
+                            },
                             onPick = { source ->
                                 exportPickerFormat = null
                                 exportSource = source
@@ -1526,12 +1580,25 @@ private fun SegmentList(
     textScale: Float,
     onSegmentClick: (Long) -> Unit,
     onCopySegment: (String) -> Unit,
+    showSpeakers: Boolean = false,
 ) {
     val scrollState = rememberScrollState()
     val activeIndex = segments.indexOfFirst { positionMs in it.startMs until it.endMs }
     LaunchedEffect(activeIndex, segments.size) {
         if (activeIndex >= 0 && segments.isNotEmpty()) {
             scrollState.animateScrollTo((activeIndex * 72).coerceAtMost(scrollState.maxValue))
+        }
+    }
+    // Estimated speaker turns: a long pause is assumed to flip speaker.
+    // Heuristic, so it's opt-in and clearly labelled "estimated".
+    val speakers = remember(segments, showSpeakers) {
+        IntArray(segments.size).also { arr ->
+            if (!showSpeakers) return@also
+            var spk = 0
+            for (i in segments.indices) {
+                if (i > 0 && segments[i].startMs - segments[i - 1].endMs > 1500L) spk = 1 - spk
+                arr[i] = spk
+            }
         }
     }
     Column(
@@ -1542,6 +1609,14 @@ private fun SegmentList(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         segments.forEachIndexed { index, segment ->
+            if (showSpeakers && (index == 0 || speakers[index] != speakers[index - 1])) {
+                Text(
+                    stringResource(R.string.detail_speaker_n, speakers[index] + 1),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(top = 6.dp, start = 4.dp),
+                )
+            }
             val active = positionMs in segment.startMs until segment.endMs
             Surface(
                 modifier = Modifier
@@ -1671,6 +1746,8 @@ private fun SectionCard(
 private fun ExportSourceDialog(
     hasMinutes: Boolean,
     hasSummary: Boolean,
+    isPro: Boolean,
+    onNeedPro: () -> Unit,
     onPick: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -1679,23 +1756,38 @@ private fun ExportSourceDialog(
         title = { Text(stringResource(R.string.export_pick_source)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Exporting the transcript is free; exporting AI outputs is Pro.
+                data class Opt(val source: String, val label: Int, val pro: Boolean)
                 val options = buildList {
-                    add(EXPORT_SOURCE_TRANSCRIPT to R.string.detail_transcript_section)
-                    if (hasMinutes) add(EXPORT_SOURCE_MINUTES to R.string.detail_minutes_section)
-                    if (hasSummary) add(EXPORT_SOURCE_SUMMARY to R.string.summary_title)
+                    add(Opt(EXPORT_SOURCE_TRANSCRIPT, R.string.detail_transcript_section, false))
+                    if (hasMinutes) add(Opt(EXPORT_SOURCE_MINUTES, R.string.detail_minutes_section, true))
+                    if (hasSummary) add(Opt(EXPORT_SOURCE_SUMMARY, R.string.summary_title, true))
                 }
-                options.forEach { (source, label) ->
+                options.forEach { opt ->
                     Surface(
-                        onClick = { onPick(source) },
+                        onClick = { if (opt.pro && !isPro) onNeedPro() else onPick(opt.source) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     ) {
-                        Text(
-                            stringResource(label),
+                        Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                stringResource(opt.label),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (opt.pro && !isPro) {
+                                Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -2025,6 +2117,56 @@ private fun addToCalendar(context: Context, t: TranscriptEntity) {
             t.createdAt + t.audioDurationMs.coerceAtLeast(60_000),
         )
     runCatching { context.startActivity(intent) }
+}
+
+@Composable
+private fun LockedNoteGate(modifier: Modifier = Modifier, onUnlock: () -> Unit) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(32.dp),
+        ) {
+            Icon(
+                Icons.Default.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+            Text(
+                stringResource(R.string.note_locked_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Button(onClick = onUnlock) { Text(stringResource(R.string.note_unlock)) }
+        }
+    }
+}
+
+/** Biometric/device-credential prompt to open a locked note. */
+private fun promptUnlock(context: Context, onSuccess: () -> Unit) {
+    val activity = context as? androidx.fragment.app.FragmentActivity ?: return
+    val prompt = androidx.biometric.BiometricPrompt(
+        activity,
+        androidx.core.content.ContextCompat.getMainExecutor(context),
+        object : androidx.biometric.BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(
+                result: androidx.biometric.BiometricPrompt.AuthenticationResult,
+            ) {
+                onSuccess()
+            }
+        },
+    )
+    val info = androidx.biometric.BiometricPrompt.PromptInfo.Builder()
+        .setTitle(context.getString(R.string.note_locked_title))
+        .setAllowedAuthenticators(
+            androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        )
+        .build()
+    runCatching { prompt.authenticate(info) }
 }
 
 private fun copyToClipboard(context: Context, text: String) {

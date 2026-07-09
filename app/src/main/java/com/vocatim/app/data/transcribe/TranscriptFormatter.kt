@@ -34,6 +34,47 @@ object TranscriptFormatter {
             paragraphLen += seg.text.length
             prevEnd = seg.endMs
         }
-        return sb.toString().trim()
+        return collapseRepetition(sb.toString().trim())
+    }
+
+    /**
+     * Collapses runaway Whisper repetition ("terima kasih terima kasih …")
+     * into a single occurrence. Detects a unit of 1..6 words repeated three
+     * or more times back-to-back and keeps just one copy.
+     */
+    fun collapseRepetition(text: String): String {
+        if (text.isBlank()) return text
+        val words = text.split(Regex("(\\s+)")).filter { it.isNotEmpty() }
+        if (words.size < 6) return text
+        val out = mutableListOf<String>()
+        var i = 0
+        while (i < words.size) {
+            var collapsed = false
+            // Longest units first so "a b a b a b" collapses as "a b".
+            for (unit in 6 downTo 1) {
+                if (i + unit * 3 > words.size) continue
+                val block = words.subList(i, i + unit)
+                var repeats = 1
+                var j = i + unit
+                while (j + unit <= words.size &&
+                    words.subList(j, j + unit).map { it.lowercase() } ==
+                    block.map { it.lowercase() }
+                ) {
+                    repeats++
+                    j += unit
+                }
+                if (repeats >= 3) {
+                    out.addAll(block)
+                    i = j
+                    collapsed = true
+                    break
+                }
+            }
+            if (!collapsed) {
+                out.add(words[i])
+                i++
+            }
+        }
+        return out.joinToString(" ")
     }
 }

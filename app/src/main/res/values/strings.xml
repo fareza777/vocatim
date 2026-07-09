@@ -211,6 +211,8 @@
     <string name="detail_audio_section">Audio</string>
     <string name="detail_export_section">Export &amp; share</string>
     <string name="export_pick_source">What do you want to export?</string>
+    <string name="export_pdf_pro">PDF export is part of Unlimited.</string>
+    <string name="export_ai_pro">Exporting AI summaries and minutes is part of Unlimited.</string>
     <string name="model_name_tiny">Swift</string>
     <string name="model_name_base">Balanced</string>
     <string name="model_name_small_q5">Precise</string>
@@ -218,6 +220,12 @@
     <string name="detail_markers">Bookmarks</string>
     <string name="player_skip_silence">Skip silence</string>
     <string name="detail_reading_mode">Reading mode</string>
+    <string name="action_lock_note">Lock this note</string>
+    <string name="action_unlock_note">Remove lock</string>
+    <string name="note_locked_title">This note is locked</string>
+    <string name="note_unlock">Unlock</string>
+    <string name="detail_speakers">Speakers (estimated)</string>
+    <string name="detail_speaker_n">Speaker %1$d</string>
     <string name="action_expand">Expand</string>
     <string name="action_collapse">Collapse</string>
     <string name="record_add_marker">Add bookmark</string>
@@ -231,6 +239,11 @@
     <string name="settings_cloud_model">Model name</string>
     <string name="settings_cloud_saved">Cloud AI saved</string>
     <string name="settings_cloud_clear">Remove</string>
+    <string name="settings_accent">Accent color</string>
+    <string name="settings_speed_test">Speed test</string>
+    <string name="settings_speed_running">Testing…</string>
+    <string name="settings_speed_result">%1$s× realtime on this phone</string>
+    <string name="settings_speed_failed">Test failed</string>
     <string name="settings_accuracy">Transcription accuracy</string>
     <string name="settings_custom_vocab">Custom vocabulary</string>
     <string name="settings_custom_vocab_desc">Names and terms Whisper should spell correctly, separated by commas.</string>

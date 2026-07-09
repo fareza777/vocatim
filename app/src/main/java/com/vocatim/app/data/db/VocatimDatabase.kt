@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [TranscriptEntity::class, SegmentEntity::class, AttachmentEntity::class],
-    version = 11,
+    version = 12,
     exportSchema = false,
 )
 abstract class VocatimDatabase : RoomDatabase() {
@@ -79,6 +79,17 @@ abstract class VocatimDatabase : RoomDatabase() {
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE transcripts ADD COLUMN deletedAt INTEGER")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE transcripts ADD COLUMN playbackPositionMs INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "ALTER TABLE transcripts ADD COLUMN locked INTEGER NOT NULL DEFAULT 0"
+                )
             }
         }
     }

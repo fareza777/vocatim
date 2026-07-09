@@ -104,6 +104,12 @@ class HomeViewModel @Inject constructor(
         repository.observeFolders()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Note count per folder, for the folder chips. */
+    val folderCounts: StateFlow<Map<String, Int>> =
+        repository.observeAll().map { list ->
+            list.mapNotNull { it.tag }.groupingBy { it }.eachCount()
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     private val _waveforms = MutableStateFlow<Map<Long, FloatArray>>(emptyMap())
     val waveforms: StateFlow<Map<Long, FloatArray>> = _waveforms
 

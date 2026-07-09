@@ -314,6 +314,11 @@ class DetailViewModel @Inject constructor(
         }
     }
 
+    private fun savePlaybackPosition() {
+        val ms = player?.currentPosition?.toLong() ?: return
+        viewModelScope.launch { repository.setPlaybackPosition(transcriptId, ms) }
+    }
+
     fun togglePlayback() {
         val existing = player
         if (existing == null) {
@@ -321,6 +326,7 @@ class DetailViewModel @Inject constructor(
         } else if (existing.isPlaying) {
             existing.pause()
             positionJob?.cancel()
+            savePlaybackPosition()
             _playerState.value = _playerState.value?.copy(playing = false)
         } else {
             existing.start()
@@ -347,7 +353,7 @@ class DetailViewModel @Inject constructor(
         playFromMs((duration * fraction.coerceIn(0f, 1f)).toLong())
     }
 
-    private fun startPlayback(seekToMs: Int = 0) {
+    private fun startPlayback(seekToMs: Int = -1) {
         val path = transcript.value?.audioPath ?: return
         viewModelScope.launch {
             try {
@@ -359,11 +365,15 @@ class DetailViewModel @Inject constructor(
                 }
                 created.setOnCompletionListener {
                     positionJob?.cancel()
+                    viewModelScope.launch { repository.setPlaybackPosition(transcriptId, 0) }
                     _playerState.value =
                         PlayerState(playing = false, positionMs = 0, durationMs = created.duration)
                 }
                 player = created
-                if (seekToMs > 0) created.seekTo(seekToMs)
+                // Explicit seek wins; otherwise resume where the user stopped.
+                val resume = transcript.value?.playbackPositionMs?.toInt() ?: 0
+                val target = if (seekToMs >= 0) seekToMs else resume
+                if (target in 1 until created.duration) created.seekTo(target)
                 created.start()
                 applySpeed(created)
                 startPositionUpdates()
@@ -407,9 +417,14 @@ class DetailViewModel @Inject constructor(
         }
     }
 
+    fun setLocked(locked: Boolean) {
+        viewModelScope.launch { repository.setLocked(transcriptId, locked) }
+    }
+
     override fun onCleared() {
         super.onCleared()
         positionJob?.cancel()
+        savePlaybackPosition()
         player?.release()
         player = null
     }

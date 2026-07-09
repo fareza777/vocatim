@@ -50,8 +50,41 @@ class SettingsViewModel @Inject constructor(
     private val backupManager: com.vocatim.app.data.backup.BackupManager,
     private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
     private val cloudClient: com.vocatim.app.data.cloud.CloudAiClient,
+    private val transcriber: com.vocatim.app.data.transcribe.WhisperTranscriber,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
 ) : ViewModel() {
+
+    /** Realtime-factor benchmark per model: null=idle, running, or a value. */
+    sealed interface Bench {
+        data object Running : Bench
+        data class Done(val rtf: Float) : Bench
+        data object Failed : Bench
+    }
+
+    private val _bench = MutableStateFlow<Map<WhisperModel, Bench>>(emptyMap())
+    val bench: StateFlow<Map<WhisperModel, Bench>> = _bench.asStateFlow()
+
+    /** Transcribes a short synthetic clip to measure this phone's speed. */
+    fun benchmark(model: WhisperModel) {
+        if (_bench.value[model] == Bench.Running) return
+        _bench.value = _bench.value + (model to Bench.Running)
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.Default) {
+                runCatching {
+                    val seconds = 6
+                    val samples = FloatArray(seconds * 16_000) {
+                        (Math.random().toFloat() - 0.5f) * 0.02f
+                    }
+                    val start = android.os.SystemClock.elapsedRealtime()
+                    transcriber.transcribe(model, samples, language = "en")
+                    val elapsed = android.os.SystemClock.elapsedRealtime() - start
+                    elapsed / (seconds * 1000f)
+                }.getOrNull()
+            }
+            _bench.value = _bench.value +
+                (model to (result?.let { Bench.Done(it) } ?: Bench.Failed))
+        }
+    }
 
     val cloudConfig: StateFlow<com.vocatim.app.data.cloud.CloudAiConfig?> =
         cloudAiPrefs.config
@@ -226,6 +259,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setTextScale(scale: Float) {
         viewModelScope.launch { userPrefs.setTextScale(scale) }
+    }
+
+    fun setAccent(key: String) {
+        viewModelScope.launch { userPrefs.setAccent(key) }
     }
 
     fun setCustomVocab(text: String) {

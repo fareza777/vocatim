@@ -1,20 +1,26 @@
 package com.vocatim.app.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -140,6 +146,7 @@ fun SettingsScreen(
                     modelStates[model] is ModelState.Downloading ||
                     s.model == model
             }
+            val bench by viewModel.bench.collectAsStateWithLifecycle()
             Card {
                 Column(modifier = Modifier.padding(8.dp)) {
                     visibleModels.forEachIndexed { index, model ->
@@ -147,10 +154,12 @@ fun SettingsScreen(
                             model = model,
                             state = modelStates[model] ?: ModelState.NotDownloaded,
                             selected = s.model == model,
+                            bench = bench[model],
                             onSelect = { viewModel.selectModel(model) },
                             onDownload = { viewModel.download(model) },
                             onCancel = { viewModel.cancelDownload(model) },
                             onDelete = { viewModel.delete(model) },
+                            onBenchmark = { viewModel.benchmark(model) },
                         )
                         if (index < visibleModels.size - 1) HorizontalDivider()
                     }
@@ -247,6 +256,33 @@ fun SettingsScreen(
                         onClick = { viewModel.setThemeMode(mode) },
                         shape = SegmentedButtonDefaults.itemShape(index, modes.size),
                     ) { Text(stringResource(label)) }
+                }
+            }
+            Text(
+                stringResource(R.string.settings_accent),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                com.vocatim.app.ui.theme.Accent.entries.forEach { accent ->
+                    val color = if (isSystemInDarkTheme()) accent.dark else accent.light
+                    val isSelected = s.accent == accent.key
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(color)
+                            .clickable { viewModel.setAccent(accent.key) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = androidx.compose.ui.graphics.Color.White,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
                 }
             }
             Text(
@@ -438,7 +474,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            BackupSection(viewModel)
+            BackupSection(viewModel, onUpgrade = onUpgradeClick)
         }
     }
 }
@@ -536,7 +572,8 @@ private fun CloudAiSection(viewModel: SettingsViewModel) {
 }
 
 @Composable
-private fun BackupSection(viewModel: SettingsViewModel) {
+private fun BackupSection(viewModel: SettingsViewModel, onUpgrade: () -> Unit) {
+    val isPro by viewModel.isPro.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
     val backupEvent by viewModel.backupEvent.collectAsStateWithLifecycle()
     var pendingExportUri by remember { mutableStateOf<android.net.Uri?>(null) }
@@ -610,7 +647,11 @@ private fun BackupSection(viewModel: SettingsViewModel) {
         Switch(
             checked = autoBackupOn,
             onCheckedChange = { on ->
-                if (on) treeLauncher.launch(null) else viewModel.disableAutoBackup()
+                when {
+                    on && !isPro -> onUpgrade()
+                    on -> treeLauncher.launch(null)
+                    else -> viewModel.disableAutoBackup()
+                }
             },
         )
     }
@@ -696,10 +737,12 @@ private fun ModelRow(
     model: WhisperModel,
     state: ModelState,
     selected: Boolean,
+    bench: SettingsViewModel.Bench?,
     onSelect: () -> Unit,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
     onDelete: () -> Unit,
+    onBenchmark: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -752,6 +795,36 @@ private fun ModelRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
+        }
+        if (state is ModelState.Downloaded) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.TextButton(
+                    onClick = onBenchmark,
+                    enabled = bench != SettingsViewModel.Bench.Running,
+                ) { Text(stringResource(R.string.settings_speed_test)) }
+                when (bench) {
+                    SettingsViewModel.Bench.Running -> Text(
+                        stringResource(R.string.settings_speed_running),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    is SettingsViewModel.Bench.Done -> Text(
+                        stringResource(
+                            R.string.settings_speed_result,
+                            String.format(java.util.Locale.US, "%.2f", bench.rtf),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (bench.rtf <= 1f) MaterialTheme.colorScheme.secondary
+                        else MaterialTheme.colorScheme.tertiary,
+                    )
+                    SettingsViewModel.Bench.Failed -> Text(
+                        stringResource(R.string.settings_speed_failed),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    null -> Unit
+                }
+            }
         }
     }
 }

@@ -83,6 +83,12 @@ interface TranscriptDao {
     @Query("UPDATE transcripts SET minutes = :minutes WHERE id = :id")
     suspend fun updateMinutes(id: Long, minutes: String?)
 
+    @Query("UPDATE transcripts SET playbackPositionMs = :ms WHERE id = :id")
+    suspend fun setPlaybackPosition(id: Long, ms: Long)
+
+    @Query("UPDATE transcripts SET locked = :locked WHERE id = :id")
+    suspend fun setLocked(id: Long, locked: Boolean)
+
     @Query("SELECT * FROM transcripts WHERE status IN (:statuses) AND deletedAt IS NULL")
     suspend fun getByStatuses(statuses: List<String>): List<TranscriptEntity>
 

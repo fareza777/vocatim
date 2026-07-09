@@ -181,8 +181,10 @@ fun HomeScreen(
             }
 
             if (folders.isNotEmpty()) {
+                val folderCounts by viewModel.folderCounts.collectAsStateWithLifecycle()
                 FolderRow(
                     folders = folders,
+                    counts = folderCounts,
                     selected = selectedFolder,
                     onSelect = viewModel::selectFolder,
                 )
@@ -451,6 +453,7 @@ private fun StatCard(value: String, label: String, modifier: Modifier = Modifier
 @Composable
 private fun FolderRow(
     folders: List<String>,
+    counts: Map<String, Int>,
     selected: String?,
     onSelect: (String?) -> Unit,
 ) {
@@ -467,8 +470,9 @@ private fun FolderRow(
             onClick = { onSelect(null) },
         )
         folders.forEach { folder ->
+            val n = counts[folder] ?: 0
             FolderChip(
-                label = folder,
+                label = if (n > 0) "$folder · $n" else folder,
                 selected = selected == folder,
                 onClick = { onSelect(folder) },
             )
@@ -691,20 +695,35 @@ private fun EmptyState(onImport: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.padding(32.dp),
         ) {
-            // Deliberately muted: the one gradient mic on screen is the FAB.
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Default.Mic,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(36.dp),
+            // Layered halo behind the mic — a warmer first impression than a
+            // single flat circle, still calm on the linen background.
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(128.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.06f))
                 )
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(68.dp)
+                        .clip(CircleShape)
+                        .background(BrandGradient),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.Mic,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
             }
             Text(
                 stringResource(R.string.home_empty_title),

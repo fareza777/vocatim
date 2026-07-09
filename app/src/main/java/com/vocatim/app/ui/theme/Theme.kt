@@ -71,13 +71,35 @@ val VocatimShapes = Shapes(
 /** Signature gradient used for hero actions (record button, highlights). */
 val BrandGradient = Brush.linearGradient(listOf(Violet, Teal))
 
+/** User-selectable accent colors layered over the fixed ink/linen palette. */
+enum class Accent(val key: String, val light: Color, val dark: Color) {
+    VIOLET("violet", VioletDeep, Violet),
+    TEAL("teal", Color(0xFF1FA398), Teal),
+    GOLD("gold", Color(0xFFC98A1E), Gold),
+    BLUE("blue", Color(0xFF3A6FF0), Color(0xFF6E93FF)),
+    ROSE("rose", Color(0xFFD1477E), Color(0xFFFF7FB0));
+
+    companion object {
+        fun fromKey(key: String): Accent = entries.firstOrNull { it.key == key } ?: VIOLET
+    }
+}
+
 @Composable
 fun VocatimTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    accentKey: String = "violet",
     content: @Composable () -> Unit,
 ) {
+    val accent = Accent.fromKey(accentKey)
+    val base = if (darkTheme) DarkColors else LightColors
+    val primary = if (darkTheme) accent.dark else accent.light
+    val scheme = base.copy(
+        primary = primary,
+        primaryContainer = primary,
+        secondary = if (accent == Accent.TEAL) accent.dark else base.secondary,
+    )
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = scheme,
         typography = VocatimTypography,
         shapes = VocatimShapes,
         content = content,

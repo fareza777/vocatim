@@ -342,20 +342,22 @@ private fun AmplitudeBars(amplitudes: List<Float>, paused: Boolean) {
         val center = size.height / 2
         for (i in 0 until AMPLITUDE_BARS) {
             val amp = amplitudes.getOrNull(amplitudes.size - AMPLITUDE_BARS + i) ?: 0f
-            val h = (amp.coerceIn(0.03f, 1f)) * size.height
+            val level = amp.coerceIn(0.03f, 1f)
+            val h = level * size.height
             val x = i * barWidth + barWidth / 2
-            // Newest bars blend toward the teal end of the brand gradient.
+            // Louder = brighter toward the teal tip; recency adds a small lift.
             val color = when {
                 paused -> idle
                 else -> androidx.compose.ui.graphics.lerp(
-                    active, activeTip, i.toFloat() / AMPLITUDE_BARS
+                    active, activeTip,
+                    (level * 0.7f + (i.toFloat() / AMPLITUDE_BARS) * 0.3f).coerceIn(0f, 1f),
                 )
             }
             drawLine(
                 color = color,
                 start = Offset(x, center - h / 2),
                 end = Offset(x, center + h / 2),
-                strokeWidth = barWidth * 0.55f,
+                strokeWidth = barWidth * 0.6f,
                 cap = StrokeCap.Round,
             )
         }

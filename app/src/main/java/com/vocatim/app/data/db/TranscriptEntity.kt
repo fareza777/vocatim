@@ -58,5 +58,9 @@ data class TranscriptEntity(
     val markers: String? = null,
     /** Soft-delete timestamp: non-null rows live in the trash for 30 days. */
     val deletedAt: Long? = null,
+    /** Last audio playback position in ms, to resume where the user stopped. */
+    val playbackPositionMs: Long = 0,
+    /** When true, opening this note requires biometric even if app-lock is off. */
+    val locked: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
 )

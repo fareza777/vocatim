@@ -67,6 +67,12 @@ class TranscriptRepository(private val dao: TranscriptDao) {
     suspend fun updateMinutes(id: Long, minutes: String?) =
         dao.updateMinutes(id, minutes)
 
+    suspend fun setPlaybackPosition(id: Long, ms: Long) =
+        dao.setPlaybackPosition(id, ms)
+
+    suspend fun setLocked(id: Long, locked: Boolean) =
+        dao.setLocked(id, locked)
+
     // --- Trash: soft delete with a 30-day retention window ---
 
     fun observeTrash(): Flow<List<TranscriptEntity>> = dao.observeTrash()
