@@ -165,6 +165,11 @@ fun SettingsScreen(
                     }
                 }
             }
+            Text(
+                stringResource(R.string.settings_model_ladder_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.titleMedium)
             LanguagePickerSheet(current = s.language, onSelect = viewModel::selectLanguage)

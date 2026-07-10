@@ -40,6 +40,7 @@ class SummaryService : Service() {
     @Inject lateinit var repository: TranscriptRepository
     @Inject lateinit var progressHolder: SummaryProgressHolder
     @Inject lateinit var userPrefs: UserPrefs
+    @Inject lateinit var quotaStore: com.vocatim.app.data.billing.QuotaStore
     @Inject lateinit var cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs
     @Inject lateinit var cloudClient: com.vocatim.app.data.cloud.CloudAiClient
 
@@ -85,6 +86,12 @@ class SummaryService : Service() {
         job = scope.launch {
             previous?.join()
             try {
+                // Server-side of the paywall: the UI gates all AI behind Pro,
+                // but the service must not trust the caller.
+                if (!quotaStore.currentIsPro()) {
+                    notifyFailure(getString(R.string.ai_need_pro))
+                    return@launch
+                }
                 val entity = repository.getById(transcriptId) ?: return@launch
                 // "auto" carries no target language for the LLM; fall back to
                 // the detected language, then Indonesian (the app's audience).

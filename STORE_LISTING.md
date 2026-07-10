@@ -22,20 +22,22 @@ Vocatim is an offline transcription app powered by Whisper AI that converts voic
 🌏 **Speaks your language** — transcribe Indonesian, English, and 90+ languages, or auto-detect. Built-in translate-to-English.
 
 **Features**
-• Record with the screen off — long recordings keep running in the background
+• Record with the screen off — long recordings keep running in the background, with live text preview while you speak
 • Import audio & video: MP3, M4A, WAV, MP4, WhatsApp voice notes (share directly to Vocatim)
 • Transcribe multi-hour recordings — resumes from checkpoint if interrupted
-• AI Summary — on-device: turn any transcript into key points, fully offline (Unlimited)
-• Timestamped segments — tap any line to jump the audio to that moment
-• Playback speed, merge transcripts, add to Calendar
-• Edit, copy, share — export TXT, SRT, VTT, PDF, Markdown — no watermark
-• Choose your accuracy: fast (tiny), balanced (base), or accurate (small) models
-• App lock with fingerprint, screenshot blocking, full-text search
-• Encrypted backup & restore (AES-256, your password)
-• Dark & light themes, adjustable text size
+• Smart silence filter (VAD) — skips quiet stretches for faster, cleaner transcripts
+• AI Summary & Meeting Minutes — on-device: key points and structured minutes, fully offline (Unlimited)
+• Ask AI about any transcript — answered on your phone, no cloud needed (Unlimited)
+• Karaoke playback — the word being spoken is highlighted; tap any line to jump the audio
+• Playback speed, skip-silence playback, bookmarks while recording, merge transcripts, calendar view
+• Edit, copy, share — export TXT, SRT, VTT, Markdown free; polished PDF with photos (Unlimited) — no watermark
+• Accuracy ladder: Swift, Balanced, Precise, and Ultra (large-v3-turbo) Whisper models
+• Lock individual notes with your fingerprint, app lock, screenshot blocking, full-text search, trash with undo
+• Encrypted backup & restore (AES-256, your password); weekly auto-backup (Unlimited)
+• Dark & light themes, five accent colors, adjustable text size
 
 **Free vs Unlimited**
-Recording, editing, and export are always free. The free plan includes 30 total minutes of transcription. A single in-app purchase unlocks unlimited transcription forever.
+Recording, editing, search, and text exports (TXT, SRT, VTT, Markdown) are always free. The free plan includes 30 minutes of transcription — and only speech time counts: silence is free. One purchase unlocks unlimited transcription, all AI features, PDF export, and auto-backup, forever.
 
 No ads. No tracking. No data collection. Read our privacy policy: [link]
 
@@ -54,20 +56,22 @@ Vocatim adalah aplikasi transkripsi offline bertenaga Whisper AI yang mengubah s
 🌏 **Paham bahasa Anda** — Indonesia, Inggris, dan 90+ bahasa, atau deteksi otomatis. Ada mode terjemah ke Inggris.
 
 **Fitur**
-• Rekam dengan layar mati — rekaman panjang tetap jalan di latar belakang
+• Rekam dengan layar mati — rekaman panjang tetap jalan di latar belakang, dengan pratinjau teks langsung saat bicara
 • Impor audio & video: MP3, M4A, WAV, MP4, voice note WhatsApp (share langsung ke Vocatim)
 • Transkrip rekaman berjam-jam — lanjut otomatis dari checkpoint jika terputus
-• Ringkasan AI — di perangkat: ubah transkrip jadi poin penting, sepenuhnya offline (Unlimited)
-• Segmen bertimestamp — ketuk baris mana pun untuk melompat ke detiknya
-• Kecepatan putar, gabung transkrip, tambah ke Kalender
-• Edit, salin, bagikan — ekspor TXT, SRT, VTT, PDF, Markdown — tanpa watermark
-• Pilih akurasi: cepat (tiny), seimbang (base), akurat (small)
-• Kunci aplikasi sidik jari, blokir screenshot, pencarian teks penuh
-• Cadangan terenkripsi (AES-256, dengan password Anda)
-• Tema gelap & terang, ukuran teks bisa diatur
+• Filter keheningan pintar (VAD) — lewati bagian sunyi: lebih cepat, lebih bersih
+• Ringkasan AI & Notulen Rapat — di perangkat, sepenuhnya offline (Unlimited)
+• Tanya AI tentang isi transkrip — dijawab di HP Anda, tanpa cloud (Unlimited)
+• Playback karaoke — kata yang sedang diucapkan tersorot; ketuk baris mana pun untuk melompat
+• Kecepatan putar, lewati keheningan, penanda saat merekam, gabung transkrip, tampilan Kalender
+• Edit, salin, bagikan — ekspor TXT, SRT, VTT, Markdown gratis; PDF rapi dengan foto (Unlimited) — tanpa watermark
+• Tangga akurasi: model Swift, Balanced, Precise, dan Ultra (large-v3-turbo)
+• Kunci catatan per item dengan sidik jari, kunci aplikasi, blokir screenshot, pencarian teks penuh, sampah dengan undo
+• Cadangan terenkripsi (AES-256, dengan password Anda); auto-backup mingguan (Unlimited)
+• Tema gelap & terang, lima warna aksen, ukuran teks bisa diatur
 
 **Gratis vs Unlimited**
-Merekam, mengedit, dan ekspor selalu gratis. Paket gratis mencakup total 30 menit transkripsi. Satu kali pembelian membuka transkripsi tanpa batas selamanya.
+Merekam, mengedit, mencari, dan ekspor teks (TXT, SRT, VTT, Markdown) selalu gratis. Paket gratis mencakup 30 menit transkripsi — dan hanya waktu bicara yang dihitung: keheningan gratis. Satu kali pembelian membuka transkripsi tanpa batas, semua fitur AI, ekspor PDF, dan auto-backup, selamanya.
 
 Tanpa iklan. Tanpa pelacakan. Tanpa pengumpulan data.
 

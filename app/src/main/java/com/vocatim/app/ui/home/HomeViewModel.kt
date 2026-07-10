@@ -62,7 +62,17 @@ class HomeViewModel @Inject constructor(
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
     private val importCoordinator: ImportCoordinator,
     private val transcriptRepository: TranscriptRepository,
+    private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
 ) : ViewModel() {
+
+    /** One-time spotlight tour of the Home controls. */
+    val showTour: StateFlow<Boolean> = userPrefs.settings
+        .map { it.onboardingDone && !it.homeTourDone }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun finishTour() {
+        viewModelScope.launch { userPrefs.setHomeTourDone() }
+    }
 
     val quotaBanner: StateFlow<QuotaBanner?> =
         combine(quotaStore.isProCached, quotaStore.usedMs) { pro, used ->

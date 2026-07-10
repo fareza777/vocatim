@@ -79,6 +79,7 @@ import com.vocatim.app.ui.common.MiniWaveform
 import com.vocatim.app.ui.common.Pill
 import com.vocatim.app.ui.common.formatClock
 import com.vocatim.app.ui.common.formatDate
+import com.vocatim.app.ui.common.tourTarget
 import com.vocatim.app.ui.theme.BrandGradient
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -106,6 +107,13 @@ fun HomeScreen(
     val snackbarHost = remember { SnackbarHostState() }
     val context = LocalContext.current
 
+    // One-time spotlight tour over the real controls.
+    val showTour by viewModel.showTour.collectAsStateWithLifecycle()
+    var tourStep by remember { mutableStateOf(0) }
+    val tourTargets = remember {
+        androidx.compose.runtime.mutableStateMapOf<String, androidx.compose.ui.geometry.Rect>()
+    }
+
     androidx.activity.compose.BackHandler(enabled = selectionMode) {
         viewModel.clearSelection()
     }
@@ -131,6 +139,7 @@ fun HomeScreen(
         else viewModel.finalizeDelete()
     }
 
+    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHost) },
@@ -140,7 +149,8 @@ fun HomeScreen(
                     .size(68.dp)
                     .clip(CircleShape)
                     .background(BrandGradient)
-                    .clickable(onClick = onRecordClick),
+                    .clickable(onClick = onRecordClick)
+                    .tourTarget(tourTargets, "record"),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -173,6 +183,7 @@ fun HomeScreen(
                     onSettings = onSettingsClick,
                     onCalendar = onCalendarClick,
                     onDebug = onDebugClick,
+                    tourTargets = tourTargets,
                 )
             }
 
@@ -201,7 +212,9 @@ fun HomeScreen(
                 SearchField(
                     query = query,
                     onQueryChanged = viewModel::onQueryChanged,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .tourTarget(tourTargets, "search"),
                 )
                 Box {
                     IconButton(onClick = { sortMenuOpen = true }) {
@@ -252,15 +265,23 @@ fun HomeScreen(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            if (banner.exhausted) {
-                                stringResource(R.string.quota_banner_exhausted)
-                            } else {
-                                stringResource(R.string.quota_banner, banner.remainingMinutes)
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                if (banner.exhausted) {
+                                    stringResource(R.string.quota_banner_exhausted)
+                                } else {
+                                    stringResource(R.string.quota_banner, banner.remainingMinutes)
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            if (!banner.exhausted) {
+                                Text(
+                                    stringResource(R.string.quota_silence_free),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                         Text(
                             stringResource(R.string.quota_banner_cta),
                             style = MaterialTheme.typography.labelLarge,
@@ -382,6 +403,47 @@ fun HomeScreen(
             }
         }
     }
+
+    if (showTour && !selectionMode) {
+        val tourSteps = listOf(
+            com.vocatim.app.ui.common.TourStep(
+                "record",
+                stringResource(R.string.tour_record_title),
+                stringResource(R.string.tour_record_body),
+            ),
+            com.vocatim.app.ui.common.TourStep(
+                "import",
+                stringResource(R.string.tour_import_title),
+                stringResource(R.string.tour_import_body),
+            ),
+            com.vocatim.app.ui.common.TourStep(
+                "calendar",
+                stringResource(R.string.tour_calendar_title),
+                stringResource(R.string.tour_calendar_body),
+            ),
+            com.vocatim.app.ui.common.TourStep(
+                "search",
+                stringResource(R.string.tour_search_title),
+                stringResource(R.string.tour_search_body),
+            ),
+            com.vocatim.app.ui.common.TourStep(
+                "settings",
+                stringResource(R.string.tour_settings_title),
+                stringResource(R.string.tour_settings_body),
+            ),
+        )
+        com.vocatim.app.ui.common.TourOverlay(
+            steps = tourSteps,
+            stepIndex = tourStep,
+            targets = tourTargets,
+            onNext = {
+                if (tourStep >= tourSteps.size - 1) viewModel.finishTour()
+                else tourStep++
+            },
+            onSkip = viewModel::finishTour,
+        )
+    }
+    } // end tour root Box
 }
 
 
@@ -623,6 +685,7 @@ private fun HomeHeader(
     onSettings: () -> Unit,
     onCalendar: () -> Unit,
     onDebug: () -> Unit,
+    tourTargets: MutableMap<String, androidx.compose.ui.geometry.Rect> = mutableMapOf(),
 ) {
     var importMenuOpen by remember { mutableStateOf(false) }
     Row(
@@ -643,7 +706,10 @@ private fun HomeHeader(
             )
         }
         Box {
-            IconButton(onClick = { importMenuOpen = true }) {
+            IconButton(
+                onClick = { importMenuOpen = true },
+                modifier = Modifier.tourTarget(tourTargets, "import"),
+            ) {
                 Icon(
                     Icons.Default.Add,
                     contentDescription = stringResource(R.string.home_import),
@@ -661,14 +727,20 @@ private fun HomeHeader(
                 )
             }
         }
-        IconButton(onClick = onCalendar) {
+        IconButton(
+            onClick = onCalendar,
+            modifier = Modifier.tourTarget(tourTargets, "calendar"),
+        ) {
             Icon(
                 Icons.Default.CalendarMonth,
                 contentDescription = stringResource(R.string.calendar_title),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(onClick = onSettings) {
+        IconButton(
+            onClick = onSettings,
+            modifier = Modifier.tourTarget(tourTargets, "settings"),
+        ) {
             Icon(
                 Icons.Default.Settings,
                 contentDescription = stringResource(R.string.settings_title),

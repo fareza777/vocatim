@@ -151,12 +151,14 @@
     <string name="paywall_restore">Restore purchase</string>
     <string name="paywall_restore_hint">Bought Unlimited before? Make sure this device uses the same Google account, then tap Restore.</string>
     <string name="paywall_price_angle">Cloud transcription services charge this much every month or two — here it\'s once, forever.</string>
-    <string name="paywall_footnote">One-time purchase via Google Play. The free plan includes 30 minutes of transcription — recording, editing, and export are always free.</string>
+    <string name="paywall_footnote">One-time purchase via Google Play. The free plan includes 30 minutes of transcription (only speech time counts) — recording, editing, and text exports (TXT, SRT, VTT, Markdown) are always free.</string>
+    <string name="paywall_byok_note">Unlimited includes AI that runs on your phone. Cloud AI is optional — bring your own API key, billed by your provider.</string>
     <string name="paywall_success">Unlimited unlocked. Enjoy!</string>
     <string name="paywall_restore_none">No previous purchase found for this Google account.</string>
     <string name="paywall_store_unavailable">Google Play is unavailable right now. Try again shortly.</string>
     <string name="paywall_failed">Purchase didn\'t complete. You were not charged.</string>
     <string name="quota_banner">Free plan: %1$d min of transcription left</string>
+    <string name="quota_silence_free">Only speech time counts — silence is free</string>
     <string name="quota_banner_exhausted">Free transcription time used up</string>
     <string name="quota_banner_cta">Upgrade</string>
     <string name="detail_quota_exceeded">Your 30 free minutes of transcription are used up. Unlock Unlimited to transcribe this recording.</string>
@@ -278,6 +280,9 @@
     <string name="translate_pick">Translate this note into:</string>
     <string name="translate_busy">Translating…</string>
     <string name="cloud_need_pro">Cloud AI is a Pro feature. Unlock unlimited to use it.</string>
+    <string name="ai_need_pro">AI features are part of Unlimited. Unlock to use them.</string>
+    <string name="export_badge_pro">PDF · Unlimited</string>
+    <string name="settings_model_ladder_hint">Tip: Precise (190 MB) and Ultra (574 MB) are noticeably more accurate — worth it for Indonesian and noisy recordings.</string>
     <string name="minutes_title_prefix">Minutes:</string>
     <string name="minutes_ready_title">Meeting minutes ready</string>
     <string name="minutes_ready_body">Tap to view them.</string>
@@ -343,6 +348,21 @@
     <string name="home_empty_tip_wa">Tip: share a WhatsApp voice note to Vocatim and it becomes text.</string>
     <string name="calendar_prev_month">Previous month</string>
     <string name="calendar_next_month">Next month</string>
+
+    <!-- One-time spotlight tour of the Home controls -->
+    <string name="tour_record_title">Record</string>
+    <string name="tour_record_body">Tap the mic to capture a meeting or voice note. It keeps recording with the screen off.</string>
+    <string name="tour_import_title">Import</string>
+    <string name="tour_import_body">Bring in audio files or text — or share a WhatsApp voice note straight to Vocatim.</string>
+    <string name="tour_calendar_title">Calendar</string>
+    <string name="tour_calendar_body">Browse your notes by date, month by month.</string>
+    <string name="tour_search_title">Search</string>
+    <string name="tour_search_body">Find anything you ever said — transcripts, summaries, and minutes are all searchable.</string>
+    <string name="tour_settings_title">Settings</string>
+    <string name="tour_settings_body">Models, AI summaries, backups, themes, and more live here.</string>
+    <string name="tour_next">Next</string>
+    <string name="tour_done">Got it</string>
+    <string name="tour_skip">Skip</string>
     <string name="settings_vad">Smart silence filter (VAD)</string>
     <string name="settings_vad_desc">Skips silent stretches before transcribing: faster, fewer made-up fillers. Uses a tiny one-time download.</string>
     <string name="model_name_turbo">Ultra</string>
@@ -390,6 +410,9 @@
     <string name="paywall_row_transcription">Transcription</string>
     <string name="paywall_row_record">Record &amp; edit</string>
     <string name="paywall_row_export">Export formats</string>
+    <string name="paywall_row_ai">AI summaries &amp; minutes</string>
+    <string name="paywall_value_export_free">TXT · SRT · VTT · MD</string>
+    <string name="paywall_value_export_pro">+ PDF &amp; AI</string>
     <string name="paywall_row_offline">Fully offline</string>
 
     <!-- Widget & shortcuts -->

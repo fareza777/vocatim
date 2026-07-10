@@ -262,8 +262,19 @@ fun DetailScreen(
                                     text = { Text(stringResource(R.string.action_share_pdf)) },
                                     onClick = {
                                         overflowOpen = false
-                                        viewModel.sharePdf { uri ->
-                                            shareStream(context, uri, "application/pdf")
+                                        // Same gate as PDF export: sharing IS
+                                        // an export, just via a different door.
+                                        if (!isProTop) {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.export_pdf_pro),
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                            onUpgrade()
+                                        } else {
+                                            viewModel.sharePdf { uri ->
+                                                shareStream(context, uri, "application/pdf")
+                                            }
                                         }
                                     },
                                 )
@@ -624,6 +635,8 @@ fun DetailScreen(
                     SectionCard(
                         title = stringResource(R.string.detail_export_section),
                         icon = Icons.Default.Share,
+                        // Quiet upsell at the moment of highest intent.
+                        badge = if (!isProTop) stringResource(R.string.export_badge_pro) else null,
                     ) {
                         // TXT/MD/PDF can carry the transcript, the minutes, or
                         // the AI summary — ask which when there is a choice.
@@ -1906,6 +1919,17 @@ private fun SummaryBody(
                                 Text(stringResource(R.string.summary_generate_cloud))
                             }
                         }
+                    }
+                }
+                modelState is ModelState.Failed -> {
+                    // Surface WHY (e.g. "not enough free storage") + retry.
+                    Text(
+                        (modelState as ModelState.Failed).message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Button(onClick = viewModel::downloadSummaryModel) {
+                        Text(stringResource(R.string.debug_retry))
                     }
                 }
                 modelState is ModelState.Downloading -> {

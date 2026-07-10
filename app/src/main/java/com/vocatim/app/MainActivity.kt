@@ -43,6 +43,8 @@ class MainActivity : FragmentActivity() {
     private var startRecordRequest by mutableStateOf(false)
     /** Set by app shortcut: open a specific transcript. */
     private var openTranscriptId by mutableStateOf<Long?>(null)
+    /** Branded intro animation; cold starts only, skipped for deep links. */
+    private var showSplash by mutableStateOf(true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -51,6 +53,11 @@ class MainActivity : FragmentActivity() {
         handleAudioIntent(intent)
         handleRecordIntent(intent)
         handleTranscriptIntent(intent)
+        // Recreation (rotation, theme change) or a jump-straight-in intent
+        // shouldn't replay the intro.
+        if (savedInstanceState != null || startRecordRequest || openTranscriptId != null) {
+            showSplash = false
+        }
 
         lifecycleScope.launch {
             userPrefs.settings.collect { settings ->
@@ -77,17 +84,30 @@ class MainActivity : FragmentActivity() {
                 else -> androidx.compose.foundation.isSystemInDarkTheme()
             }
             VocatimTheme(darkTheme = darkTheme, accentKey = accent) {
-                when {
-                    locked == null || onboardingDone == null -> Unit // prefs loading
-                    locked == true -> LockScreen(onUnlockClick = ::authenticate)
-                    onboardingDone == false ->
-                        com.vocatim.app.ui.onboarding.OnboardingScreen(onDone = {})
-                    else -> VocatimNavHost(
-                        startRecord = startRecordRequest,
-                        onStartRecordConsumed = { startRecordRequest = false },
-                        openTranscriptId = openTranscriptId,
-                        onOpenTranscriptConsumed = { openTranscriptId = null },
-                    )
+                androidx.compose.foundation.layout.Box {
+                    when {
+                        locked == null || onboardingDone == null -> Unit // prefs loading
+                        locked == true -> LockScreen(onUnlockClick = ::authenticate)
+                        onboardingDone == false ->
+                            com.vocatim.app.ui.onboarding.OnboardingScreen(onDone = {})
+                        else -> VocatimNavHost(
+                            startRecord = startRecordRequest,
+                            onStartRecordConsumed = { startRecordRequest = false },
+                            openTranscriptId = openTranscriptId,
+                            onOpenTranscriptConsumed = { openTranscriptId = null },
+                        )
+                    }
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showSplash,
+                        enter = androidx.compose.animation.EnterTransition.None,
+                        exit = androidx.compose.animation.fadeOut(
+                            androidx.compose.animation.core.tween(450)
+                        ),
+                    ) {
+                        com.vocatim.app.ui.common.AnimatedSplash(
+                            onFinished = { showSplash = false }
+                        )
+                    }
                 }
             }
         }

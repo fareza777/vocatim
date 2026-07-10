@@ -198,6 +198,11 @@ fun PaywallScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Text(
+                    stringResource(R.string.paywall_byok_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -238,7 +243,12 @@ private fun ComparisonTable() {
                 proValue = stringResource(R.string.paywall_value_unlimited),
             )
             CompareRow(stringResource(R.string.paywall_row_record), true, true)
-            CompareRow(stringResource(R.string.paywall_row_export), true, true)
+            CompareValueRow(
+                label = stringResource(R.string.paywall_row_export),
+                freeValue = stringResource(R.string.paywall_value_export_free),
+                proValue = stringResource(R.string.paywall_value_export_pro),
+            )
+            CompareRow(stringResource(R.string.paywall_row_ai), false, true)
             CompareRow(stringResource(R.string.paywall_row_offline), true, true)
         }
     }
