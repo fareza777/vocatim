@@ -50,6 +50,7 @@ class SummaryModelManager(
                 throw IOException("Couldn't create models directory")
             }
             val already = if (partFile.exists()) partFile.length() else 0L
+            checkFreeSpace(model.approxSizeBytes - already)
             state.value = ModelState.Downloading(already, 0L)
 
             val request = Request.Builder()
@@ -99,6 +100,18 @@ class SummaryModelManager(
         states.getValue(model).value = ModelState.NotDownloaded
     }
 
+    /** Fail fast (before streaming gigabytes) when the disk can't fit it. */
+    private fun checkFreeSpace(stillNeededBytes: Long) {
+        val free = runCatching {
+            android.os.StatFs(modelsDir.absolutePath).availableBytes
+        }.getOrNull() ?: return
+        val required = stillNeededBytes.coerceAtLeast(0) + SPACE_MARGIN_BYTES
+        if (free < required) {
+            val shortMb = (required - free) / (1024 * 1024)
+            throw IOException("Not enough free storage: about $shortMb MB more needed")
+        }
+    }
+
     private fun verify(file: File, expectedSha256: String) {
         try {
             val magic = ByteArray(4)
@@ -130,5 +143,10 @@ class SummaryModelManager(
             }
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private companion object {
+        /** Keep this much headroom so a model download can't fill the disk. */
+        const val SPACE_MARGIN_BYTES = 200L * 1024 * 1024
     }
 }

@@ -739,6 +739,11 @@ private fun EmptyState(onImport: () -> Unit) {
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.home_import_cta))
             }
+            Text(
+                stringResource(R.string.home_empty_tip_wa),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -97,6 +97,12 @@ fun RecordScreen(
         }
     }
 
+    // Live preview runs only while this screen is composed.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        viewModel.startLivePreview()
+        onDispose { viewModel.stopLivePreview() }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
@@ -224,6 +230,30 @@ fun RecordScreen(
 
                     AmplitudeBars(amplitudes, paused = s.paused)
 
+                    val livePreview by viewModel.livePreview.collectAsStateWithLifecycle()
+                    livePreview?.let { preview ->
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Pill(
+                                stringResource(R.string.record_live_preview),
+                                color = MaterialTheme.colorScheme.primary,
+                                background = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                                dot = false,
+                            )
+                            Text(
+                                // The tail is the freshest part; lead with it.
+                                preview.trim().takeLast(220),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 3,
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+
                     if (markers.isNotEmpty()) {
                         Pill(
                             stringResource(R.string.record_markers_count, markers.size),
@@ -340,9 +370,14 @@ private fun AmplitudeBars(amplitudes: List<Float>, paused: Boolean) {
     ) {
         val barWidth = size.width / AMPLITUDE_BARS
         val center = size.height / 2
+        // Normalize against the loudest bar in view: hardware AGC compresses
+        // the absolute level, so only relative scaling shows speech dynamics.
+        val windowMax = (amplitudes.maxOrNull() ?: 0f).coerceAtLeast(0.02f)
         for (i in 0 until AMPLITUDE_BARS) {
             val amp = amplitudes.getOrNull(amplitudes.size - AMPLITUDE_BARS + i) ?: 0f
-            val level = amp.coerceIn(0.03f, 1f)
+            // Perceptual curve: sqrt-ish response keeps quiet syllables visible.
+            val level = Math.pow((amp / windowMax).toDouble(), 0.7)
+                .toFloat().coerceIn(0.05f, 1f)
             val h = level * size.height
             val x = i * barWidth + barWidth / 2
             // Louder = brighter toward the teal tip; recency adds a small lift.

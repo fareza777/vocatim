@@ -1,15 +1,24 @@
 package com.vocatim.app.ui.record
 
 import android.content.Context
+import android.os.Build
+import android.os.PowerManager
 import android.os.StatFs
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vocatim.app.data.model.ModelManager
+import com.vocatim.app.data.model.WhisperModel
+import com.vocatim.app.data.prefs.UserPrefs
 import com.vocatim.app.data.repository.TranscriptRepository
+import com.vocatim.app.data.transcribe.TranscriptionProgressHolder
+import com.vocatim.app.data.transcribe.WhisperTranscriber
 import com.vocatim.app.service.RecordingService
 import com.vocatim.app.service.RecordingState
 import com.vocatim.app.service.RecordingStateHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +32,11 @@ enum class StorageStatus { OK, LOW, FULL }
 class RecordViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val repository: TranscriptRepository,
-    stateHolder: RecordingStateHolder,
+    private val stateHolder: RecordingStateHolder,
+    private val transcriber: WhisperTranscriber,
+    private val modelManager: ModelManager,
+    private val progressHolder: TranscriptionProgressHolder,
+    private val userPrefs: UserPrefs,
 ) : ViewModel() {
 
     val state: StateFlow<RecordingState> = stateHolder.state
@@ -50,6 +63,64 @@ class RecordViewModel @Inject constructor(
         viewModelScope.launch { repository.setMarkers(transcriptId, csv) }
         markerTimes.clear()
         _markers.value = emptyList()
+    }
+
+    // --- Live text preview while recording (battery-guarded) ---
+
+    /** Rough transcript of the last ~15s; null while unavailable. */
+    private val _livePreview = MutableStateFlow<String?>(null)
+    val livePreview: StateFlow<String?> = _livePreview.asStateFlow()
+
+    private var previewJob: Job? = null
+
+    /**
+     * Periodically transcribes the tail of the live recording with the tiny
+     * model. Deliberately conservative: runs only while the Record screen is
+     * on and interactive, never in power-save or when the device is warm,
+     * and never competes with a real transcription job.
+     */
+    fun startLivePreview() {
+        if (previewJob?.isActive == true) return
+        previewJob = viewModelScope.launch {
+            while (true) {
+                delay(PREVIEW_INTERVAL_MS)
+                val s = state.value
+                if (s !is RecordingState.Active || s.paused) {
+                    if (s is RecordingState.Idle) _livePreview.value = null
+                    continue
+                }
+                if (!previewAllowed()) continue
+                val samples = stateHolder.previewBuffer.snapshot()
+                if (samples.size < MIN_PREVIEW_SAMPLES) continue
+                val text = runCatching {
+                    transcriber.transcribe(
+                        model = WhisperModel.TINY,
+                        samples = samples,
+                        language = userPrefs.language(),
+                        numThreads = PREVIEW_THREADS,
+                    ).text
+                }.getOrNull()
+                if (!text.isNullOrBlank()) _livePreview.value = text
+            }
+        }
+    }
+
+    fun stopLivePreview() {
+        previewJob?.cancel()
+        previewJob = null
+        _livePreview.value = null
+    }
+
+    private fun previewAllowed(): Boolean {
+        val pm = appContext.getSystemService(PowerManager::class.java) ?: return false
+        if (!pm.isInteractive || pm.isPowerSaveMode) return false
+        if (Build.VERSION.SDK_INT >= 29 &&
+            pm.currentThermalStatus >= PowerManager.THERMAL_STATUS_MODERATE
+        ) return false
+        // A real transcription job owns the whisper context; don't cause
+        // model-swap thrash for a preview.
+        if (progressHolder.progress.value.isNotEmpty()) return false
+        return modelManager.isDownloaded(WhisperModel.TINY)
     }
 
     private val _storageStatus = MutableStateFlow(checkStorage())
@@ -86,5 +157,10 @@ class RecordViewModel @Inject constructor(
         // LOW warns (~2 hours headroom).
         const val FULL_THRESHOLD_BYTES = 50L * 1024 * 1024
         const val LOW_THRESHOLD_BYTES = 250L * 1024 * 1024
+
+        const val PREVIEW_INTERVAL_MS = 20_000L
+        const val PREVIEW_THREADS = 2
+        /** Don't bother below ~4s of audio. */
+        const val MIN_PREVIEW_SAMPLES = 4 * 16_000
     }
 }

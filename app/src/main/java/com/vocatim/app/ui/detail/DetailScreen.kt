@@ -479,6 +479,8 @@ fun DetailScreen(
                             else R.string.detail_transcript_section
                         ),
                         icon = Icons.Default.Subtitles,
+                        // The transcript is what the user came for; open it.
+                        initiallyExpanded = true,
                     ) {
                         var segmentMode by remember { mutableStateOf(false) }
                         if (t.text.isNotBlank()) {
@@ -585,6 +587,7 @@ fun DetailScreen(
                         SectionCard(
                             title = stringResource(R.string.detail_audio_section),
                             icon = Icons.Default.GraphicEq,
+                            initiallyExpanded = true,
                         ) {
                             LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
                             val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
@@ -1700,9 +1703,10 @@ private fun SectionCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     iconTint: Color = MaterialTheme.colorScheme.primary,
     badge: String? = null,
+    initiallyExpanded: Boolean = false,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     // Smooth reveal: content height animates, chevron rotates in sync.
     val chevronAngle by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,

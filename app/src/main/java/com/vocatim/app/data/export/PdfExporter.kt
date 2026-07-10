@@ -59,9 +59,10 @@ object PdfExporter {
         }
         val maxWidth = PAGE_WIDTH - MARGIN * 2
 
+        // No brand text in the footer: the store listing promises
+        // watermark-free exports, and the user's document should be theirs.
         fun drawFooter(canvas: android.graphics.Canvas, pageNumber: Int) {
             canvas.drawLine(MARGIN.toFloat(), FOOTER_Y, (PAGE_WIDTH - MARGIN).toFloat(), FOOTER_Y, rulePaint)
-            canvas.drawText("Vocatim", MARGIN.toFloat(), FOOTER_Y + 15, footerPaint)
             val label = "Page $pageNumber"
             val w = footerPaint.measureText(label)
             canvas.drawText(label, PAGE_WIDTH - MARGIN - w, FOOTER_Y + 15, footerPaint)

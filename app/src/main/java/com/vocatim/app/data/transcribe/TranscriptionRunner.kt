@@ -201,7 +201,13 @@ class TranscriptionRunner(
                     )
 
                     val chunkMs = chunk.sampleCount * 1000L / WavDecoder.WHISPER_SAMPLE_RATE
-                    if (!isPro) quotaStore.addUsage(chunkMs)
+                    // Free quota charges SPEECH time, not wall-clock audio:
+                    // silence (skipped chunks, VAD-trimmed stretches) is free.
+                    if (!isPro) {
+                        val speechMs = accepted.sumOf { it.endMs - it.startMs }
+                            .coerceIn(0L, chunkMs)
+                        quotaStore.addUsage(speechMs)
+                    }
                     processedAudioMs += chunkMs
                     val elapsed = SystemClock.elapsedRealtime() - startedAt
                     // Live estimate from this run's own pace.

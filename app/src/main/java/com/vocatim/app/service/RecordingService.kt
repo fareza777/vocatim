@@ -190,6 +190,7 @@ class RecordingService : Service() {
                 writer = WavFileWriter(outFile)
                 record.startRecording()
                 val buffer = ShortArray(BUFFER_SAMPLES)
+                stateHolder.previewBuffer.clear()
                 stateHolder.set(RecordingState.Active(paused = false, elapsedMs = 0, amplitude = 0f))
 
                 while (!stopping) {
@@ -198,16 +199,20 @@ class RecordingService : Service() {
                     if (paused) continue
 
                     writer.write(buffer, read)
-                    var peak = 0
+                    stateHolder.previewBuffer.write(buffer, read)
+                    // RMS, not peak: AGC pins the peak of every speech buffer
+                    // near the same level, which made the level bars look flat.
+                    var sumSq = 0.0
                     for (i in 0 until read) {
-                        val a = if (buffer[i] >= 0) buffer[i].toInt() else -buffer[i].toInt()
-                        if (a > peak) peak = a
+                        val s = buffer[i].toDouble()
+                        sumSq += s * s
                     }
+                    val rms = kotlin.math.sqrt(sumSq / read) / 32768.0
                     stateHolder.set(
                         RecordingState.Active(
                             paused = false,
                             elapsedMs = currentElapsed(),
-                            amplitude = peak / 32768f,
+                            amplitude = rms.toFloat(),
                         )
                     )
                 }

@@ -135,7 +135,10 @@ private fun MonthHeader(month: YearMonth, onPrevious: () -> Unit, onNext: () -> 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onPrevious) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null)
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = stringResource(R.string.calendar_prev_month),
+            )
         }
         Text(
             month.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
@@ -145,7 +148,10 @@ private fun MonthHeader(month: YearMonth, onPrevious: () -> Unit, onNext: () -> 
             textAlign = TextAlign.Center,
         )
         IconButton(onClick = onNext) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = stringResource(R.string.calendar_next_month),
+            )
         }
     }
 }

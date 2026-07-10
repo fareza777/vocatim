@@ -180,9 +180,19 @@ fun PaywallScreen(
                         }
                     )
                 }
+                Text(
+                    stringResource(R.string.paywall_price_angle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 TextButton(onClick = viewModel::restore) {
                     Text(stringResource(R.string.paywall_restore))
                 }
+                Text(
+                    stringResource(R.string.paywall_restore_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Text(
                     stringResource(R.string.paywall_footnote),
                     style = MaterialTheme.typography.bodySmall,

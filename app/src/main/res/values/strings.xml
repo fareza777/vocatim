@@ -132,10 +132,10 @@
     <string name="paywall_feat_unlimited_desc">Transcribe hours of audio with no monthly caps or time limits.</string>
     <string name="paywall_feat_ai_title">AI summaries &amp; meeting minutes</string>
     <string name="paywall_feat_ai_desc">Turn long recordings into clean summaries and structured minutes — on-device or with your own cloud key.</string>
-    <string name="paywall_feat_export_title">Every export format</string>
-    <string name="paywall_feat_export_desc">Export to TXT, SRT, VTT, Markdown, and PDF — with attached photos included.</string>
-    <string name="paywall_feat_secure_title">Encrypted backup &amp; app lock</string>
-    <string name="paywall_feat_secure_desc">AES-encrypted backups, biometric lock, and screenshot protection.</string>
+    <string name="paywall_feat_export_title">Pro exports</string>
+    <string name="paywall_feat_export_desc">Polished PDF documents with attached photos, plus export of AI summaries and meeting minutes.</string>
+    <string name="paywall_feat_secure_title">Automatic weekly backups</string>
+    <string name="paywall_feat_secure_desc">Hands-free AES-encrypted backups to a folder you choose — never lose a note.</string>
     <string name="paywall_feat_private_title">Private &amp; offline</string>
     <string name="paywall_feat_private_desc">Transcription runs entirely on your phone. Your audio never leaves the device.</string>
     <string name="paywall_feat_once_title">Pay once, yours forever</string>
@@ -149,6 +149,8 @@
     <string name="paywall_buy_with_price">Unlock for %1$s</string>
     <string name="paywall_buy">Unlock Lifetime Unlimited</string>
     <string name="paywall_restore">Restore purchase</string>
+    <string name="paywall_restore_hint">Bought Unlimited before? Make sure this device uses the same Google account, then tap Restore.</string>
+    <string name="paywall_price_angle">Cloud transcription services charge this much every month or two — here it\'s once, forever.</string>
     <string name="paywall_footnote">One-time purchase via Google Play. The free plan includes 30 minutes of transcription — recording, editing, and export are always free.</string>
     <string name="paywall_success">Unlimited unlocked. Enjoy!</string>
     <string name="paywall_restore_none">No previous purchase found for this Google account.</string>
@@ -338,6 +340,9 @@
     <string name="summary_model_gemma3_4b">Ultra Multilingual</string>
     <string name="summary_model_gemma3_4b_desc">Gemma 3 4B — Google, strongest for mixed and rare languages</string>
     <string name="summary_model_needs_ram">Needs a phone with 8 GB RAM</string>
+    <string name="home_empty_tip_wa">Tip: share a WhatsApp voice note to Vocatim and it becomes text.</string>
+    <string name="calendar_prev_month">Previous month</string>
+    <string name="calendar_next_month">Next month</string>
     <string name="settings_vad">Smart silence filter (VAD)</string>
     <string name="settings_vad_desc">Skips silent stretches before transcribing: faster, fewer made-up fillers. Uses a tiny one-time download.</string>
     <string name="model_name_turbo">Ultra</string>

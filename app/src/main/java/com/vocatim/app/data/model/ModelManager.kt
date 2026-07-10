@@ -56,6 +56,7 @@ class ModelManager(
             }
             val part = partFile(model)
             val alreadyDownloaded = if (part.exists()) part.length() else 0L
+            checkFreeSpace(model.approxSizeBytes - alreadyDownloaded)
             state.value = ModelState.Downloading(alreadyDownloaded, 0L)
 
             val request = Request.Builder()
@@ -116,6 +117,18 @@ class ModelManager(
         states.getValue(model).value = ModelState.NotDownloaded
     }
 
+    /** Fail fast (before streaming gigabytes) when the disk can't fit it. */
+    private fun checkFreeSpace(stillNeededBytes: Long) {
+        val free = runCatching {
+            android.os.StatFs(modelsDir.absolutePath).availableBytes
+        }.getOrNull() ?: return
+        val required = stillNeededBytes.coerceAtLeast(0) + SPACE_MARGIN_BYTES
+        if (free < required) {
+            val shortMb = (required - free) / (1024 * 1024)
+            throw IOException("Not enough free storage: about $shortMb MB more needed")
+        }
+    }
+
     /**
      * Corrupt model files crash native code, so validate before use:
      * ggml magic in the header and, when known, the full SHA-256.
@@ -159,5 +172,8 @@ class ModelManager(
 
     private companion object {
         const val DEFAULT_BUFFER_SIZE = 64 * 1024
+
+        /** Keep this much headroom so a model download can't fill the disk. */
+        const val SPACE_MARGIN_BYTES = 200L * 1024 * 1024
     }
 }
