@@ -18,3 +18,4 @@ key.properties
 # Personal captures in repo root
 /Screenshot_*.jpg
 /*.mp4
+/.worktrees/
