@@ -85,9 +85,7 @@ class Summarizer(
             onProgress(0.05f)
 
             val system = systemPrompt(language) +
-                // Qwen3 is a hybrid-thinking model: without the soft switch it
-                // spends its whole token budget inside a <think> block.
-                if (model == SummaryModel.QWEN3) " /no_think" else ""
+                if (model.hybridThinking) " /no_think" else ""
 
             val indonesian = language == "id"
             val result = if (singlePass) {

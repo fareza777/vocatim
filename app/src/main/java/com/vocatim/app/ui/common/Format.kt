@@ -14,7 +14,9 @@ fun modelDisplayName(id: String): String = when (id) {
     "base" -> stringResource(R.string.model_name_base)
     "small-q5_1" -> stringResource(R.string.model_name_small_q5)
     "small" -> stringResource(R.string.model_name_small)
+    "medium-q5_0" -> stringResource(R.string.model_name_medium)
     "large-v3-turbo-q5_0" -> stringResource(R.string.model_name_turbo)
+    "large-v3-turbo-q8_0" -> stringResource(R.string.model_name_turbo_q8)
     else -> id
 }
 

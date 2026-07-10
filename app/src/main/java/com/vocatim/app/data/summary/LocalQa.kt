@@ -26,7 +26,7 @@ class LocalQa(
         val nCtx = (((needed + 1_023) / 1_024) * 1_024).coerceIn(4_096, cap)
 
         val system = systemPrompt(language) +
-            if (model == SummaryModel.QWEN3) " /no_think" else ""
+            if (model.hybridThinking) " /no_think" else ""
         val indonesian = language == "id"
         val user = if (indonesian) {
             "Transkrip:\n\n$clipped\n\nPertanyaan: $question"

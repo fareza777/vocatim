@@ -18,8 +18,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ModalBottomSheet
@@ -129,7 +136,11 @@ fun SettingsScreen(
                 }
             }
 
-            Text(stringResource(R.string.settings_model), style = MaterialTheme.typography.titleMedium)
+            com.vocatim.app.ui.common.ExpandableSection(
+                title = stringResource(R.string.settings_model),
+                icon = Icons.Default.GraphicEq,
+                subtitle = com.vocatim.app.ui.common.modelDisplayName(s.model.id),
+            ) {
             if (viewModel.isLowRamDevice) {
                 Text(
                     stringResource(R.string.settings_low_ram_hint),
@@ -170,8 +181,13 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            }
 
-            Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.titleMedium)
+            com.vocatim.app.ui.common.ExpandableSection(
+                title = stringResource(R.string.settings_section_language),
+                icon = Icons.Default.Language,
+                subtitle = languageLabel(s.language),
+            ) {
             LanguagePickerSheet(current = s.language, onSelect = viewModel::selectLanguage)
 
             Row(
@@ -247,22 +263,12 @@ fun SettingsScreen(
                 }
                 Switch(checked = s.vadEnabled, onCheckedChange = viewModel::setVadEnabled)
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_auto_summarize))
-                    Text(
-                        stringResource(R.string.settings_auto_summarize_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Switch(checked = s.autoSummarize, onCheckedChange = viewModel::setAutoSummarize)
             }
 
-            Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
+            com.vocatim.app.ui.common.ExpandableSection(
+                title = stringResource(R.string.settings_appearance),
+                icon = Icons.Default.Palette,
+            ) {
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 val modes = listOf(
                     com.vocatim.app.data.prefs.UserPrefs.THEME_SYSTEM to R.string.theme_system,
@@ -305,6 +311,29 @@ fun SettingsScreen(
                 }
             }
             Text(
+                stringResource(R.string.settings_surface),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                val dark = s.themeMode == com.vocatim.app.data.prefs.UserPrefs.THEME_DARK ||
+                    (s.themeMode == com.vocatim.app.data.prefs.UserPrefs.THEME_SYSTEM &&
+                        isSystemInDarkTheme())
+                com.vocatim.app.ui.theme.SurfaceStyle.entries.forEach { style ->
+                    SurfaceStyleCard(
+                        style = style,
+                        dark = dark,
+                        selected = s.surfaceStyle == style.key,
+                        accentKey = s.accent,
+                        onClick = { viewModel.setSurfaceStyle(style.key) },
+                    )
+                }
+            }
+            Text(
                 stringResource(R.string.settings_text_size),
                 style = MaterialTheme.typography.titleSmall,
             )
@@ -327,8 +356,12 @@ fun SettingsScreen(
                     }
                 }
             }
+            }
 
-            Text(stringResource(R.string.settings_privacy), style = MaterialTheme.typography.titleMedium)
+            com.vocatim.app.ui.common.ExpandableSection(
+                title = stringResource(R.string.settings_privacy),
+                icon = Icons.Default.Lock,
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -365,35 +398,27 @@ fun SettingsScreen(
                 }
                 Switch(checked = s.blockScreenshots, onCheckedChange = viewModel::setBlockScreenshots)
             }
+            }
 
+            com.vocatim.app.ui.common.ExpandableSection(
+                title = stringResource(R.string.settings_section_ai),
+                icon = Icons.Default.AutoAwesome,
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_compress_audio))
+                    Text(stringResource(R.string.settings_auto_summarize))
                     Text(
-                        stringResource(R.string.settings_compress_audio_desc),
+                        stringResource(R.string.settings_auto_summarize_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(checked = s.compressAudio, onCheckedChange = viewModel::setCompressAudio)
+                Switch(checked = s.autoSummarize, onCheckedChange = viewModel::setAutoSummarize)
             }
-
-            Text(stringResource(R.string.settings_storage), style = MaterialTheme.typography.titleMedium)
-            storage?.let { usage ->
-                Text(
-                    stringResource(
-                        R.string.settings_storage_usage,
-                        formatMb(usage.modelBytes),
-                        formatMb(usage.audioBytes),
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-
-            Text(stringResource(R.string.settings_summary_model), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.settings_summary_model), style = MaterialTheme.typography.titleSmall)
             Text(
                 stringResource(R.string.settings_summary_model_desc),
                 style = MaterialTheme.typography.bodySmall,
@@ -418,7 +443,7 @@ fun SettingsScreen(
                 }
             }
 
-            Text(stringResource(R.string.settings_minutes_template), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.settings_minutes_template), style = MaterialTheme.typography.titleSmall)
             Text(
                 stringResource(R.string.settings_minutes_template_desc),
                 style = MaterialTheme.typography.bodySmall,
@@ -458,14 +483,44 @@ fun SettingsScreen(
                 )
             }
 
-            Text(stringResource(R.string.settings_cloud_section), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.settings_cloud_section), style = MaterialTheme.typography.titleSmall)
             Text(
                 stringResource(R.string.settings_cloud_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             CloudAiSection(viewModel)
+            }
 
+            com.vocatim.app.ui.common.ExpandableSection(
+                title = stringResource(R.string.settings_section_data),
+                icon = Icons.Default.Save,
+            ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_compress_audio))
+                    Text(
+                        stringResource(R.string.settings_compress_audio_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = s.compressAudio, onCheckedChange = viewModel::setCompressAudio)
+            }
+            storage?.let { usage ->
+                Text(
+                    stringResource(
+                        R.string.settings_storage_usage,
+                        formatMb(usage.modelBytes),
+                        formatMb(usage.audioBytes),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -487,13 +542,14 @@ fun SettingsScreen(
                 )
             }
 
-            Text(stringResource(R.string.settings_backup_section), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.settings_backup_section), style = MaterialTheme.typography.titleSmall)
             Text(
                 stringResource(R.string.settings_backup_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             BackupSection(viewModel, onUpgrade = onUpgradeClick)
+            }
         }
     }
 }
@@ -772,14 +828,15 @@ private fun ModelRow(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    com.vocatim.app.ui.common.modelDisplayName(model.id),
+                    com.vocatim.app.ui.common.modelDisplayName(model.id) +
+                        " · " + formatMb(model.approxSizeBytes),
                     style = MaterialTheme.typography.titleSmall,
                 )
-                Text(
-                    stringResource(speedLabel(model)) + " · " +
-                        formatMb(model.approxSizeBytes),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                com.vocatim.app.ui.common.StarMeter(
+                    stringResource(R.string.stars_speed), model.speedStars
+                )
+                com.vocatim.app.ui.common.StarMeter(
+                    stringResource(R.string.stars_accuracy), model.accuracyStars
                 )
             }
             when (state) {
@@ -874,35 +931,32 @@ private fun SummaryModelRow(
                         when (model) {
                             com.vocatim.app.data.summary.SummaryModel.QWEN25 ->
                                 R.string.summary_model_qwen25
+                            com.vocatim.app.data.summary.SummaryModel.GEMMA3_1B ->
+                                R.string.summary_model_gemma3_1b
                             com.vocatim.app.data.summary.SummaryModel.QWEN3 ->
                                 R.string.summary_model_qwen3
                             com.vocatim.app.data.summary.SummaryModel.QWEN3_4B ->
                                 R.string.summary_model_qwen3_4b
                             com.vocatim.app.data.summary.SummaryModel.GEMMA3_4B ->
                                 R.string.summary_model_gemma3_4b
-                        }
-                    ),
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    stringResource(
-                        when (model) {
-                            com.vocatim.app.data.summary.SummaryModel.QWEN25 ->
-                                R.string.summary_model_qwen25_desc
-                            com.vocatim.app.data.summary.SummaryModel.QWEN3 ->
-                                R.string.summary_model_qwen3_desc
-                            com.vocatim.app.data.summary.SummaryModel.QWEN3_4B ->
-                                R.string.summary_model_qwen3_4b_desc
-                            com.vocatim.app.data.summary.SummaryModel.GEMMA3_4B ->
-                                R.string.summary_model_gemma3_4b_desc
+                            com.vocatim.app.data.summary.SummaryModel.QWEN3_8B ->
+                                R.string.summary_model_qwen3_8b
                         }
                     ) + " · " + formatMb(model.approxSizeBytes),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                com.vocatim.app.ui.common.StarMeter(
+                    stringResource(R.string.stars_speed), model.speedStars
+                )
+                com.vocatim.app.ui.common.StarMeter(
+                    stringResource(R.string.stars_quality), model.qualityStars
                 )
                 if (!supported) {
                     Text(
-                        stringResource(R.string.summary_model_needs_ram),
+                        stringResource(
+                            if (model.minTotalRamMb >= 10_000) R.string.summary_model_needs_ram_12
+                            else R.string.summary_model_needs_ram
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -1007,12 +1061,77 @@ private fun languageLabel(code: String): String = when (code) {
     }
 }
 
-private fun speedLabel(model: WhisperModel): Int = when (model) {
-    WhisperModel.TINY -> R.string.model_speed_tiny
-    WhisperModel.BASE -> R.string.model_speed_base
-    WhisperModel.SMALL -> R.string.model_speed_small
-    WhisperModel.SMALL_Q5 -> R.string.model_speed_small_q5
-    WhisperModel.LARGE_TURBO_Q5 -> R.string.model_speed_turbo
+/** Mini live preview of one surface palette: background, a card, an accent
+ *  dot, and two text lines — enough to judge the mood before applying. */
+@Composable
+private fun SurfaceStyleCard(
+    style: com.vocatim.app.ui.theme.SurfaceStyle,
+    dark: Boolean,
+    selected: Boolean,
+    accentKey: String,
+    onClick: () -> Unit,
+) {
+    val bg = if (dark) style.darkBg else style.lightBg
+    val card = if (dark) style.darkCard else style.lightCard
+    val border = if (dark) style.darkBorder else style.lightBorder
+    val accent = com.vocatim.app.ui.theme.Accent.fromKey(accentKey)
+        .let { if (dark) it.dark else it.light }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(width = 74.dp, height = 92.dp)
+                .clip(MaterialTheme.shapes.medium)
+                .background(bg)
+                .then(
+                    if (selected) {
+                        Modifier.border(
+                            2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.medium
+                        )
+                    } else {
+                        Modifier.border(1.dp, border, MaterialTheme.shapes.medium)
+                    }
+                )
+                .clickable(onClick = onClick)
+                .padding(8.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(accent),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(26.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(card),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .height(5.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(border),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.55f)
+                        .height(5.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(border),
+                )
+            }
+        }
+        Text(
+            style.key.replaceFirstChar { it.uppercase() },
+            style = MaterialTheme.typography.labelSmall,
+            color = if (selected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
 }
 
 private fun formatMb(bytes: Long): String = "${bytes / (1024 * 1024)} MB"

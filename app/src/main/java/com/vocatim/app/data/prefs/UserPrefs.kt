@@ -52,6 +52,8 @@ data class UserSettings(
     val summaryModel: String,
     /** Accent color key: violet, teal, gold, blue, or rose. */
     val accent: String,
+    /** Surface palette key: linen, pearl, sand, sage, or ocean. */
+    val surfaceStyle: String,
 )
 
 /** User settings applied to new recordings and imports. */
@@ -82,6 +84,7 @@ class UserPrefs(private val context: Context) {
             autoBackupLast = prefs[AUTO_BACKUP_LAST_KEY] ?: 0L,
             summaryModel = prefs[SUMMARY_MODEL_KEY] ?: "qwen2.5-1.5b",
             accent = prefs[ACCENT_KEY] ?: "violet",
+            surfaceStyle = prefs[SURFACE_STYLE_KEY] ?: "linen",
         )
     }
 
@@ -185,6 +188,10 @@ class UserPrefs(private val context: Context) {
         context.prefsDataStore.edit { it[ACCENT_KEY] = key }
     }
 
+    suspend fun setSurfaceStyle(key: String) {
+        context.prefsDataStore.edit { it[SURFACE_STYLE_KEY] = key }
+    }
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
@@ -213,5 +220,6 @@ class UserPrefs(private val context: Context) {
             androidx.datastore.preferences.core.longPreferencesKey("auto_backup_last")
         private val SUMMARY_MODEL_KEY = stringPreferencesKey("summary_model")
         private val ACCENT_KEY = stringPreferencesKey("accent")
+        private val SURFACE_STYLE_KEY = stringPreferencesKey("surface_style")
     }
 }

@@ -38,6 +38,7 @@ class MainActivity : FragmentActivity() {
     private var appLockEnabled = false
     private var themeMode by mutableStateOf(UserPrefs.THEME_LIGHT)
     private var accent by mutableStateOf("violet")
+    private var surfaceStyle by mutableStateOf("linen")
     private var onboardingDone by mutableStateOf<Boolean?>(null)
     /** Set by the Quick Settings tile: jump straight into recording. */
     private var startRecordRequest by mutableStateOf(false)
@@ -64,6 +65,7 @@ class MainActivity : FragmentActivity() {
                 appLockEnabled = settings.appLock
                 themeMode = settings.themeMode
                 accent = settings.accent
+                surfaceStyle = settings.surfaceStyle
                 onboardingDone = settings.onboardingDone
                 if (locked == null) {
                     locked = settings.appLock
@@ -83,7 +85,7 @@ class MainActivity : FragmentActivity() {
                 UserPrefs.THEME_DARK -> true
                 else -> androidx.compose.foundation.isSystemInDarkTheme()
             }
-            VocatimTheme(darkTheme = darkTheme, accentKey = accent) {
+            VocatimTheme(darkTheme = darkTheme, accentKey = accent, surfaceKey = surfaceStyle) {
                 androidx.compose.foundation.layout.Box {
                     when {
                         locked == null || onboardingDone == null -> Unit // prefs loading

@@ -265,6 +265,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPrefs.setAccent(key) }
     }
 
+    fun setSurfaceStyle(key: String) {
+        viewModelScope.launch { userPrefs.setSurfaceStyle(key) }
+    }
+
     fun setCustomVocab(text: String) {
         viewModelScope.launch { userPrefs.setCustomVocab(text) }
     }

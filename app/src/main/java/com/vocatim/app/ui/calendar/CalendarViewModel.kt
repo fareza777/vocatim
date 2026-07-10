@@ -17,6 +17,9 @@ import java.time.YearMonth
 import java.time.ZoneId
 import javax.inject.Inject
 
+/** Notes and total recorded audio in the visible month, for the header. */
+data class MonthStats(val noteCount: Int, val totalDurationMs: Long)
+
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
     repository: TranscriptRepository,
@@ -40,11 +43,23 @@ class CalendarViewModel @Inject constructor(
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    /** Dates in the visible month that have at least one transcript. */
-    val markedDates: StateFlow<Set<LocalDate>> =
+    /** Note count per date in the visible month (drives the day-cell dots). */
+    val dayLoad: StateFlow<Map<LocalDate, Int>> =
         combine(byDate, _month) { map, month ->
-            map.keys.filterTo(mutableSetOf()) { YearMonth.from(it) == month }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+            map.filterKeys { YearMonth.from(it) == month }
+                .mapValues { (_, items) -> items.size }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    val monthStats: StateFlow<MonthStats> =
+        combine(byDate, _month) { map, month ->
+            val items = map.filterKeys { YearMonth.from(it) == month }.values.flatten()
+            MonthStats(
+                noteCount = items.size,
+                totalDurationMs = items.sumOf { it.audioDurationMs },
+            )
+        }.stateIn(
+            viewModelScope, SharingStarted.WhileSubscribed(5_000), MonthStats(0, 0)
+        )
 
     val itemsForSelectedDate: StateFlow<List<TranscriptEntity>> =
         combine(byDate, _selectedDate) { map, date ->
@@ -57,6 +72,12 @@ class CalendarViewModel @Inject constructor(
 
     fun nextMonth() {
         _month.value = _month.value.plusMonths(1)
+    }
+
+    fun goToToday() {
+        val today = LocalDate.now(zone)
+        _selectedDate.value = today
+        _month.value = YearMonth.from(today)
     }
 
     fun selectDate(date: LocalDate) {

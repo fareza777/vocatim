@@ -84,20 +84,105 @@ enum class Accent(val key: String, val light: Color, val dark: Color) {
     }
 }
 
+/**
+ * User-selectable SURFACE palettes: what backgrounds, cards, and chips are
+ * tinted with — so the whole app can shift mood, not just the accent color.
+ * Each style carries a light set and a subtly-tinted dark set.
+ */
+enum class SurfaceStyle(
+    val key: String,
+    val lightBg: Color,
+    val lightSurface: Color,
+    val lightCard: Color,
+    val lightVariant: Color,
+    val lightBorder: Color,
+    val darkBg: Color,
+    val darkSurface: Color,
+    val darkCard: Color,
+    val darkBorder: Color,
+) {
+    /** The signature warm greige-lavender (default). */
+    LINEN(
+        "linen",
+        Snow, SnowSurface, SnowCard, SnowVariant, SnowBorder,
+        Ink, InkSurface, InkCard, InkBorder,
+    ),
+
+    /** Brighter, near-neutral — the closest to classic white. */
+    PEARL(
+        "pearl",
+        Color(0xFFF0EFF4), Color(0xFFF5F4F8), Color(0xFFFBFAFD),
+        Color(0xFFE3E1EA), Color(0xFFD6D4DF),
+        Color(0xFF0E0F13), Color(0xFF16171D), Color(0xFF1E2027), Color(0xFF2B2D37),
+    ),
+
+    /** Warm cream and coffee tones. */
+    SAND(
+        "sand",
+        Color(0xFFECE7DF), Color(0xFFF2EEE7), Color(0xFFF8F4EE),
+        Color(0xFFDFD8CC), Color(0xFFD2CABB),
+        Color(0xFF12100B), Color(0xFF1A1712), Color(0xFF231F18), Color(0xFF322C22),
+    ),
+
+    /** Calm green-gray, easy on long reading sessions. */
+    SAGE(
+        "sage",
+        Color(0xFFE4EAE4), Color(0xFFECF0EB), Color(0xFFF2F5F1),
+        Color(0xFFD5DDD4), Color(0xFFC7D1C6),
+        Color(0xFF0B120E), Color(0xFF121915), Color(0xFF19231D), Color(0xFF27342B),
+    ),
+
+    /** Cool blue-gray, crisp and focused. */
+    OCEAN(
+        "ocean",
+        Color(0xFFE3E8F0), Color(0xFFEAEEF5), Color(0xFFF1F4F9),
+        Color(0xFFD3DAE6), Color(0xFFC5CEDD),
+        Color(0xFF0A0F1A), Color(0xFF101624), Color(0xFF161E30), Color(0xFF232D45),
+    );
+
+    companion object {
+        fun fromKey(key: String): SurfaceStyle = entries.firstOrNull { it.key == key } ?: LINEN
+    }
+}
+
 @Composable
 fun VocatimTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     accentKey: String = "violet",
+    surfaceKey: String = "linen",
     content: @Composable () -> Unit,
 ) {
     val accent = Accent.fromKey(accentKey)
+    val style = SurfaceStyle.fromKey(surfaceKey)
     val base = if (darkTheme) DarkColors else LightColors
     val primary = if (darkTheme) accent.dark else accent.light
-    val scheme = base.copy(
-        primary = primary,
-        primaryContainer = primary,
-        secondary = if (accent == Accent.TEAL) accent.dark else base.secondary,
-    )
+    val scheme = if (darkTheme) {
+        base.copy(
+            primary = primary,
+            primaryContainer = primary,
+            secondary = if (accent == Accent.TEAL) accent.dark else base.secondary,
+            background = style.darkBg,
+            surface = style.darkSurface,
+            surfaceVariant = style.darkCard,
+            surfaceContainer = style.darkSurface,
+            surfaceContainerHigh = style.darkCard,
+            surfaceContainerHighest = style.darkCard,
+            outlineVariant = style.darkBorder,
+        )
+    } else {
+        base.copy(
+            primary = primary,
+            primaryContainer = primary,
+            secondary = if (accent == Accent.TEAL) accent.dark else base.secondary,
+            background = style.lightBg,
+            surface = style.lightBg,
+            surfaceVariant = style.lightVariant,
+            surfaceContainer = style.lightSurface,
+            surfaceContainerHigh = style.lightCard,
+            surfaceContainerHighest = style.lightCard,
+            outlineVariant = style.lightBorder,
+        )
+    }
     MaterialTheme(
         colorScheme = scheme,
         typography = VocatimTypography,

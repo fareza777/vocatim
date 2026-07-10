@@ -47,6 +47,9 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -406,13 +409,6 @@ fun DetailScreen(
             val folders by viewModel.folders.collectAsStateWithLifecycle()
             FolderRow(current = t.tag, folders = folders, onSelect = viewModel::setTag)
 
-            val attachments by viewModel.attachments.collectAsStateWithLifecycle()
-            PhotoRow(
-                attachments = attachments,
-                onAdd = viewModel::addPhoto,
-                onRemove = viewModel::removePhoto,
-            )
-
             when (t.status) {
                 TranscriptStatus.DONE -> {
                     // A minutes note is AI output, not a recording: no summarize
@@ -630,6 +626,22 @@ fun DetailScreen(
                                 )
                             }
                         }
+                    }
+
+                    // Photos live in their own card so the top of the page
+                    // stays about the words, not the attachments.
+                    val attachments by viewModel.attachments.collectAsStateWithLifecycle()
+                    SectionCard(
+                        title = stringResource(R.string.detail_photos_section),
+                        icon = Icons.Default.Image,
+                        iconTint = MaterialTheme.colorScheme.secondary,
+                        badge = attachments.size.takeIf { it > 0 }?.toString(),
+                    ) {
+                        PhotoRow(
+                            attachments = attachments,
+                            onAdd = viewModel::addPhoto,
+                            onRemove = viewModel::removePhoto,
+                        )
                     }
 
                     SectionCard(
@@ -1997,34 +2009,78 @@ private fun StatusCard(content: @Composable () -> Unit) {
     }
 }
 
+/**
+ * Human-first header: the date as quiet text, then chips anyone understands
+ * at a glance — duration, word count, language. Engine trivia (model name,
+ * realtime factor) stays out of the way.
+ */
 @Composable
 private fun MetaRow(t: TranscriptEntity) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Pill(formatDate(t.createdAt))
-        if (t.audioDurationMs > 0) Pill(formatClock(t.audioDurationMs))
-        // The "minutes" sentinel model id is internal — don't surface it.
-        if (t.modelId != com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES) {
-            Pill(com.vocatim.app.ui.common.modelDisplayName(t.modelId))
-        }
-        if (t.language == "auto" && t.detectedLanguage != null) {
-            Pill(
-                java.util.Locale(t.detectedLanguage).let { locale ->
-                    locale.getDisplayLanguage(locale)
-                        .replaceFirstChar { it.uppercase() }
-                },
-                color = MaterialTheme.colorScheme.secondary,
-                background = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
-            )
-        }
-        if (t.status == TranscriptStatus.DONE && t.audioDurationMs > 0 && t.processingTimeMs > 0) {
-            Pill(
-                String.format(
-                    Locale.US, "%.2fx", t.processingTimeMs.toFloat() / t.audioDurationMs
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            formatDate(t.createdAt),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (t.audioDurationMs > 0) {
+                MetaChip(
+                    Icons.Default.Schedule,
+                    formatClock(t.audioDurationMs),
                 )
-            )
+            }
+            val words = remember(t.text) {
+                t.text.split(Regex("\\s+")).count { it.isNotBlank() }
+            }
+            if (words > 0) {
+                MetaChip(
+                    Icons.Default.Subtitles,
+                    stringResource(R.string.meta_words, formatCount(words)),
+                )
+            }
+            val languageCode = t.language.takeIf { it != "auto" } ?: t.detectedLanguage
+            languageCode?.let { code ->
+                MetaChip(
+                    Icons.Default.Language,
+                    java.util.Locale(code).let { locale ->
+                        locale.getDisplayLanguage(locale)
+                            .replaceFirstChar { it.uppercase() }
+                    },
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun MetaChip(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(text, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+/** 532 -> "532", 1834 -> "1.8k". */
+private fun formatCount(n: Int): String =
+    if (n < 1000) n.toString()
+    else String.format(Locale.US, "%.1fk", n / 1000f)
 
 @Composable
 private fun ActionGrid(

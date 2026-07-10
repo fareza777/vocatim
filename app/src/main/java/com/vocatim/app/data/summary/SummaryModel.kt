@@ -23,6 +23,12 @@ enum class SummaryModel(
      *  light touch. */
     val temperature: Float = 0.4f,
     val repeatPenalty: Float = 1.2f,
+    /** Hybrid-thinking models burn their token budget in a <think> block
+     *  unless the prompt carries the /no_think soft switch. */
+    val hybridThinking: Boolean = false,
+    /** 1..5, shown as stars in the picker. */
+    val speedStars: Int = 3,
+    val qualityStars: Int = 3,
 ) {
     QWEN25(
         id = "qwen2.5-1.5b",
@@ -34,10 +40,27 @@ enum class SummaryModel(
         // 2 KV heads -> tiny cache; 16K costs only ~240 MB quantized.
         maxContextTokens = 16_384,
         repeatPenalty = 1.25f,
+        speedStars = 4,
+        qualityStars = 2,
+    ),
+
+    /** Gemma 3 1B: the light option — fast summaries on any phone, at the
+     *  cost of nuance. */
+    GEMMA3_1B(
+        id = "gemma3-1b",
+        fileName = "gemma-3-1b-it-Q4_K_M.gguf",
+        url = "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/" +
+            "gemma-3-1b-it-Q4_K_M.gguf",
+        approxSizeBytes = 806_058_272L,
+        sha256 = "8270790f3ab69fdfe860b7b64008d9a19986d8df7e407bb018184caa08798ebd",
+        promptFormat = PromptFormat.GEMMA,
+        maxContextTokens = 16_384,
+        speedStars = 5,
+        qualityStars = 2,
     ),
 
     /** Successor generation: same size class, clearly better multilingual
-     *  reasoning. Hybrid-thinking model — prompts must disable think mode. */
+     *  reasoning. */
     QWEN3(
         id = "qwen3-1.7b",
         fileName = "Qwen3-1.7B-Q4_K_M.gguf",
@@ -47,6 +70,9 @@ enum class SummaryModel(
         sha256 = "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897",
         // 8 KV heads; 12K quantized KV is ~700 MB, the sane ceiling here.
         maxContextTokens = 12_288,
+        hybridThinking = true,
+        speedStars = 4,
+        qualityStars = 3,
     ),
 
     /** Qwen3-4B-Instruct-2507: a full quality tier above the 1.x models —
@@ -63,6 +89,8 @@ enum class SummaryModel(
         minTotalRamMb = 6_900,
         temperature = 0.3f,
         repeatPenalty = 1.1f,
+        speedStars = 2,
+        qualityStars = 5,
     ),
 
     /** Gemma 3 4B: Google's multilingual workhorse (140+ languages). Uses
@@ -80,6 +108,27 @@ enum class SummaryModel(
         minTotalRamMb = 6_900,
         temperature = 0.3f,
         repeatPenalty = 1.1f,
+        speedStars = 2,
+        qualityStars = 5,
+    ),
+
+    /** Qwen3-8B: flagship-phone territory (12 GB+ RAM). The strongest
+     *  writing available on-device; patience required. */
+    QWEN3_8B(
+        id = "qwen3-8b",
+        fileName = "Qwen3-8B-Q4_K_M.gguf",
+        url = "https://huggingface.co/unsloth/Qwen3-8B-GGUF/resolve/main/" +
+            "Qwen3-8B-Q4_K_M.gguf",
+        approxSizeBytes = 5_027_784_512L,
+        sha256 = "120307ba529eb2439d6c430d94104dabd578497bc7bfe7e322b5d9933b449bd4",
+        // 5 GB of weights leaves little room: keep the context modest.
+        maxContextTokens = 8_192,
+        minTotalRamMb = 10_800,
+        temperature = 0.3f,
+        repeatPenalty = 1.1f,
+        hybridThinking = true,
+        speedStars = 1,
+        qualityStars = 5,
     );
 
     companion object {
