@@ -38,7 +38,7 @@ JNIEXPORT jint JNICALL
 Java_com_vocatim_whisper_WhisperLib_00024Companion_fullTranscribe(
         JNIEnv *env, jobject thiz, jlong context_ptr, jint num_threads,
         jstring language_str, jboolean translate, jfloatArray audio_data,
-        jstring initial_prompt_str, jint beam_size) {
+        jstring initial_prompt_str, jint beam_size, jstring vad_model_path_str) {
     UNUSED(thiz);
     struct whisper_context *context = (struct whisper_context *) context_ptr;
     jfloat *audio_data_arr = (*env)->GetFloatArrayElements(env, audio_data, NULL);
@@ -49,6 +49,11 @@ Java_com_vocatim_whisper_WhisperLib_00024Companion_fullTranscribe(
     const char *prompt_chars = NULL;
     if (initial_prompt_str != NULL) {
         prompt_chars = (*env)->GetStringUTFChars(env, initial_prompt_str, NULL);
+    }
+    // Optional Silero VAD model; also held for the whole call.
+    const char *vad_model_chars = NULL;
+    if (vad_model_path_str != NULL) {
+        vad_model_chars = (*env)->GetStringUTFChars(env, vad_model_path_str, NULL);
     }
 
     // beam_size > 0 selects beam search (more accurate, slower); else greedy.
@@ -75,6 +80,14 @@ Java_com_vocatim_whisper_WhisperLib_00024Companion_fullTranscribe(
     if (prompt_chars != NULL && prompt_chars[0] != '\0') {
         params.initial_prompt = prompt_chars;
     }
+    // VAD pre-filters silence/noise: faster, and far fewer hallucinated
+    // fillers on quiet stretches. Timestamps are mapped back to the
+    // original timeline by whisper.cpp.
+    if (vad_model_chars != NULL && vad_model_chars[0] != '\0') {
+        params.vad            = true;
+        params.vad_model_path = vad_model_chars;
+        params.vad_params     = whisper_vad_default_params();
+    }
 
     whisper_reset_timings(context);
 
@@ -90,6 +103,9 @@ Java_com_vocatim_whisper_WhisperLib_00024Companion_fullTranscribe(
     (*env)->ReleaseStringUTFChars(env, language_str, language_chars);
     if (prompt_chars != NULL) {
         (*env)->ReleaseStringUTFChars(env, initial_prompt_str, prompt_chars);
+    }
+    if (vad_model_chars != NULL) {
+        (*env)->ReleaseStringUTFChars(env, vad_model_path_str, vad_model_chars);
     }
     (*env)->ReleaseFloatArrayElements(env, audio_data, audio_data_arr, JNI_ABORT);
     return result;

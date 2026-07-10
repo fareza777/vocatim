@@ -49,6 +49,7 @@ internal class WhisperLib {
             audioData: FloatArray,
             initialPrompt: String?,
             beamSize: Int,
+            vadModelPath: String?,
         ): Int
         external fun getTextSegmentCount(contextPtr: Long): Int
         external fun getTextSegment(contextPtr: Long, index: Int): String

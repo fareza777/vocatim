@@ -36,6 +36,8 @@ class TranscriptionRunner(
     private val threadPolicy: ThreadPolicy,
     private val quotaStore: com.vocatim.app.data.billing.QuotaStore,
     private val importDir: File,
+    private val modelsDir: File,
+    private val httpClient: okhttp3.OkHttpClient,
 ) {
 
     /** @param sourceUri set for imported audio that still needs conversion. */
@@ -126,6 +128,12 @@ class TranscriptionRunner(
             )
         }
 
+        // Silero VAD pre-filter (opt-out in Settings): fetched lazily, and a
+        // failed fetch (offline) just means this run goes without VAD.
+        val vadModelPath = if (userPrefs.current().vadEnabled) {
+            com.vocatim.app.data.model.VadModel.ensure(modelsDir, httpClient)?.absolutePath
+        } else null
+
         withContext(Dispatchers.IO) {
             WavStreamReader(audioFile).use { reader ->
                 val chunks = ChunkPlanner.plan(reader.totalSamples)
@@ -168,6 +176,7 @@ class TranscriptionRunner(
                             numThreads = threadPolicy.threadsFor(settings.threads),
                             initialPrompt = settings.customVocab.trim().ifBlank { null },
                             beamSize = if (settings.highAccuracy) 5 else 0,
+                            vadModelPath = vadModelPath,
                         )
                     }
 

@@ -333,6 +333,13 @@
     <string name="summary_model_qwen25_desc">Qwen2.5 1.5B — proven, stable</string>
     <string name="summary_model_qwen3">Core+ (recommended)</string>
     <string name="summary_model_qwen3_desc">Qwen3 1.7B — newer generation, smarter summaries</string>
+    <string name="summary_model_qwen3_4b">Ultra</string>
+    <string name="summary_model_qwen3_4b_desc">Qwen3 4B — a full quality tier up: far better summaries and minutes</string>
+    <string name="summary_model_gemma3_4b">Ultra Multilingual</string>
+    <string name="summary_model_gemma3_4b_desc">Gemma 3 4B — Google, strongest for mixed and rare languages</string>
+    <string name="summary_model_needs_ram">Needs a phone with 8 GB RAM</string>
+    <string name="settings_vad">Smart silence filter (VAD)</string>
+    <string name="settings_vad_desc">Skips silent stretches before transcribing: faster, fewer made-up fillers. Uses a tiny one-time download.</string>
     <string name="model_name_turbo">Ultra</string>
     <string name="model_speed_turbo">Best accuracy available, slow — for important recordings</string>
 

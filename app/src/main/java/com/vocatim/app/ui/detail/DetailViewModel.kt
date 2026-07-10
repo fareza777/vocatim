@@ -52,7 +52,7 @@ class DetailViewModel @Inject constructor(
     private val summaryModelManager: com.vocatim.app.data.summary.SummaryModelManager,
     summaryProgressHolder: com.vocatim.app.data.summary.SummaryProgressHolder,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
-    userPrefs: com.vocatim.app.data.prefs.UserPrefs,
+    private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
     private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
     private val cloudClient: com.vocatim.app.data.cloud.CloudAiClient,
 ) : ViewModel() {
@@ -102,6 +102,12 @@ class DetailViewModel @Inject constructor(
         summaryProgressHolder.progress.map { it[transcriptId] }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Live partial text of the summary being generated, streamed token by
+     *  token from the local model. */
+    val summaryPartial: StateFlow<String?> =
+        summaryProgressHolder.partialText.map { it[transcriptId] }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     private var summaryDownloadJob: kotlinx.coroutines.Job? = null
 
     fun downloadSummaryModel() {
@@ -149,18 +155,38 @@ class DetailViewModel @Inject constructor(
                 it.language.takeIf { l -> l != "auto" } ?: it.detectedLanguage
             } ?: "en"
             val answer = runCatching {
-                cloudClient.chat(
-                    config = cloudAiPrefs.current(),
-                    system = com.vocatim.app.data.cloud.CloudPrompts.qaSystem(language),
-                    user = "Transcript:\n" +
-                        text.take(com.vocatim.app.data.cloud.CloudPrompts.MAX_INPUT_CHARS) +
-                        "\n\nQuestion: " + question.trim(),
-                    maxTokens = 2048,
-                )
+                if (cloudAiPrefs.current().isConfigured) {
+                    cloudClient.chat(
+                        config = cloudAiPrefs.current(),
+                        system = com.vocatim.app.data.cloud.CloudPrompts.qaSystem(language),
+                        user = "Transcript:\n" +
+                            text.take(com.vocatim.app.data.cloud.CloudPrompts.MAX_INPUT_CHARS) +
+                            "\n\nQuestion: " + question.trim(),
+                        maxTokens = 2048,
+                    )
+                } else {
+                    // No BYOK key: answer fully on-device with the local model.
+                    localAnswer(text, question.trim(), language)
+                }
             }.getOrElse { it.message ?: "Request failed" }
             _qaHistory.value = _qaHistory.value + QaEntry(question.trim(), answer)
             _qaBusy.value = false
         }
+    }
+
+    private suspend fun localAnswer(
+        transcript: String,
+        question: String,
+        language: String,
+    ): String = withContext(Dispatchers.Default) {
+        val settings = userPrefs.current()
+        com.vocatim.app.data.summary.LocalQa(
+            modelManager = summaryModelManager,
+            threads = com.vocatim.app.data.transcribe.ThreadPolicy(appContext)
+                .threadsFor(settings.threads),
+            model = com.vocatim.app.data.summary.SummaryModel.fromId(settings.summaryModel),
+            ctxCapTokens = com.vocatim.app.data.summary.ContextBudget.ramCapTokens(appContext),
+        ).answer(transcript, question, language)
     }
 
     // --- Translate transcript/minutes to any language (BYOK) ---

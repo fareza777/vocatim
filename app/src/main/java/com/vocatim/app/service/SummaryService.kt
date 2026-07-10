@@ -160,6 +160,7 @@ class SummaryService : Service() {
         val summary = summarizer.summarize(
             text = entity.text,
             language = language,
+            onPartial = { partial -> progressHolder.setPartial(entity.id, partial) },
         ) { fraction ->
             progressHolder.set(entity.id, fraction)
             updateNotification(
@@ -320,6 +321,7 @@ class SummaryService : Service() {
 /** Hilt-provided factory so the service can build a Summarizer with a
  *  runtime thread count and expose cancellation of the active engine. */
 class SummarizerFactory @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
     private val modelManager: com.vocatim.app.data.summary.SummaryModelManager,
 ) {
     @Volatile private var active: Summarizer? = null
@@ -335,8 +337,10 @@ class SummarizerFactory @Inject constructor(
         threads: Int,
         model: com.vocatim.app.data.summary.SummaryModel =
             com.vocatim.app.data.summary.SummaryModel.DEFAULT,
-    ): Summarizer =
-        Summarizer(modelManager, threads, diagFile, model).also { active = it }
+    ): Summarizer = Summarizer(
+        modelManager, threads, diagFile, model,
+        com.vocatim.app.data.summary.ContextBudget.ramCapTokens(context),
+    ).also { active = it }
 
     fun cancelActive() {
         active?.cancel()

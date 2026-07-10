@@ -298,7 +298,11 @@ fun DetailScreen(
                                                 ).show()
                                                 onUpgrade()
                                             }
-                                            cloudConfiguredTop -> showAskAiDialog = true
+                                            // Cloud when configured; otherwise
+                                            // the local model answers on-device.
+                                            cloudConfiguredTop || summaryModelStateTop
+                                                is com.vocatim.app.data.model.ModelState.Downloaded ->
+                                                showAskAiDialog = true
                                             else -> Toast.makeText(
                                                 context,
                                                 context.getString(R.string.minutes_need_byok),
@@ -419,7 +423,7 @@ fun DetailScreen(
                                 badge = stringResource(R.string.card_badge_ai),
                             ) {
                                 androidx.compose.foundation.text.selection.SelectionContainer {
-                                    Text(minutesText, style = MaterialTheme.typography.bodyMedium)
+                                    com.vocatim.app.ui.common.MarkdownText(minutesText)
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     FilledTonalButton(onClick = {
@@ -1123,7 +1127,7 @@ private fun AskAiDialog(viewModel: DetailViewModel, onDismiss: () -> Unit) {
                         color = MaterialTheme.colorScheme.primary,
                     )
                     androidx.compose.foundation.text.selection.SelectionContainer {
-                        Text(entry.answer, style = MaterialTheme.typography.bodyMedium)
+                        com.vocatim.app.ui.common.MarkdownText(entry.answer)
                     }
                 }
                 if (busy) {
@@ -1359,14 +1363,23 @@ private fun karaokeText(
     return buildAnnotatedString {
         append(plain)
         val current = words.firstOrNull { positionMs in it.startMs..it.endMs } ?: return@buildAnnotatedString
-        // Locate that word's characters inside the segment text.
-        val idx = plain.indexOf(current.text.trim())
-        if (idx >= 0) {
-            addStyle(
-                SpanStyle(background = highlight),
-                idx,
-                (idx + current.text.trim().length).coerceAtMost(plain.length),
-            )
+        // Walk the words in order so a repeated word highlights the right
+        // occurrence, not the first one in the segment.
+        var searchFrom = 0
+        for (word in words) {
+            val token = word.text.trim()
+            if (token.isEmpty()) continue
+            val idx = plain.indexOf(token, searchFrom)
+            if (idx < 0) break
+            if (word === current) {
+                addStyle(
+                    SpanStyle(background = highlight),
+                    idx,
+                    (idx + token.length).coerceAtMost(plain.length),
+                )
+                break
+            }
+            searchFrom = idx + token.length
         }
     }
 }
@@ -1826,13 +1839,18 @@ private fun SummaryBody(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    // The summary streams in live as the model writes it.
+                    val partial by viewModel.summaryPartial.collectAsStateWithLifecycle()
+                    partial?.takeIf { it.isNotBlank() }?.let {
+                        com.vocatim.app.ui.common.MarkdownText(it)
+                    }
                     OutlinedButton(onClick = viewModel::cancelSummary) {
                         Text(stringResource(R.string.action_cancel))
                     }
                 }
                 summary != null -> {
                     androidx.compose.foundation.text.selection.SelectionContainer {
-                        Text(summary, style = MaterialTheme.typography.bodyMedium)
+                        com.vocatim.app.ui.common.MarkdownText(summary)
                     }
                     // Both engines stay one tap away even after a summary
                     // exists — regenerating with the other one is common.

@@ -34,10 +34,13 @@ class WhisperContext private constructor(private var ptr: Long) {
         numThreads: Int = WhisperCpuConfig.preferredThreadCount,
         initialPrompt: String? = null,
         beamSize: Int = 0,
+        /** Path to a Silero VAD ggml model; enables voice-activity filtering. */
+        vadModelPath: String? = null,
     ): WhisperResult = withContext(dispatcher) {
         if (ptr == 0L) throw WhisperException("Whisper context already released")
         val result = WhisperLib.fullTranscribe(
-            ptr, numThreads, language, translate, audioData, initialPrompt, beamSize
+            ptr, numThreads, language, translate, audioData, initialPrompt, beamSize,
+            vadModelPath,
         )
         if (result != 0) throw WhisperException("whisper_full failed with code $result")
 

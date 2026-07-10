@@ -233,6 +233,20 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_vad))
+                    Text(
+                        stringResource(R.string.settings_vad_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = s.vadEnabled, onCheckedChange = viewModel::setVadEnabled)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.settings_auto_summarize))
                     Text(
                         stringResource(R.string.settings_auto_summarize_desc),
@@ -839,12 +853,15 @@ private fun SummaryModelRow(
     onCancel: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val supported = com.vocatim.app.data.summary.ContextBudget.supports(
+        androidx.compose.ui.platform.LocalContext.current, model
+    )
     Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             RadioButton(
                 selected = selected,
                 onClick = onSelect,
-                enabled = state is ModelState.Downloaded,
+                enabled = supported && state is ModelState.Downloaded,
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -854,6 +871,10 @@ private fun SummaryModelRow(
                                 R.string.summary_model_qwen25
                             com.vocatim.app.data.summary.SummaryModel.QWEN3 ->
                                 R.string.summary_model_qwen3
+                            com.vocatim.app.data.summary.SummaryModel.QWEN3_4B ->
+                                R.string.summary_model_qwen3_4b
+                            com.vocatim.app.data.summary.SummaryModel.GEMMA3_4B ->
+                                R.string.summary_model_gemma3_4b
                         }
                     ),
                     style = MaterialTheme.typography.titleSmall,
@@ -865,15 +886,28 @@ private fun SummaryModelRow(
                                 R.string.summary_model_qwen25_desc
                             com.vocatim.app.data.summary.SummaryModel.QWEN3 ->
                                 R.string.summary_model_qwen3_desc
+                            com.vocatim.app.data.summary.SummaryModel.QWEN3_4B ->
+                                R.string.summary_model_qwen3_4b_desc
+                            com.vocatim.app.data.summary.SummaryModel.GEMMA3_4B ->
+                                R.string.summary_model_gemma3_4b_desc
                         }
                     ) + " · " + formatMb(model.approxSizeBytes),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (!supported) {
+                    Text(
+                        stringResource(R.string.summary_model_needs_ram),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
             when (state) {
                 is ModelState.NotDownloaded ->
-                    Button(onClick = onDownload) { Text(stringResource(R.string.debug_download)) }
+                    Button(onClick = onDownload, enabled = supported) {
+                        Text(stringResource(R.string.debug_download))
+                    }
                 is ModelState.Downloading ->
                     OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.debug_cancel)) }
                 is ModelState.Downloaded ->

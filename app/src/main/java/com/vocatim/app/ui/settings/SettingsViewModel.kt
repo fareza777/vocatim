@@ -273,6 +273,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPrefs.setHighAccuracy(enabled) }
     }
 
+    fun setVadEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPrefs.setVadEnabled(enabled) }
+    }
+
     fun setAutoSummarize(enabled: Boolean) {
         viewModelScope.launch { userPrefs.setAutoSummarize(enabled) }
     }

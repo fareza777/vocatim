@@ -122,6 +122,7 @@ object AppModule {
         progressHolder: TranscriptionProgressHolder,
         userPrefs: UserPrefs,
         quotaStore: com.vocatim.app.data.billing.QuotaStore,
+        client: OkHttpClient,
     ): TranscriptionRunner = TranscriptionRunner(
         repository = repository,
         transcriber = transcriber,
@@ -132,6 +133,8 @@ object AppModule {
         threadPolicy = ThreadPolicy(context),
         quotaStore = quotaStore,
         importDir = File(context.filesDir, "imports"),
+        modelsDir = File(context.filesDir, "models"),
+        httpClient = client,
     )
 
     @Provides

@@ -30,6 +30,8 @@ data class UserSettings(
     val customVocab: String,
     /** Beam search instead of greedy: more accurate, slower. */
     val highAccuracy: Boolean,
+    /** Silero VAD pre-filter: skips silence, curbs hallucinated filler. */
+    val vadEnabled: Boolean,
     /** Run the AI summary automatically once transcription finishes (Pro). */
     val autoSummarize: Boolean,
     /** Minutes format: general, one_on_one, interview, or custom. */
@@ -67,6 +69,7 @@ class UserPrefs(private val context: Context) {
             onboardingDone = prefs[ONBOARDING_KEY] ?: false,
             customVocab = prefs[CUSTOM_VOCAB_KEY] ?: "",
             highAccuracy = prefs[HIGH_ACCURACY_KEY] ?: false,
+            vadEnabled = prefs[VAD_ENABLED_KEY] ?: true,
             autoSummarize = prefs[AUTO_SUMMARIZE_KEY] ?: false,
             minutesTemplate = prefs[MINUTES_TEMPLATE_KEY] ?: "general",
             customMinutesPrompt = prefs[CUSTOM_MINUTES_PROMPT_KEY] ?: "",
@@ -129,6 +132,10 @@ class UserPrefs(private val context: Context) {
         context.prefsDataStore.edit { it[HIGH_ACCURACY_KEY] = enabled }
     }
 
+    suspend fun setVadEnabled(enabled: Boolean) {
+        context.prefsDataStore.edit { it[VAD_ENABLED_KEY] = enabled }
+    }
+
     suspend fun setAutoSummarize(enabled: Boolean) {
         context.prefsDataStore.edit { it[AUTO_SUMMARIZE_KEY] = enabled }
     }
@@ -187,6 +194,7 @@ class UserPrefs(private val context: Context) {
         private val ONBOARDING_KEY = booleanPreferencesKey("onboarding_done")
         private val CUSTOM_VOCAB_KEY = stringPreferencesKey("custom_vocab")
         private val HIGH_ACCURACY_KEY = booleanPreferencesKey("high_accuracy")
+        private val VAD_ENABLED_KEY = booleanPreferencesKey("vad_enabled")
         private val AUTO_SUMMARIZE_KEY = booleanPreferencesKey("auto_summarize")
         private val MINUTES_TEMPLATE_KEY = stringPreferencesKey("minutes_template")
         private val CUSTOM_MINUTES_PROMPT_KEY = stringPreferencesKey("custom_minutes_prompt")
