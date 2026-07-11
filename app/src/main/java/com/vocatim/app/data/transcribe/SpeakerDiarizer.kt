@@ -28,13 +28,11 @@ class SpeakerDiarizer(
     private val mutex = Mutex()
 
     /**
-     * @param onProgress 0f..1f across the diarization chunks.
      * @return speaker turns with 1-based speaker indices ordered by first
      *  appearance, so "Speaker 1" is whoever talked first.
      */
     suspend fun diarize(
         samples: FloatArray,
-        onProgress: (Float) -> Unit,
     ): List<SpeakerTurn> = mutex.withLock {
         withContext(Dispatchers.Default) {
             if (!DiarizationModel.isDownloaded(modelsDir)) {
@@ -61,17 +59,21 @@ class SpeakerDiarizer(
                 }
             }
             val sd = OfflineSpeakerDiarization(null, config)
+            // The wrapper doesn't validate its native handle; calling into a
+            // failed (0) handle is a hard SIGSEGV. Fail as a catchable error.
+            val ptr = runCatching {
+                OfflineSpeakerDiarization::class.java.getDeclaredField("ptr")
+                    .apply { isAccessible = true }
+                    .getLong(sd)
+            }.getOrNull()
+            if (ptr == 0L) {
+                throw IllegalStateException("Speaker models failed to load")
+            }
             try {
-                val raw = sd.processWithCallback(
-                    samples,
-                    { processed, total, _ ->
-                        onProgress(
-                            if (total > 0) processed.toFloat() / total else 0f
-                        )
-                        0 // continue
-                    },
-                    0L,
-                )
+                // Plain process(): the callback variant routes through a
+                // fragile env-capturing JNI bridge; the desktop replication
+                // confirmed this path with these exact models and version.
+                val raw = sd.process(samples)
                 // Renumber to 1-based by first appearance for stable labels.
                 val order = mutableMapOf<Int, Int>()
                 raw.sortedBy { it.start }.map { seg ->

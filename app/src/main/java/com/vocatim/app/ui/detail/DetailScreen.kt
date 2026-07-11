@@ -569,9 +569,8 @@ fun DetailScreen(
                                     Text(stringResource(R.string.diarize_action))
                                 }
                             }
-                            diarizeProgress?.let { p ->
+                            if (diarizeProgress != null) {
                                 LinearProgressIndicator(
-                                    progress = { p },
                                     modifier = Modifier.fillMaxWidth(),
                                     trackColor = MaterialTheme.colorScheme.outlineVariant,
                                 )

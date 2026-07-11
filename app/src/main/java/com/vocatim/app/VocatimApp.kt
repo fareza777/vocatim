@@ -28,6 +28,20 @@ class VocatimApp : android.app.Application() {
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.DEBUG) {
+            // Persist the last crash so it can be diagnosed without a live
+            // logcat: filesDir/last_crash.txt survives the process death.
+            val previous = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+                runCatching {
+                    java.io.File(filesDir, "last_crash.txt").writeText(
+                        "thread=${thread.name}\n" +
+                            android.util.Log.getStackTraceString(throwable)
+                    )
+                }
+                previous?.uncaughtException(thread, throwable)
+            }
+        }
         // Foreground services (recording/transcription) post to these
         // channels; without them startForeground throws on API 26+.
         Notifications.createChannels(this)

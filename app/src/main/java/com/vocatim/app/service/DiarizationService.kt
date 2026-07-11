@@ -71,7 +71,9 @@ class DiarizationService : Service() {
             previous?.join()
             try {
                 run(id)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // Throwable, not Exception: an OutOfMemoryError on a long
+                // file or a linkage error must fail the job, not the app.
                 notifyFailure(e.message ?: e.javaClass.simpleName)
             } finally {
                 progressHolder.remove(id)
@@ -106,10 +108,10 @@ class DiarizationService : Service() {
         val samples = loadSamples(File(audioPath))
             ?: run { notifyFailure(getString(R.string.diarize_no_audio)); return }
 
-        val turns = diarizer.diarize(samples) { fraction ->
-            // Loading took the first slice; diarization owns the rest.
-            progressHolder.set(transcriptId, 0.05f + fraction * 0.90f)
-        }
+        // No granular progress from the engine; the UI shows an
+        // indeterminate bar while any value is present.
+        progressHolder.set(transcriptId, 0.5f)
+        val turns = diarizer.diarize(samples)
         if (turns.isEmpty()) {
             notifyFailure(getString(R.string.diarize_none_found))
             return
@@ -148,9 +150,20 @@ class DiarizationService : Service() {
             }.getOrNull()
         }
 
+    /** Chunked read into one preallocated array: peak memory stays at the
+     *  4 bytes/sample of the result instead of tripling via byte buffers. */
     private fun readWav(file: File): FloatArray =
         WavStreamReader(file).use { reader ->
-            reader.read(0, reader.totalSamples.toInt())
+            val total = reader.totalSamples.toInt()
+            val out = FloatArray(total)
+            var offset = 0
+            while (offset < total) {
+                val chunk = reader.read(offset.toLong(), minOf(READ_CHUNK, total - offset))
+                if (chunk.isEmpty()) break
+                chunk.copyInto(out, offset)
+                offset += chunk.size
+            }
+            out
         }
 
     /** Turn with the largest overlap against [startMs, endMs]. */
@@ -219,6 +232,9 @@ class DiarizationService : Service() {
 
         /** ~230 MB of float samples at 16kHz; longer risks an OOM kill. */
         const val MAX_DURATION_MS = 60L * 60 * 1000
+
+        /** 30s of samples per read step. */
+        private const val READ_CHUNK = 30 * 16_000
 
         fun start(context: Context, transcriptId: Long) {
             context.startForegroundService(
