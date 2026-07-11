@@ -524,11 +524,58 @@ fun DetailScreen(
 
                         if (hasAudio && segmentMode) {
                             var showSpeakers by rememberSaveable(t.id) { mutableStateOf(false) }
-                            androidx.compose.material3.FilterChip(
-                                selected = showSpeakers,
-                                onClick = { showSpeakers = !showSpeakers },
-                                label = { Text(stringResource(R.string.detail_speakers)) },
-                            )
+                            val diarizeProgress by viewModel.diarizationProgress
+                                .collectAsStateWithLifecycle()
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                androidx.compose.material3.FilterChip(
+                                    selected = showSpeakers,
+                                    onClick = { showSpeakers = !showSpeakers },
+                                    label = { Text(stringResource(R.string.detail_speakers)) },
+                                )
+                                // Real diarization (AI, Pro) replaces the
+                                // pause-based estimate once it has run.
+                                TextButton(
+                                    enabled = diarizeProgress == null,
+                                    onClick = {
+                                        when {
+                                            !isProTop -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.ai_need_pro),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                                onUpgrade()
+                                            }
+                                            !viewModel.diarizeModelReady -> Toast.makeText(
+                                                context,
+                                                context.getString(R.string.diarize_need_model),
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                            else -> {
+                                                viewModel.startDiarization()
+                                                showSpeakers = true
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.diarize_started),
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                            }
+                                        }
+                                    },
+                                ) {
+                                    Text(stringResource(R.string.diarize_action))
+                                }
+                            }
+                            diarizeProgress?.let { p ->
+                                LinearProgressIndicator(
+                                    progress = { p },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    trackColor = MaterialTheme.colorScheme.outlineVariant,
+                                )
+                            }
                             SegmentList(
                                 segments = segments,
                                 positionMs = playerState?.positionMs?.toLong() ?: -1L,
@@ -1630,15 +1677,24 @@ private fun SegmentList(
             scrollState.animateScrollTo((activeIndex * 72).coerceAtMost(scrollState.maxValue))
         }
     }
-    // Estimated speaker turns: a long pause is assumed to flip speaker.
-    // Heuristic, so it's opt-in and clearly labelled "estimated".
+    // Diarized labels when available; else the pause-flip estimate.
     val speakers = remember(segments, showSpeakers) {
         IntArray(segments.size).also { arr ->
             if (!showSpeakers) return@also
-            var spk = 0
-            for (i in segments.indices) {
-                if (i > 0 && segments[i].startMs - segments[i - 1].endMs > 1500L) spk = 1 - spk
-                arr[i] = spk
+            if (segments.any { it.speaker != null }) {
+                // Real speakers are 1-based; carry the last label across
+                // segments diarization couldn't attribute (e.g. silence).
+                var last = 1
+                for (i in segments.indices) {
+                    last = segments[i].speaker ?: last
+                    arr[i] = last - 1
+                }
+            } else {
+                var spk = 0
+                for (i in segments.indices) {
+                    if (i > 0 && segments[i].startMs - segments[i - 1].endMs > 1500L) spk = 1 - spk
+                    arr[i] = spk
+                }
             }
         }
     }
@@ -2038,7 +2094,11 @@ private fun MetaRow(t: TranscriptEntity) {
                     stringResource(R.string.meta_words, formatCount(words)),
                 )
             }
-            val languageCode = t.language.takeIf { it != "auto" } ?: t.detectedLanguage
+            // Parakeet is English-only; the stored language is the whisper
+            // setting and would mislabel the chip.
+            val languageCode =
+                if (t.modelId == com.vocatim.app.data.model.ParakeetModel.ID) "en"
+                else t.language.takeIf { it != "auto" } ?: t.detectedLanguage
             languageCode?.let { code ->
                 MetaChip(
                     Icons.Default.Language,

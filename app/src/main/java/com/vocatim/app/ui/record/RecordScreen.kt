@@ -21,8 +21,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -103,16 +109,19 @@ fun RecordScreen(
         onDispose { viewModel.stopLivePreview() }
     }
 
+    // Which start the permission grant should resume: normal or live mode.
+    var pendingLiveStart by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
         if (grants[Manifest.permission.RECORD_AUDIO] == true) {
-            viewModel.start()
+            if (pendingLiveStart) viewModel.startLive() else viewModel.start()
         }
     }
 
-    fun startWithPermission() {
+    fun launchWithPermission(live: Boolean) {
         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+        pendingLiveStart = live
         val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= 33) {
             needed.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -120,9 +129,15 @@ fun RecordScreen(
         val missing = needed.filter {
             ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (missing.isEmpty()) viewModel.start()
-        else permissionLauncher.launch(needed.toTypedArray())
+        if (missing.isEmpty()) {
+            if (live) viewModel.startLive() else viewModel.start()
+        } else {
+            permissionLauncher.launch(needed.toTypedArray())
+        }
     }
+
+    fun startWithPermission() = launchWithPermission(live = false)
+    fun startLiveWithPermission() = launchWithPermission(live = true)
 
     // Quick Settings tile arrives with autoStart: begin immediately.
     LaunchedEffect(Unit) {
@@ -198,11 +213,40 @@ fun RecordScreen(
                         }
                     }
                     Spacer(Modifier.height(0.dp))
-                    RecordButton(
-                        recording = false,
-                        onClick = ::startWithPermission,
-                        modifier = Modifier.padding(bottom = 72.dp),
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        modifier = Modifier.padding(bottom = 48.dp),
+                    ) {
+                        RecordButton(
+                            recording = false,
+                            onClick = ::startWithPermission,
+                        )
+                        // Second, deliberate mode: recording + streaming
+                        // English captions. Never mixed with the normal path.
+                        androidx.compose.material3.OutlinedButton(onClick = {
+                            haptic.performHapticFeedback(
+                                androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
+                            )
+                            if (!viewModel.liveModelReady) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    context.getString(R.string.record_live_need_model),
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            } else {
+                                startLiveWithPermission()
+                            }
+                        }) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.record_live_mode))
+                        }
+                    }
                 }
                 is RecordingState.Active -> {
                     Column(
@@ -230,8 +274,18 @@ fun RecordScreen(
 
                     AmplitudeBars(amplitudes, paused = s.paused)
 
+                    val isLive by viewModel.liveMode.collectAsStateWithLifecycle()
+                    if (isLive) {
+                        val captionState by viewModel.captions.collectAsStateWithLifecycle()
+                        val throttled by viewModel.liveThrottled.collectAsStateWithLifecycle()
+                        LiveCaptions(
+                            captions = captionState,
+                            throttled = throttled,
+                        )
+                    }
+
                     val livePreview by viewModel.livePreview.collectAsStateWithLifecycle()
-                    livePreview?.let { preview ->
+                    if (!isLive) livePreview?.let { preview ->
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -354,6 +408,58 @@ private fun RecordButton(
             tint = Color.White,
             modifier = Modifier.size(38.dp),
         )
+    }
+}
+
+/** Streaming caption panel: finalized lines plus the sentence in flight. */
+@Composable
+private fun LiveCaptions(
+    captions: com.vocatim.app.data.transcribe.CaptionState,
+    throttled: Boolean,
+) {
+    val scroll = rememberScrollState()
+    LaunchedEffect(captions) {
+        scroll.animateScrollTo(scroll.maxValue)
+    }
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(14.dp)
+                .heightIn(min = 72.dp, max = 200.dp)
+                .verticalScroll(scroll),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (throttled) {
+                Text(
+                    stringResource(R.string.record_live_throttled),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
+            if (captions.lines.isEmpty() && captions.partial.isEmpty() && !throttled) {
+                Text(
+                    stringResource(R.string.record_live_listening),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            captions.lines.forEach { line ->
+                Text(line, style = MaterialTheme.typography.bodyMedium)
+            }
+            if (captions.partial.isNotEmpty()) {
+                Text(
+                    captions.partial,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 

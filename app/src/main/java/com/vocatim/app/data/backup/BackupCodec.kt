@@ -114,6 +114,7 @@ object BackupCodec {
                     put("endMs", s.endMs)
                     put("text", s.text)
                     put("words", s.words ?: JSONObject.NULL)
+                    put("speaker", s.speaker ?: JSONObject.NULL)
                 })
             }
         })
@@ -172,6 +173,7 @@ object BackupCodec {
                     endMs = o.getLong("endMs"),
                     text = o.getString("text"),
                     words = o.optString("words").ifEmpty { null },
+                    speaker = if (o.isNull("speaker")) null else o.optInt("speaker"),
                 )
             )
         }

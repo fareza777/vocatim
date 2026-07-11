@@ -69,6 +69,11 @@
             android:foregroundServiceType="dataSync" />
 
         <service
+            android:name=".service.DiarizationService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <service
             android:name=".service.RecordTileService"
             android:exported="true"
             android:icon="@drawable/ic_stat_mic"

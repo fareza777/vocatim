@@ -35,7 +35,7 @@ class ImportCoordinator(
             TranscriptEntity(
                 title = name ?: "Import",
                 language = settings.language,
-                modelId = settings.model.id,
+                modelId = settings.selectedModelId,
                 audioPath = null,
                 status = TranscriptStatus.PENDING,
                 sourceName = name,
@@ -64,7 +64,7 @@ class ImportCoordinator(
                 title = derivedTitle,
                 text = cleaned,
                 language = settings.language,
-                modelId = settings.model.id,
+                modelId = settings.selectedModelId,
                 audioPath = null,
                 audioDurationMs = 0,
                 status = TranscriptStatus.DONE,

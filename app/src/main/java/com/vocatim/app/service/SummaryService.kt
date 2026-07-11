@@ -97,11 +97,16 @@ class SummaryService : Service() {
                 // the detected language, then Indonesian (the app's audience).
                 // Whisper routinely mis-detects Indonesian as Malay ("ms") —
                 // they're mutually intelligible — so normalise ms -> id.
-                val effectiveLanguage = (
-                    entity.language.takeIf { it != "auto" }
-                        ?: entity.detectedLanguage
-                        ?: "id"
-                    ).let { if (it == "ms") "id" else it }
+                // Parakeet transcripts are always English regardless of the
+                // user's whisper language setting stored on the row.
+                val effectiveLanguage = when {
+                    entity.modelId == com.vocatim.app.data.model.ParakeetModel.ID -> "en"
+                    else -> (
+                        entity.language.takeIf { it != "auto" }
+                            ?: entity.detectedLanguage
+                            ?: "id"
+                        ).let { if (it == "ms") "id" else it }
+                }
 
                 when (mode) {
                     MODE_CLOUD -> {

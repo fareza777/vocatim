@@ -139,7 +139,7 @@ fun SettingsScreen(
             com.vocatim.app.ui.common.ExpandableSection(
                 title = stringResource(R.string.settings_model),
                 icon = Icons.Default.GraphicEq,
-                subtitle = com.vocatim.app.ui.common.modelDisplayName(s.model.id),
+                subtitle = com.vocatim.app.ui.common.modelDisplayName(s.selectedModelId),
             ) {
             if (viewModel.isLowRamDevice) {
                 Text(
@@ -164,7 +164,7 @@ fun SettingsScreen(
                         ModelRow(
                             model = model,
                             state = modelStates[model] ?: ModelState.NotDownloaded,
-                            selected = s.model == model,
+                            selected = s.selectedModelId == model.id,
                             bench = bench[model],
                             onSelect = { viewModel.selectModel(model) },
                             onDownload = { viewModel.download(model) },
@@ -181,6 +181,44 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Text(
+                stringResource(R.string.settings_english_engine),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            val parakeetState by viewModel.parakeetState.collectAsStateWithLifecycle()
+            Card {
+                ParakeetRow(
+                    state = parakeetState,
+                    selected = s.selectedModelId == com.vocatim.app.data.model.ParakeetModel.ID,
+                    onSelect = viewModel::selectParakeet,
+                    onDownload = viewModel::downloadParakeet,
+                    onCancel = viewModel::cancelParakeetDownload,
+                    onDelete = viewModel::deleteParakeet,
+                )
+            }
+            val liveState by viewModel.liveCaptionState.collectAsStateWithLifecycle()
+            Card {
+                LiveCaptionRow(
+                    state = liveState,
+                    onDownload = viewModel::downloadLiveCaption,
+                    onCancel = viewModel::cancelLiveCaptionDownload,
+                    onDelete = viewModel::deleteLiveCaption,
+                )
+            }
+            Text(
+                stringResource(R.string.settings_diarize_section),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            val diarizeState by viewModel.diarizationState.collectAsStateWithLifecycle()
+            Card {
+                DiarizationRow(
+                    state = diarizeState,
+                    onDownload = viewModel::downloadDiarization,
+                    onCancel = viewModel::cancelDiarizationDownload,
+                    onDelete = viewModel::deleteDiarization,
+                )
+            }
             }
 
             com.vocatim.app.ui.common.ExpandableSection(
@@ -901,6 +939,213 @@ private fun ModelRow(
                     null -> Unit
                 }
             }
+        }
+    }
+}
+
+/** The NVIDIA Parakeet English engine: same row anatomy as ModelRow, but a
+ *  multi-file bundle managed by its own manager. */
+@Composable
+private fun ParakeetRow(
+    state: ModelState,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+                selected = selected,
+                onClick = onSelect,
+                enabled = state is ModelState.Downloaded,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.model_name_parakeet) + " · " +
+                        formatMb(com.vocatim.app.data.model.ParakeetModel.totalBytes),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                com.vocatim.app.ui.common.StarMeter(
+                    stringResource(R.string.stars_speed),
+                    com.vocatim.app.data.model.ParakeetModel.SPEED_STARS,
+                )
+                com.vocatim.app.ui.common.StarMeter(
+                    stringResource(R.string.stars_accuracy),
+                    com.vocatim.app.data.model.ParakeetModel.ACCURACY_STARS,
+                )
+                Text(
+                    stringResource(R.string.parakeet_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            when (state) {
+                is ModelState.NotDownloaded ->
+                    Button(onClick = onDownload) { Text(stringResource(R.string.debug_download)) }
+                is ModelState.Downloading ->
+                    OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.debug_cancel)) }
+                is ModelState.Downloaded ->
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.debug_delete_model),
+                        )
+                    }
+                is ModelState.Failed ->
+                    Button(onClick = onDownload) { Text(stringResource(R.string.debug_retry)) }
+            }
+        }
+        if (state is ModelState.Downloading) {
+            if (state.totalBytes > 0) {
+                LinearProgressIndicator(
+                    progress = { state.progress },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+        }
+        if (state is ModelState.Failed) {
+            Text(
+                state.message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/** Speaker-detection bundle: like LiveCaptionRow, presence-only (no radio). */
+@Composable
+private fun DiarizationRow(
+    state: ModelState,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp),
+            ) {
+                Text(
+                    stringResource(R.string.diarize_model_name) + " · " +
+                        formatMb(com.vocatim.app.data.model.DiarizationModel.totalBytes),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    stringResource(R.string.diarize_model_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            when (state) {
+                is ModelState.NotDownloaded ->
+                    Button(onClick = onDownload) { Text(stringResource(R.string.debug_download)) }
+                is ModelState.Downloading ->
+                    OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.debug_cancel)) }
+                is ModelState.Downloaded ->
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.debug_delete_model),
+                        )
+                    }
+                is ModelState.Failed ->
+                    Button(onClick = onDownload) { Text(stringResource(R.string.debug_retry)) }
+            }
+        }
+        if (state is ModelState.Downloading) {
+            if (state.totalBytes > 0) {
+                LinearProgressIndicator(
+                    progress = { state.progress },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+        }
+        if (state is ModelState.Failed) {
+            Text(
+                state.message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/** Streaming caption model for the Live recording mode. Not a transcription
+ *  engine choice — no radio; it just needs to be present on disk. */
+@Composable
+private fun LiveCaptionRow(
+    state: ModelState,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp),
+            ) {
+                Text(
+                    stringResource(R.string.live_model_name) + " · " +
+                        formatMb(com.vocatim.app.data.model.LiveCaptionModel.totalBytes),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                com.vocatim.app.ui.common.StarMeter(
+                    stringResource(R.string.stars_speed),
+                    com.vocatim.app.data.model.LiveCaptionModel.SPEED_STARS,
+                )
+                com.vocatim.app.ui.common.StarMeter(
+                    stringResource(R.string.stars_accuracy),
+                    com.vocatim.app.data.model.LiveCaptionModel.ACCURACY_STARS,
+                )
+                Text(
+                    stringResource(R.string.live_model_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            when (state) {
+                is ModelState.NotDownloaded ->
+                    Button(onClick = onDownload) { Text(stringResource(R.string.debug_download)) }
+                is ModelState.Downloading ->
+                    OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.debug_cancel)) }
+                is ModelState.Downloaded ->
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.debug_delete_model),
+                        )
+                    }
+                is ModelState.Failed ->
+                    Button(onClick = onDownload) { Text(stringResource(R.string.debug_retry)) }
+            }
+        }
+        if (state is ModelState.Downloading) {
+            if (state.totalBytes > 0) {
+                LinearProgressIndicator(
+                    progress = { state.progress },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+        }
+        if (state is ModelState.Failed) {
+            Text(
+                state.message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }

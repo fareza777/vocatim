@@ -51,6 +51,8 @@ class DetailViewModel @Inject constructor(
     progressHolder: TranscriptionProgressHolder,
     private val summaryModelManager: com.vocatim.app.data.summary.SummaryModelManager,
     summaryProgressHolder: com.vocatim.app.data.summary.SummaryProgressHolder,
+    private val diarizationModelManager: com.vocatim.app.data.model.DiarizationModelManager,
+    diarizationProgressHolder: com.vocatim.app.data.transcribe.DiarizationProgressHolder,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
     private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
     private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
@@ -108,6 +110,31 @@ class DetailViewModel @Inject constructor(
         summaryProgressHolder.partialText.map { it[transcriptId] }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** null when idle; 0f..1f while speaker detection runs for this note. */
+    val diarizationProgress: StateFlow<Float?> =
+        diarizationProgressHolder.progress.map { it[transcriptId] }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val diarizeModelReady: Boolean
+        get() = diarizationModelManager.isDownloaded()
+
+    fun startDiarization() {
+        com.vocatim.app.service.DiarizationService.start(appContext, transcriptId)
+        // Refresh the segment list once the job finishes so the new speaker
+        // labels appear without leaving the screen.
+        viewModelScope.launch {
+            var running = false
+            diarizationProgress.collect { p ->
+                if (p != null) {
+                    running = true
+                } else if (running) {
+                    loadSegments()
+                    return@collect
+                }
+            }
+        }
+    }
+
     private var summaryDownloadJob: kotlinx.coroutines.Job? = null
 
     fun downloadSummaryModel() {
@@ -152,7 +179,8 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             _qaBusy.value = true
             val language = transcript.value?.let {
-                it.language.takeIf { l -> l != "auto" } ?: it.detectedLanguage
+                if (it.modelId == com.vocatim.app.data.model.ParakeetModel.ID) "en"
+                else it.language.takeIf { l -> l != "auto" } ?: it.detectedLanguage
             } ?: "en"
             val answer = runCatching {
                 if (cloudAiPrefs.current().isConfigured) {

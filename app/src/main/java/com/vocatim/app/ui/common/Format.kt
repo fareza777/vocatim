@@ -17,6 +17,7 @@ fun modelDisplayName(id: String): String = when (id) {
     "medium-q5_0" -> stringResource(R.string.model_name_medium)
     "large-v3-turbo-q5_0" -> stringResource(R.string.model_name_turbo)
     "large-v3-turbo-q8_0" -> stringResource(R.string.model_name_turbo_q8)
+    "parakeet-en" -> stringResource(R.string.model_name_parakeet)
     else -> id
 }
 

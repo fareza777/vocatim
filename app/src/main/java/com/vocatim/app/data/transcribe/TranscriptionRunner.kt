@@ -29,6 +29,7 @@ class QuotaExceededException : Exception("QUOTA_EXCEEDED")
 class TranscriptionRunner(
     private val repository: TranscriptRepository,
     private val transcriber: WhisperTranscriber,
+    private val parakeetTranscriber: ParakeetTranscriber,
     private val importer: AudioImporter,
     private val rtfStore: RtfStore,
     private val progressHolder: TranscriptionProgressHolder,
@@ -68,8 +69,13 @@ class TranscriptionRunner(
     private suspend fun runInner(transcriptId: Long, sourceUriParam: Uri?) {
         var entity = repository.getById(transcriptId)
             ?: throw IllegalStateException("Transcript $transcriptId not found")
-        val model = WhisperModel.fromId(entity.modelId)
-            ?: throw IllegalStateException("Unknown model ${entity.modelId}")
+        // Parakeet is a parallel engine, not a whisper model; route around
+        // the whisper path entirely so it stays untouched.
+        val useParakeet = entity.modelId == com.vocatim.app.data.model.ParakeetModel.ID
+        val model = if (useParakeet) null else {
+            WhisperModel.fromId(entity.modelId)
+                ?: throw IllegalStateException("Unknown model ${entity.modelId}")
+        }
         // URI from the intent, or persisted on the row (recovery after kill).
         val sourceUri = sourceUriParam ?: entity.sourceUri?.let(Uri::parse)
 
@@ -151,7 +157,7 @@ class TranscriptionRunner(
                         totalChunks = chunks.size,
                         etaMs = rtfStore.estimateMs(
                             remainingAudioMs(chunks, resumeFrom, audioDurationMs),
-                            rtfStore.rtfFor(model),
+                            if (model != null) rtfStore.rtfFor(model) else PARAKEET_RTF_GUESS,
                         ),
                     )
                 )
@@ -165,10 +171,13 @@ class TranscriptionRunner(
                     val samples = reader.read(chunk.startSample, chunk.sampleCount)
                     // Near-silent chunks produce nothing but hallucinated
                     // filler; skip inference entirely (also a big speed-up).
-                    val result = if (isNearSilent(samples)) {
-                        TranscriptionResult(emptyList(), 0L, null)
-                    } else {
-                        transcriber.transcribe(
+                    val result = when {
+                        isNearSilent(samples) -> TranscriptionResult(emptyList(), 0L, null)
+                        model == null -> parakeetTranscriber.transcribe(
+                            samples = samples,
+                            numThreads = threadPolicy.threadsFor(settings.threads),
+                        )
+                        else -> transcriber.transcribe(
                             model = model,
                             samples = samples,
                             language = entity.language,
@@ -247,7 +256,7 @@ class TranscriptionRunner(
                         detectedLanguage = detectedLanguage ?: finished.detectedLanguage,
                     )
                 )
-                if (processedAudioMs > 0) {
+                if (processedAudioMs > 0 && model != null) {
                     rtfStore.recordMeasurement(model, elapsed.toFloat() / processedAudioMs)
                 }
             }
@@ -256,6 +265,11 @@ class TranscriptionRunner(
 
     suspend fun markCancelled(transcriptId: Long) {
         repository.updateStatus(transcriptId, TranscriptStatus.FAILED, "CANCELLED")
+    }
+
+    private companion object {
+        /** First-run ETA guess for Parakeet — it runs well under realtime. */
+        const val PARAKEET_RTF_GUESS = 0.3f
     }
 
     private fun remainingAudioMs(chunks: List<Chunk>, fromChunk: Int, audioDurationMs: Long): Long =

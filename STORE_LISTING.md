@@ -23,6 +23,8 @@ Vocatim is an offline transcription app powered by Whisper AI that converts voic
 
 **Features**
 • Record with the screen off — long recordings keep running in the background, with live text preview while you speak
+• NEW: NVIDIA Parakeet engine for English — leaderboard-topping accuracy at several times Whisper's speed
+• NEW: Live captions mode (English) — real word-by-word streaming text while you record
 • Import audio & video: MP3, M4A, WAV, MP4, WhatsApp voice notes (share directly to Vocatim)
 • Transcribe multi-hour recordings — resumes from checkpoint if interrupted
 • Smart silence filter (VAD) — skips quiet stretches for faster, cleaner transcripts
@@ -57,6 +59,8 @@ Vocatim adalah aplikasi transkripsi offline bertenaga Whisper AI yang mengubah s
 
 **Fitur**
 • Rekam dengan layar mati — rekaman panjang tetap jalan di latar belakang, dengan pratinjau teks langsung saat bicara
+• BARU: mesin NVIDIA Parakeet untuk bahasa Inggris — akurasi juara leaderboard dengan kecepatan berkali lipat Whisper
+• BARU: mode Live captions (Inggris) — teks streaming kata demi kata saat merekam
 • Impor audio & video: MP3, M4A, WAV, MP4, voice note WhatsApp (share langsung ke Vocatim)
 • Transkrip rekaman berjam-jam — lanjut otomatis dari checkpoint jika terputus
 • Filter keheningan pintar (VAD) — lewati bagian sunyi: lebih cepat, lebih bersih

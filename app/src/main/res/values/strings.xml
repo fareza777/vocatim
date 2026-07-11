@@ -371,6 +371,31 @@
     <string name="model_speed_turbo">Best accuracy available, slow — for important recordings</string>
     <string name="model_name_medium">Master</string>
     <string name="model_name_turbo_q8">Ultra+</string>
+    <string name="model_name_parakeet">Parakeet</string>
+    <string name="settings_english_engine">English engine — NVIDIA Parakeet</string>
+    <string name="parakeet_note">English only · top accuracy at Swift-class speed</string>
+    <string name="live_model_name">Live captions</string>
+    <string name="live_model_note">Streaming word-by-word captions for the Live recording mode · English</string>
+    <string name="record_live_mode">Record with live captions · EN</string>
+    <string name="record_live_need_model">Download the Live captions model first: Settings → Transcription model → English engine.</string>
+    <string name="record_live_listening">Listening…</string>
+    <string name="record_live_throttled">Captions paused — battery saver or device is warm. Recording continues.</string>
+
+    <!-- Speaker detection (diarization) -->
+    <string name="settings_diarize_section">Speaker detection</string>
+    <string name="diarize_model_name">Speaker detection</string>
+    <string name="diarize_model_note">Labels who said what in any language · pyannote + NVIDIA TitaNet</string>
+    <string name="diarize_action">Detect speakers</string>
+    <string name="diarize_started">Detecting speakers — you\'ll get a notification when it\'s done.</string>
+    <string name="diarize_need_model">Download the Speaker detection model first: Settings → Transcription model.</string>
+    <string name="diarize_notif_title">Vocatim Speaker Detection</string>
+    <string name="diarize_notif_running">Analyzing voices…</string>
+    <string name="diarize_done_title">Speakers detected</string>
+    <string name="diarize_done_body">%1$d speakers found — open the segment view to see who said what.</string>
+    <string name="diarize_failed_title">Speaker detection failed</string>
+    <string name="diarize_no_audio">This note has no audio file to analyze.</string>
+    <string name="diarize_too_long">Audio is longer than 60 minutes — too large to analyze on-device.</string>
+    <string name="diarize_none_found">No speech found to analyze.</string>
     <string name="summary_model_gemma3_1b">Lite</string>
     <string name="summary_model_qwen3_8b">Max</string>
     <string name="summary_model_needs_ram_12">Needs a phone with 12 GB RAM</string>

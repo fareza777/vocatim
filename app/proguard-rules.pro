@@ -23,3 +23,7 @@
 -keepclasseswithmembers class * {
     @androidx.room.* <methods>;
 }
+
+# sherpa-onnx (Parakeet engine): JNI resolves these classes and fields by
+# name; the vendored local AAR's consumer rules are not always applied.
+-keep class com.k2fsa.sherpa.onnx.** { *; }

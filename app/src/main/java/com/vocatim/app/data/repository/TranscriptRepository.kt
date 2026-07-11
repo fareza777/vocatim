@@ -110,6 +110,13 @@ class TranscriptRepository(private val dao: TranscriptDao) {
     suspend fun getSegments(transcriptId: Long): List<SegmentEntity> =
         dao.getSegments(transcriptId)
 
+    /** Writes diarized speaker indices onto their segments. */
+    suspend fun setSegmentSpeakers(assignments: Map<Long, Int>) {
+        assignments.forEach { (segmentId, speaker) ->
+            dao.setSegmentSpeaker(segmentId, speaker)
+        }
+    }
+
     suspend fun clearSegments(transcriptId: Long) = dao.deleteSegments(transcriptId)
 
     /**

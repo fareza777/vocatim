@@ -45,6 +45,9 @@ sealed interface CloudTestState {
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val modelManager: ModelManager,
+    private val parakeetManager: com.vocatim.app.data.model.ParakeetModelManager,
+    private val liveCaptionManager: com.vocatim.app.data.model.LiveCaptionModelManager,
+    private val diarizationManager: com.vocatim.app.data.model.DiarizationModelManager,
     private val summaryModelManager: com.vocatim.app.data.summary.SummaryModelManager,
     private val userPrefs: UserPrefs,
     private val backupManager: com.vocatim.app.data.backup.BackupManager,
@@ -231,6 +234,110 @@ class SettingsViewModel @Inject constructor(
 
     fun selectModel(model: WhisperModel) {
         viewModelScope.launch { userPrefs.setModel(model) }
+    }
+
+    // --- Parakeet (English engine, parallel to whisper) ---
+
+    val parakeetState: StateFlow<ModelState> = parakeetManager.state
+
+    private var parakeetJob: Job? = null
+
+    fun selectParakeet() {
+        viewModelScope.launch {
+            userPrefs.setModelId(com.vocatim.app.data.model.ParakeetModel.ID)
+        }
+    }
+
+    fun downloadParakeet() {
+        if (parakeetJob?.isActive == true) return
+        parakeetJob = viewModelScope.launch {
+            try {
+                parakeetManager.download()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // ModelState.Failed carries the message.
+            }
+            refreshStorage()
+        }
+    }
+
+    fun cancelParakeetDownload() {
+        parakeetJob?.cancel()
+        parakeetJob = null
+    }
+
+    // --- Live caption model (streaming, powers the Live recording mode) ---
+
+    val liveCaptionState: StateFlow<ModelState> = liveCaptionManager.state
+
+    private var liveCaptionJob: Job? = null
+
+    fun downloadLiveCaption() {
+        if (liveCaptionJob?.isActive == true) return
+        liveCaptionJob = viewModelScope.launch {
+            try {
+                liveCaptionManager.download()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // ModelState.Failed carries the message.
+            }
+            refreshStorage()
+        }
+    }
+
+    fun cancelLiveCaptionDownload() {
+        liveCaptionJob?.cancel()
+        liveCaptionJob = null
+    }
+
+    fun deleteLiveCaption() {
+        liveCaptionManager.delete()
+        refreshStorage()
+    }
+
+    // --- Speaker detection (diarization) model ---
+
+    val diarizationState: StateFlow<ModelState> = diarizationManager.state
+
+    private var diarizationJob: Job? = null
+
+    fun downloadDiarization() {
+        if (diarizationJob?.isActive == true) return
+        diarizationJob = viewModelScope.launch {
+            try {
+                diarizationManager.download()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // ModelState.Failed carries the message.
+            }
+            refreshStorage()
+        }
+    }
+
+    fun cancelDiarizationDownload() {
+        diarizationJob?.cancel()
+        diarizationJob = null
+    }
+
+    fun deleteDiarization() {
+        diarizationManager.delete()
+        refreshStorage()
+    }
+
+    fun deleteParakeet() {
+        parakeetManager.delete()
+        viewModelScope.launch {
+            // Don't leave the selection pointing at a deleted engine.
+            if (userPrefs.current().selectedModelId ==
+                com.vocatim.app.data.model.ParakeetModel.ID
+            ) {
+                userPrefs.setModel(WhisperModel.TINY)
+            }
+        }
+        refreshStorage()
     }
 
     fun selectLanguage(code: String) {

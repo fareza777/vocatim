@@ -63,7 +63,7 @@ class StartupRecovery(
                     com.vocatim.app.data.db.TranscriptEntity(
                         title = "Recovered recording",
                         language = settings.language,
-                        modelId = settings.model.id,
+                        modelId = settings.selectedModelId,
                         audioPath = wav.absolutePath,
                         audioDurationMs = durationMs,
                         status = TranscriptStatus.PENDING,

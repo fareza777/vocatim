@@ -180,8 +180,13 @@ class RecordingService : Service() {
 
         // Warm the whisper model in parallel so transcription starts the
         // moment recording stops instead of paying seconds of load time.
+        // Non-whisper engines (Parakeet) load fast enough to skip this.
         scope.launch {
-            runCatching { transcriber.preload(userPrefs.model()) }
+            runCatching {
+                com.vocatim.app.data.model.WhisperModel
+                    .fromId(userPrefs.current().selectedModelId)
+                    ?.let { transcriber.preload(it) }
+            }
         }
 
         recordJob = scope.launch {
@@ -200,6 +205,7 @@ class RecordingService : Service() {
 
                     writer.write(buffer, read)
                     stateHolder.previewBuffer.write(buffer, read)
+                    stateHolder.emitLiveAudio(buffer, read)
                     // RMS, not peak: AGC pins the peak of every speech buffer
                     // near the same level, which made the level bars look flat.
                     var sumSq = 0.0
@@ -249,7 +255,7 @@ class RecordingService : Service() {
                 TranscriptEntity(
                     title = title,
                     language = settings.language,
-                    modelId = settings.model.id,
+                    modelId = settings.selectedModelId,
                     audioDurationMs = durationMs,
                     audioPath = file.absolutePath,
                     status = TranscriptStatus.PENDING,

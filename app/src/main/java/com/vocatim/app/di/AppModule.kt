@@ -44,6 +44,7 @@ object AppModule {
                 VocatimDatabase.MIGRATION_9_10,
                 VocatimDatabase.MIGRATION_10_11,
                 VocatimDatabase.MIGRATION_11_12,
+                VocatimDatabase.MIGRATION_12_13,
             )
             // Only for pre-v3 leftovers; from v3 on, real migrations apply.
             .fallbackToDestructiveMigration()
@@ -80,6 +81,72 @@ object AppModule {
     @Singleton
     fun provideWhisperTranscriber(modelManager: ModelManager): WhisperTranscriber =
         WhisperTranscriber(modelManager)
+
+    @Provides
+    @Singleton
+    fun provideParakeetModelManager(
+        @ApplicationContext context: Context,
+        client: OkHttpClient,
+    ): com.vocatim.app.data.model.ParakeetModelManager =
+        com.vocatim.app.data.model.ParakeetModelManager(
+            modelsDir = File(context.filesDir, "models"),
+            client = client,
+        )
+
+    @Provides
+    @Singleton
+    fun provideLiveCaptionModelManager(
+        @ApplicationContext context: Context,
+        client: OkHttpClient,
+    ): com.vocatim.app.data.model.LiveCaptionModelManager =
+        com.vocatim.app.data.model.LiveCaptionModelManager(
+            modelsDir = File(context.filesDir, "models"),
+            client = client,
+        )
+
+    @Provides
+    @Singleton
+    fun provideDiarizationModelManager(
+        @ApplicationContext context: Context,
+        client: OkHttpClient,
+    ): com.vocatim.app.data.model.DiarizationModelManager =
+        com.vocatim.app.data.model.DiarizationModelManager(
+            modelsDir = File(context.filesDir, "models"),
+            client = client,
+        )
+
+    @Provides
+    @Singleton
+    fun provideSpeakerDiarizer(
+        @ApplicationContext context: Context,
+    ): com.vocatim.app.data.transcribe.SpeakerDiarizer =
+        com.vocatim.app.data.transcribe.SpeakerDiarizer(
+            modelsDir = File(context.filesDir, "models"),
+        )
+
+    @Provides
+    @Singleton
+    fun provideDiarizationProgressHolder():
+        com.vocatim.app.data.transcribe.DiarizationProgressHolder =
+        com.vocatim.app.data.transcribe.DiarizationProgressHolder()
+
+    @Provides
+    @Singleton
+    fun provideLiveCaptionEngine(
+        @ApplicationContext context: Context,
+    ): com.vocatim.app.data.transcribe.LiveCaptionEngine =
+        com.vocatim.app.data.transcribe.LiveCaptionEngine(
+            modelsDir = File(context.filesDir, "models"),
+        )
+
+    @Provides
+    @Singleton
+    fun provideParakeetTranscriber(
+        @ApplicationContext context: Context,
+    ): com.vocatim.app.data.transcribe.ParakeetTranscriber =
+        com.vocatim.app.data.transcribe.ParakeetTranscriber(
+            modelsDir = File(context.filesDir, "models"),
+        )
 
     @Provides
     @Singleton
@@ -123,9 +190,11 @@ object AppModule {
         userPrefs: UserPrefs,
         quotaStore: com.vocatim.app.data.billing.QuotaStore,
         client: OkHttpClient,
+        parakeetTranscriber: com.vocatim.app.data.transcribe.ParakeetTranscriber,
     ): TranscriptionRunner = TranscriptionRunner(
         repository = repository,
         transcriber = transcriber,
+        parakeetTranscriber = parakeetTranscriber,
         importer = importer,
         rtfStore = rtfStore,
         progressHolder = progressHolder,

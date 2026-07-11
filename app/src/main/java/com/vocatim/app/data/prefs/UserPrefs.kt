@@ -11,7 +11,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 data class UserSettings(
+    /** Whisper model for whisper-specific paths; TINY when a non-whisper
+     *  engine (e.g. Parakeet) is selected — check [selectedModelId] first. */
     val model: WhisperModel,
+    /** Raw selected engine id: a WhisperModel id or ParakeetModel.ID. */
+    val selectedModelId: String,
     val language: String,
     /** Whisper's built-in translate-to-English mode. */
     val translate: Boolean,
@@ -62,6 +66,7 @@ class UserPrefs(private val context: Context) {
     val settings: Flow<UserSettings> = context.prefsDataStore.data.map { prefs ->
         UserSettings(
             model = WhisperModel.fromId(prefs[MODEL_KEY] ?: "") ?: WhisperModel.TINY,
+            selectedModelId = prefs[MODEL_KEY] ?: WhisperModel.TINY.id,
             language = prefs[LANGUAGE_KEY] ?: "auto",
             translate = prefs[TRANSLATE_KEY] ?: false,
             threads = prefs[THREADS_KEY] ?: 0,
@@ -96,6 +101,11 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setModel(model: WhisperModel) {
         context.prefsDataStore.edit { it[MODEL_KEY] = model.id }
+    }
+
+    /** Selects an engine by raw id (whisper ids or ParakeetModel.ID). */
+    suspend fun setModelId(id: String) {
+        context.prefsDataStore.edit { it[MODEL_KEY] = id }
     }
 
     suspend fun setLanguage(code: String) {

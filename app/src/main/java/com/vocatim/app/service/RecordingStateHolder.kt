@@ -30,6 +30,22 @@ class RecordingStateHolder {
     /** Rolling tail of the live recording, for the on-screen text preview. */
     val previewBuffer = PreviewBuffer()
 
+    /** When true, the service mirrors each captured buffer to [liveAudio]
+     *  for the streaming caption engine (Live recording mode). */
+    @Volatile var liveTapEnabled = false
+
+    private val _liveAudio = kotlinx.coroutines.flow.MutableSharedFlow<FloatArray>(
+        extraBufferCapacity = 32,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST,
+    )
+    val liveAudio: SharedFlow<FloatArray> = _liveAudio.asSharedFlow()
+
+    internal fun emitLiveAudio(samples: ShortArray, count: Int) {
+        if (!liveTapEnabled) return
+        val floats = FloatArray(count) { samples[it] / 32768f }
+        _liveAudio.tryEmit(floats)
+    }
+
     internal fun set(state: RecordingState) {
         _state.value = state
     }

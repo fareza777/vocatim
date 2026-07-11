@@ -37,6 +37,8 @@ class RecordViewModel @Inject constructor(
     private val modelManager: ModelManager,
     private val progressHolder: TranscriptionProgressHolder,
     private val userPrefs: UserPrefs,
+    private val liveCaptionManager: com.vocatim.app.data.model.LiveCaptionModelManager,
+    private val liveCaptionEngine: com.vocatim.app.data.transcribe.LiveCaptionEngine,
 ) : ViewModel() {
 
     val state: StateFlow<RecordingState> = stateHolder.state
@@ -112,6 +114,9 @@ class RecordViewModel @Inject constructor(
     }
 
     private fun previewAllowed(): Boolean {
+        // Live mode has its own streaming captions; the periodic whisper
+        // preview would be duplicate inference on top of them.
+        if (_liveMode.value) return false
         val pm = appContext.getSystemService(PowerManager::class.java) ?: return false
         if (!pm.isInteractive || pm.isPowerSaveMode) return false
         if (Build.VERSION.SDK_INT >= 29 &&
@@ -121,6 +126,93 @@ class RecordViewModel @Inject constructor(
         // model-swap thrash for a preview.
         if (progressHolder.progress.value.isNotEmpty()) return false
         return modelManager.isDownloaded(WhisperModel.TINY)
+    }
+
+    // --- Live recording mode: true streaming captions (English) ---
+
+    /** True while this recording session runs in Live mode. */
+    private val _liveMode = MutableStateFlow(false)
+    val liveMode: StateFlow<Boolean> = _liveMode.asStateFlow()
+
+    private val _captions = MutableStateFlow(com.vocatim.app.data.transcribe.CaptionState())
+    val captions: StateFlow<com.vocatim.app.data.transcribe.CaptionState> = _captions.asStateFlow()
+
+    /** Captions suspended because the device is warm or in power-save. */
+    private val _liveThrottled = MutableStateFlow(false)
+    val liveThrottled: StateFlow<Boolean> = _liveThrottled.asStateFlow()
+
+    val liveModelReady: Boolean
+        get() = liveCaptionManager.isDownloaded()
+
+    private var liveJob: Job? = null
+
+    /** Starts a Live-mode recording; false when blocked (storage/model). */
+    fun startLive(): Boolean {
+        if (!liveModelReady) return false
+        val status = checkStorage()
+        _storageStatus.value = status
+        if (status == StorageStatus.FULL) return false
+        _liveMode.value = true
+        _captions.value = com.vocatim.app.data.transcribe.CaptionState()
+        stateHolder.liveTapEnabled = true
+        liveJob?.cancel()
+        liveJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            runCatching { liveCaptionEngine.start(numThreads = 2) }
+                .onFailure { return@launch }
+            var guardTick = 0
+            stateHolder.liveAudio.collect { samples ->
+                val s = state.value
+                if (s !is RecordingState.Active || s.paused) return@collect
+                // Re-check the battery/thermal guard every ~10s of audio.
+                if (guardTick++ % 50 == 0) {
+                    _liveThrottled.value = !captionsAllowed()
+                }
+                if (!_liveThrottled.value) {
+                    _captions.value = liveCaptionEngine.feed(samples)
+                }
+            }
+        }
+        // The recorder itself is byte-for-byte the normal path.
+        RecordingService.start(appContext)
+        return true
+    }
+
+    private fun captionsAllowed(): Boolean {
+        val pm = appContext.getSystemService(PowerManager::class.java) ?: return false
+        // Screen off = nobody is reading; don't burn battery in a pocket.
+        if (!pm.isInteractive || pm.isPowerSaveMode) return false
+        if (Build.VERSION.SDK_INT >= 29 &&
+            pm.currentThermalStatus >= PowerManager.THERMAL_STATUS_MODERATE
+        ) return false
+        return true
+    }
+
+    private fun stopLiveCaptions() {
+        if (!_liveMode.value) return
+        _liveMode.value = false
+        stateHolder.liveTapEnabled = false
+        val job = liveJob
+        liveJob = null
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            // The engine must not be released while a feed is mid-flight:
+            // that's a native use-after-free.
+            runCatching { job?.let { it.cancel(); it.join() } }
+            runCatching { liveCaptionEngine.stop() }
+        }
+    }
+
+    override fun onCleared() {
+        // Back out of the screen mid-live-recording: stop mirroring audio and
+        // free the streaming engine. Feeds are non-suspending, so the joined
+        // cancellation returns within one buffer (~200ms of audio, ~30ms CPU).
+        stateHolder.liveTapEnabled = false
+        val job = liveJob
+        liveJob = null
+        kotlinx.coroutines.runBlocking {
+            runCatching { job?.let { it.cancel(); it.join() } }
+            runCatching { liveCaptionEngine.stop() }
+        }
+        super.onCleared()
     }
 
     private val _storageStatus = MutableStateFlow(checkStorage())
@@ -149,6 +241,20 @@ class RecordViewModel @Inject constructor(
             available < FULL_THRESHOLD_BYTES -> StorageStatus.FULL
             available < LOW_THRESHOLD_BYTES -> StorageStatus.LOW
             else -> StorageStatus.OK
+        }
+    }
+
+    // Placed LAST on purpose: viewModelScope.launch on Main.immediate runs
+    // the collector synchronously during construction, so every property it
+    // touches (the live-mode state above) must already be initialized.
+    init {
+        // Live captions end with the recording session, however it stops.
+        viewModelScope.launch {
+            state.collect { s ->
+                if (s is RecordingState.Idle || s is RecordingState.Error) {
+                    stopLiveCaptions()
+                }
+            }
         }
     }
 

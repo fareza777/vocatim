@@ -115,6 +115,9 @@ interface TranscriptDao {
     @Query("SELECT * FROM segments WHERE transcriptId = :transcriptId ORDER BY startMs")
     suspend fun getSegments(transcriptId: Long): List<SegmentEntity>
 
+    @Query("UPDATE segments SET speaker = :speaker WHERE id = :segmentId")
+    suspend fun setSegmentSpeaker(segmentId: Long, speaker: Int?)
+
     @Query("DELETE FROM segments WHERE transcriptId = :transcriptId")
     suspend fun deleteSegments(transcriptId: Long)
 

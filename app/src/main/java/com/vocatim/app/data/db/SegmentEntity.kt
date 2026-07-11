@@ -26,4 +26,6 @@ data class SegmentEntity(
     val text: String,
     /** Word timings as JSON [[startMs,endMs,"word"],...]; null when absent. */
     val words: String? = null,
+    /** Diarized speaker index (1-based); null until Detect speakers runs. */
+    val speaker: Int? = null,
 )

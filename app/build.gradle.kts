@@ -23,8 +23,8 @@ android {
         applicationId = "com.vocatim.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 28
-        versionName = "1.12.0"
+        versionCode = 29
+        versionName = "1.13.0"
 
         ndk {
             abiFilters += "arm64-v8a"
@@ -78,6 +78,10 @@ android {
 dependencies {
     implementation(project(":whisper"))
     implementation(project(":llm"))
+    // Official sherpa-onnx Android AAR (static-linked onnxruntime), vendored
+    // from github.com/k2-fsa/sherpa-onnx releases v1.13.4.
+    // SHA-256: dc5ac19a28dee3bffc5e5a5d50cb6afa977703fc4a7ee535a308506990fdd295
+    implementation(files("libs/sherpa-onnx-1.13.4.aar"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
