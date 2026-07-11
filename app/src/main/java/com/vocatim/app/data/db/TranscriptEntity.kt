@@ -62,5 +62,18 @@ data class TranscriptEntity(
     val playbackPositionMs: Long = 0,
     /** When true, opening this note requires biometric even if app-lock is off. */
     val locked: Boolean = false,
+    /** Diarized speaker display names as JSON {"1":"Budi"}; null = defaults. */
+    val speakerNames: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
+)
+
+/** Full-text index over the searchable transcript fields, kept in sync with
+ *  [TranscriptEntity] by Room's external-content triggers. */
+@androidx.room.Fts4(contentEntity = TranscriptEntity::class)
+@Entity(tableName = "transcripts_fts")
+data class TranscriptFts(
+    val title: String,
+    val text: String,
+    val summary: String?,
+    val minutes: String?,
 )

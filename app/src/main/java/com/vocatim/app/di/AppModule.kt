@@ -45,6 +45,7 @@ object AppModule {
                 VocatimDatabase.MIGRATION_10_11,
                 VocatimDatabase.MIGRATION_11_12,
                 VocatimDatabase.MIGRATION_12_13,
+                VocatimDatabase.MIGRATION_13_14,
             )
             // Only for pre-v3 leftovers; from v3 on, real migrations apply.
             .fallbackToDestructiveMigration()
@@ -250,6 +251,11 @@ object AppModule {
     @Singleton
     fun provideSummaryProgressHolder(): com.vocatim.app.data.summary.SummaryProgressHolder =
         com.vocatim.app.data.summary.SummaryProgressHolder()
+
+    @Provides
+    @Singleton
+    fun provideLlmSession(): com.vocatim.app.data.summary.LlmSession =
+        com.vocatim.app.data.summary.LlmSession()
 
     @Provides
     @Singleton

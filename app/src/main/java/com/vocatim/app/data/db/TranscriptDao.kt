@@ -118,6 +118,13 @@ interface TranscriptDao {
     @Query("UPDATE segments SET speaker = :speaker WHERE id = :segmentId")
     suspend fun setSegmentSpeaker(segmentId: Long, speaker: Int?)
 
+    @Query("UPDATE transcripts SET speakerNames = :namesJson WHERE id = :transcriptId")
+    suspend fun setSpeakerNames(transcriptId: Long, namesJson: String?)
+
+    /** Ranked full-text match over title/text/summary/minutes. */
+    @Query("SELECT rowid FROM transcripts_fts WHERE transcripts_fts MATCH :query")
+    fun observeSearchIds(query: String): kotlinx.coroutines.flow.Flow<List<Long>>
+
     @Query("DELETE FROM segments WHERE transcriptId = :transcriptId")
     suspend fun deleteSegments(transcriptId: Long)
 

@@ -116,28 +116,36 @@ enum class SurfaceStyle(
         Color(0xFF0E0F13), Color(0xFF16171D), Color(0xFF1E2027), Color(0xFF2B2D37),
     ),
 
-    /** Warm cream and coffee tones. */
-    SAND(
-        "sand",
-        Color(0xFFECE7DF), Color(0xFFF2EEE7), Color(0xFFF8F4EE),
-        Color(0xFFDFD8CC), Color(0xFFD2CABB),
-        Color(0xFF12100B), Color(0xFF1A1712), Color(0xFF231F18), Color(0xFF322C22),
+    /** Proper purple — unmistakably orchid, light and dark. */
+    ORCHID(
+        "orchid",
+        Color(0xFFE3D3F7), Color(0xFFEADEF9), Color(0xFFF2E9FC),
+        Color(0xFFD0B8F0), Color(0xFFBF9FE8),
+        Color(0xFF140B22), Color(0xFF1D1130), Color(0xFF281843), Color(0xFF3D2761),
     ),
 
-    /** Calm green-gray, easy on long reading sessions. */
+    /** Real green, not a gray with regrets. */
     SAGE(
         "sage",
-        Color(0xFFE4EAE4), Color(0xFFECF0EB), Color(0xFFF2F5F1),
-        Color(0xFFD5DDD4), Color(0xFFC7D1C6),
-        Color(0xFF0B120E), Color(0xFF121915), Color(0xFF19231D), Color(0xFF27342B),
+        Color(0xFFCFE5CD), Color(0xFFDAEBD8), Color(0xFFE6F2E4),
+        Color(0xFFB6D6B3), Color(0xFF9FC79B),
+        Color(0xFF0A1710), Color(0xFF0F1F16), Color(0xFF16291D), Color(0xFF24402E),
     ),
 
-    /** Cool blue-gray, crisp and focused. */
+    /** Warm amber sand, café tones. */
+    SAND(
+        "sand",
+        Color(0xFFEBDDBE), Color(0xFFF0E5CC), Color(0xFFF6EDD9),
+        Color(0xFFDFC9A0), Color(0xFFD1B885),
+        Color(0xFF171105), Color(0xFF20180A), Color(0xFF2B2010), Color(0xFF3E2F1A),
+    ),
+
+    /** Unambiguous blue, crisp and focused. */
     OCEAN(
         "ocean",
-        Color(0xFFE3E8F0), Color(0xFFEAEEF5), Color(0xFFF1F4F9),
-        Color(0xFFD3DAE6), Color(0xFFC5CEDD),
-        Color(0xFF0A0F1A), Color(0xFF101624), Color(0xFF161E30), Color(0xFF232D45),
+        Color(0xFFCCDDF6), Color(0xFFD8E5F8), Color(0xFFE3EDFA),
+        Color(0xFFB4CDF0), Color(0xFF9ABBE8),
+        Color(0xFF081120), Color(0xFF0D1930), Color(0xFF132342), Color(0xFF20345D),
     );
 
     companion object {

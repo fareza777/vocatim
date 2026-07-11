@@ -15,7 +15,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -127,22 +129,50 @@ class HomeViewModel @Inject constructor(
         Triple(query, sort, folder)
     }
 
+    /** Ids matching the query via the FTS index; null = no query, no filter.
+     *  Falls back to null (in-memory contains) if the FTS syntax chokes. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val searchIds: kotlinx.coroutines.flow.Flow<Set<Long>?> =
+        _query.flatMapLatest { query ->
+            val fts = ftsQuery(query)
+            if (fts == null) kotlinx.coroutines.flow.flowOf(null)
+            else repository.observeSearchIds(fts)
+                .map<List<Long>, Set<Long>?> { it.toSet() }
+                .catch { emit(emptySet()) }
+        }
+
+    /** "hello wor" -> "hello* wor*": prefix-match every term. */
+    private fun ftsQuery(raw: String): String? {
+        val terms = raw.trim().split(Regex("\\s+"))
+            .map { it.replace(Regex("[\"'*()]"), "") }
+            .filter { it.isNotBlank() }
+        if (terms.isEmpty()) return null
+        return terms.joinToString(" ") { "$it*" }
+    }
+
     val items: StateFlow<List<HomeItem>> =
         combine(
             repository.observeAll(),
             progressHolder.progress,
             filters,
             _waveforms,
-        ) { transcripts, progress, (query, sort, folder), waveforms ->
+            searchIds,
+        ) { transcripts, progress, (query, sort, folder), waveforms, matchIds ->
             transcripts
                 .filter { t -> folder == null || t.tag == folder }
                 .filter { t ->
-                    query.isBlank() ||
-                        t.title.contains(query, ignoreCase = true) ||
-                        t.text.contains(query, ignoreCase = true) ||
-                        t.tag?.contains(query, ignoreCase = true) == true ||
-                        t.minutes?.contains(query, ignoreCase = true) == true ||
-                        t.summary?.contains(query, ignoreCase = true) == true
+                    when {
+                        query.isBlank() -> true
+                        // FTS misses tags (not indexed); keep them findable.
+                        matchIds != null ->
+                            t.id in matchIds || t.tag?.contains(query, true) == true
+                        else ->
+                            t.title.contains(query, ignoreCase = true) ||
+                                t.text.contains(query, ignoreCase = true) ||
+                                t.tag?.contains(query, ignoreCase = true) == true ||
+                                t.minutes?.contains(query, ignoreCase = true) == true ||
+                                t.summary?.contains(query, ignoreCase = true) == true
+                    }
                 }
                 .let { sortList(it, sort) }
                 .map { HomeItem(it, progress[it.id], waveforms[it.id]) }

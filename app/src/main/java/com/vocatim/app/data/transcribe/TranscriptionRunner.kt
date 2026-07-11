@@ -117,9 +117,11 @@ class TranscriptionRunner(
 
         val resumeFrom = entity.completedChunks
         if (resumeFrom == 0) {
-            // Fresh run (or restart before the first checkpoint): start clean.
+            // Fresh run (or restart before the first checkpoint): start with
+            // clean segments. The text is left alone on purpose — a live
+            // session's caption draft stays readable until the first chunk
+            // commits and overwrites it with the real transcription.
             repository.clearSegments(transcriptId)
-            repository.updateText(transcriptId, "")
         }
         repository.updateStatus(transcriptId, TranscriptStatus.TRANSCRIBING)
 
@@ -142,7 +144,12 @@ class TranscriptionRunner(
 
         withContext(Dispatchers.IO) {
             WavStreamReader(audioFile).use { reader ->
-                val chunks = ChunkPlanner.plan(reader.totalSamples)
+                // Cuts land in silence instead of mid-word; deterministic per
+                // file, so resume re-derives the exact same chunks.
+                val chunks = SilenceAligner.align(
+                    ChunkPlanner.plan(reader.totalSamples),
+                    reader.totalSamples,
+                ) { start, count -> reader.read(start, count) }
                 val audioDurationMs = reader.durationMs
                 if (entity.audioDurationMs != audioDurationMs) {
                     entity = entity.copy(audioDurationMs = audioDurationMs)

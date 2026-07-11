@@ -54,6 +54,7 @@ class SettingsViewModel @Inject constructor(
     private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
     private val cloudClient: com.vocatim.app.data.cloud.CloudAiClient,
     private val transcriber: com.vocatim.app.data.transcribe.WhisperTranscriber,
+    private val parakeetTranscriber: com.vocatim.app.data.transcribe.ParakeetTranscriber,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
 ) : ViewModel() {
 
@@ -86,6 +87,30 @@ class SettingsViewModel @Inject constructor(
             }
             _bench.value = _bench.value +
                 (model to (result?.let { Bench.Done(it) } ?: Bench.Failed))
+        }
+    }
+
+    private val _parakeetBench = MutableStateFlow<Bench?>(null)
+    val parakeetBench: StateFlow<Bench?> = _parakeetBench.asStateFlow()
+
+    /** Same synthetic-clip speed test, through the Parakeet engine. */
+    fun benchmarkParakeet() {
+        if (_parakeetBench.value == Bench.Running) return
+        _parakeetBench.value = Bench.Running
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.Default) {
+                runCatching {
+                    val seconds = 6
+                    val samples = FloatArray(seconds * 16_000) {
+                        (Math.random().toFloat() - 0.5f) * 0.02f
+                    }
+                    val start = android.os.SystemClock.elapsedRealtime()
+                    parakeetTranscriber.transcribe(samples, numThreads = 4)
+                    val elapsed = android.os.SystemClock.elapsedRealtime() - start
+                    elapsed / (seconds * 1000f)
+                }.getOrNull()
+            }
+            _parakeetBench.value = result?.let { Bench.Done(it) } ?: Bench.Failed
         }
     }
 

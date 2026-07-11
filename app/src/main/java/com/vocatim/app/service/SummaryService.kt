@@ -197,6 +197,31 @@ class SummaryService : Service() {
         repository.updateSummary(entity.id, summary, SUMMARY_SOURCE_CLOUD)
     }
 
+    /**
+     * Minutes input: once diarization has run, the transcript is rebuilt as
+     * "Name: what they said" turns, so the minutes can attribute decisions
+     * and action items to actual people.
+     */
+    private suspend fun minutesInput(
+        entity: com.vocatim.app.data.db.TranscriptEntity,
+    ): String {
+        val segments = repository.getSegments(entity.id)
+        if (segments.none { it.speaker != null }) return entity.text
+        val names = com.vocatim.app.data.transcribe.SpeakerNames.decode(entity.speakerNames)
+        return buildString {
+            var current = -1
+            for (segment in segments) {
+                val speaker = segment.speaker ?: current
+                if (speaker != current && speaker > 0) {
+                    if (isNotEmpty()) append('\n')
+                    append(names[speaker] ?: "Speaker $speaker").append(": ")
+                    current = speaker
+                }
+                append(segment.text.trim()).append(' ')
+            }
+        }
+    }
+
     /** Formats the transcript into tidy meeting minutes, stored on the
      *  transcript itself so everything lives on one detail page. */
     private suspend fun runCloudMinutes(
@@ -209,7 +234,7 @@ class SummaryService : Service() {
             system = CloudPrompts.minutesSystem(
                 language, settings.minutesTemplate, settings.customMinutesPrompt
             ),
-            user = entity.text.take(CloudPrompts.MAX_INPUT_CHARS),
+            user = minutesInput(entity).take(CloudPrompts.MAX_INPUT_CHARS),
             maxTokens = 8192,
         )
         repository.updateMinutes(entity.id, minutes)
@@ -230,7 +255,7 @@ class SummaryService : Service() {
             com.vocatim.app.data.summary.SummaryModel.fromId(settings.summaryModel),
         )
         val minutes = summarizer.summarize(
-            text = entity.text,
+            text = minutesInput(entity),
             language = language,
             minutes = true,
         ) { fraction ->
@@ -335,6 +360,7 @@ class SummaryService : Service() {
 class SummarizerFactory @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
     private val modelManager: com.vocatim.app.data.summary.SummaryModelManager,
+    private val llmSession: com.vocatim.app.data.summary.LlmSession,
 ) {
     @Volatile private var active: Summarizer? = null
 
@@ -352,6 +378,7 @@ class SummarizerFactory @Inject constructor(
     ): Summarizer = Summarizer(
         modelManager, threads, diagFile, model,
         com.vocatim.app.data.summary.ContextBudget.ramCapTokens(context),
+        llmSession,
     ).also { active = it }
 
     fun cancelActive() {

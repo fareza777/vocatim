@@ -56,8 +56,10 @@ data class UserSettings(
     val summaryModel: String,
     /** Accent color key: violet, teal, gold, blue, or rose. */
     val accent: String,
-    /** Surface palette key: linen, pearl, sand, sage, or ocean. */
+    /** Surface palette key: linen, pearl, orchid, sage, sand, or ocean. */
     val surfaceStyle: String,
+    /** Detail-page sections the user last left open (sticky preference). */
+    val detailExpanded: Set<String>,
 )
 
 /** User settings applied to new recordings and imports. */
@@ -90,6 +92,7 @@ class UserPrefs(private val context: Context) {
             summaryModel = prefs[SUMMARY_MODEL_KEY] ?: "qwen2.5-1.5b",
             accent = prefs[ACCENT_KEY] ?: "violet",
             surfaceStyle = prefs[SURFACE_STYLE_KEY] ?: "linen",
+            detailExpanded = prefs[DETAIL_EXPANDED_KEY] ?: DEFAULT_DETAIL_EXPANDED,
         )
     }
 
@@ -202,6 +205,15 @@ class UserPrefs(private val context: Context) {
         context.prefsDataStore.edit { it[SURFACE_STYLE_KEY] = key }
     }
 
+    /** Flips one detail section open/closed and remembers it for next time. */
+    suspend fun toggleDetailSection(key: String) {
+        context.prefsDataStore.edit { prefs ->
+            val current = prefs[DETAIL_EXPANDED_KEY] ?: DEFAULT_DETAIL_EXPANDED
+            prefs[DETAIL_EXPANDED_KEY] =
+                if (key in current) current - key else current + key
+        }
+    }
+
     companion object {
         const val THEME_SYSTEM = "system"
         const val THEME_LIGHT = "light"
@@ -231,5 +243,10 @@ class UserPrefs(private val context: Context) {
         private val SUMMARY_MODEL_KEY = stringPreferencesKey("summary_model")
         private val ACCENT_KEY = stringPreferencesKey("accent")
         private val SURFACE_STYLE_KEY = stringPreferencesKey("surface_style")
+        private val DETAIL_EXPANDED_KEY =
+            androidx.datastore.preferences.core.stringSetPreferencesKey("detail_expanded")
+
+        /** First-run default: the transcript and its audio open, rest closed. */
+        val DEFAULT_DETAIL_EXPANDED = setOf("transcript", "audio")
     }
 }

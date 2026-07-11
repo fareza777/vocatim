@@ -141,10 +141,19 @@ class RecordViewModel @Inject constructor(
     private val _liveThrottled = MutableStateFlow(false)
     val liveThrottled: StateFlow<Boolean> = _liveThrottled.asStateFlow()
 
+    /** Kept for the caption panel API; the restored engine path never sets
+     *  it, matching the device-verified build. */
+    private val _liveError = MutableStateFlow<String?>(null)
+    val liveError: StateFlow<String?> = _liveError.asStateFlow()
+
     val liveModelReady: Boolean
         get() = liveCaptionManager.isDownloaded()
 
     private var liveJob: Job? = null
+
+    // NOTE: this live path is a 1:1 restore of the device-verified build.
+    // Resist "hardening" it without on-device verification — the last two
+    // attempts (joined stops, session tokens, fresh-start) broke it.
 
     /** Starts a Live-mode recording; false when blocked (storage/model). */
     fun startLive(): Boolean {
@@ -179,8 +188,7 @@ class RecordViewModel @Inject constructor(
 
     private fun captionsAllowed(): Boolean {
         val pm = appContext.getSystemService(PowerManager::class.java) ?: return false
-        // Screen off = nobody is reading; don't burn battery in a pocket.
-        if (!pm.isInteractive || pm.isPowerSaveMode) return false
+        if (pm.isPowerSaveMode) return false
         if (Build.VERSION.SDK_INT >= 29 &&
             pm.currentThermalStatus >= PowerManager.THERMAL_STATUS_MODERATE
         ) return false
@@ -191,28 +199,11 @@ class RecordViewModel @Inject constructor(
         if (!_liveMode.value) return
         _liveMode.value = false
         stateHolder.liveTapEnabled = false
-        val job = liveJob
+        liveJob?.cancel()
         liveJob = null
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            // The engine must not be released while a feed is mid-flight:
-            // that's a native use-after-free.
-            runCatching { job?.let { it.cancel(); it.join() } }
             runCatching { liveCaptionEngine.stop() }
         }
-    }
-
-    override fun onCleared() {
-        // Back out of the screen mid-live-recording: stop mirroring audio and
-        // free the streaming engine. Feeds are non-suspending, so the joined
-        // cancellation returns within one buffer (~200ms of audio, ~30ms CPU).
-        stateHolder.liveTapEnabled = false
-        val job = liveJob
-        liveJob = null
-        kotlinx.coroutines.runBlocking {
-            runCatching { job?.let { it.cancel(); it.join() } }
-            runCatching { liveCaptionEngine.stop() }
-        }
-        super.onCleared()
     }
 
     private val _storageStatus = MutableStateFlow(checkStorage())

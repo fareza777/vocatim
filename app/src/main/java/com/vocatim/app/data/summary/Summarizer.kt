@@ -20,6 +20,8 @@ class Summarizer(
     private val model: SummaryModel = SummaryModel.DEFAULT,
     /** Device-RAM ceiling for the context, from [ContextBudget.ramCapTokens]. */
     private val ctxCapTokens: Int = 4_096,
+    /** Warm-engine cache shared with Ask AI and Translate. */
+    private val session: LlmSession = LlmSession(),
 ) {
     @Volatile private var engine: LlamaSummarizer? = null
 
@@ -78,10 +80,11 @@ class Summarizer(
         onProgress: (Float) -> Unit,
     ): String {
         val modelPath = modelManager.modelFile(model)
-        val engine = LlamaSummarizer.create(threads) { diag(it) }.also { this.engine = it }
+        val engine = session
+            .acquire(threads, modelPath.absolutePath, nCtx) { diag(it) }
+            .also { this.engine = it }
         try {
             diagFile?.let { engine.setNativeDiagFile(it.absolutePath) }
-            engine.loadIfNeeded(modelPath.absolutePath, nCtx)
             onProgress(0.05f)
 
             val system = systemPrompt(language) +
@@ -101,8 +104,9 @@ class Summarizer(
             engine.cancel()
             throw e
         } finally {
-            engine.release()
             this.engine = null
+            // Stay warm for a follow-up instead of releasing outright.
+            session.scheduleRelease()
         }
     }
 

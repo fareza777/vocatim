@@ -135,12 +135,15 @@ fun DetailScreen(
     var keyPointsDialog by remember { mutableStateOf<List<String>?>(null) }
     var showMergeDialog by remember { mutableStateOf(false) }
     var showAskAiDialog by remember { mutableStateOf(false) }
+    var renameSpeakerIndex by remember { mutableStateOf<Int?>(null) }
     var showTranslateDialog by remember { mutableStateOf(false) }
     val isMinutesNote =
         transcript?.modelId == com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES
     // Cloud AI (summaries + minutes) is a paid Pro feature.
     val isProTop by viewModel.isPro.collectAsStateWithLifecycle()
     val summaryModelStateTop by viewModel.summaryModelState.collectAsStateWithLifecycle()
+    // Sections reopen exactly how the user last left them.
+    val expandedSections by viewModel.expandedSections.collectAsStateWithLifecycle()
     // Minutes run on cloud when configured, else on the local model.
     val minutesEngineReady = cloudConfiguredTop ||
         summaryModelStateTop is com.vocatim.app.data.model.ModelState.Downloaded
@@ -338,7 +341,11 @@ fun DetailScreen(
                                                 ).show()
                                                 onUpgrade()
                                             }
-                                            cloudConfiguredTop -> showTranslateDialog = true
+                                            // Cloud when configured; otherwise
+                                            // the local model translates on-device.
+                                            cloudConfiguredTop || summaryModelStateTop
+                                                is com.vocatim.app.data.model.ModelState.Downloaded ->
+                                                showTranslateDialog = true
                                             else -> Toast.makeText(
                                                 context,
                                                 context.getString(R.string.minutes_need_byok),
@@ -426,6 +433,8 @@ fun DetailScreen(
                             SectionCard(
                                 title = stringResource(R.string.detail_minutes_section),
                                 icon = Icons.Default.Description,
+                                expanded = "minutes" in expandedSections,
+                                onToggle = { viewModel.toggleSection("minutes") },
                                 iconTint = MaterialTheme.colorScheme.tertiary,
                                 badge = stringResource(R.string.card_badge_ai),
                             ) {
@@ -460,6 +469,8 @@ fun DetailScreen(
                         SectionCard(
                             title = stringResource(R.string.summary_title),
                             icon = Icons.Default.AutoAwesome,
+                            expanded = "summary" in expandedSections,
+                            onToggle = { viewModel.toggleSection("summary") },
                             badge = if (t.summary != null) {
                                 stringResource(
                                     if (t.summarySource ==
@@ -486,8 +497,8 @@ fun DetailScreen(
                             else R.string.detail_transcript_section
                         ),
                         icon = Icons.Default.Subtitles,
-                        // The transcript is what the user came for; open it.
-                        initiallyExpanded = true,
+                        expanded = "transcript" in expandedSections,
+                        onToggle = { viewModel.toggleSection("transcript") },
                     ) {
                         var segmentMode by remember { mutableStateOf(false) }
                         if (t.text.isNotBlank()) {
@@ -575,12 +586,15 @@ fun DetailScreen(
                                     trackColor = MaterialTheme.colorScheme.outlineVariant,
                                 )
                             }
+                            val speakerNamesMap by viewModel.speakerNames.collectAsStateWithLifecycle()
                             SegmentList(
                                 segments = segments,
                                 positionMs = playerState?.positionMs?.toLong() ?: -1L,
                                 canSeek = t.audioPath != null,
                                 textScale = textScale,
                                 showSpeakers = showSpeakers,
+                                speakerNames = speakerNamesMap,
+                                onRenameSpeaker = { index -> renameSpeakerIndex = index },
                                 onSegmentClick = { viewModel.playFromMs(it) },
                                 onCopySegment = { text ->
                                     copyToClipboard(context, text)
@@ -640,7 +654,8 @@ fun DetailScreen(
                         SectionCard(
                             title = stringResource(R.string.detail_audio_section),
                             icon = Icons.Default.GraphicEq,
-                            initiallyExpanded = true,
+                            expanded = "audio" in expandedSections,
+                            onToggle = { viewModel.toggleSection("audio") },
                         ) {
                             LaunchedEffect(t.audioPath) { viewModel.loadWaveform() }
                             val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
@@ -680,6 +695,8 @@ fun DetailScreen(
                     SectionCard(
                         title = stringResource(R.string.detail_photos_section),
                         icon = Icons.Default.Image,
+                        expanded = "photos" in expandedSections,
+                        onToggle = { viewModel.toggleSection("photos") },
                         iconTint = MaterialTheme.colorScheme.secondary,
                         badge = attachments.size.takeIf { it > 0 }?.toString(),
                     ) {
@@ -693,6 +710,8 @@ fun DetailScreen(
                     SectionCard(
                         title = stringResource(R.string.detail_export_section),
                         icon = Icons.Default.Share,
+                        expanded = "export" in expandedSections,
+                        onToggle = { viewModel.toggleSection("export") },
                         // Quiet upsell at the moment of highest intent.
                         badge = if (!isProTop) stringResource(R.string.export_badge_pro) else null,
                     ) {
@@ -787,11 +806,18 @@ fun DetailScreen(
                     }
 
                     if (readingMode) {
+                        LaunchedEffect(Unit) { viewModel.loadSegments() }
+                        val readingSegments by viewModel.segments.collectAsStateWithLifecycle()
                         ReadingModeDialog(
                             title = t.title,
                             text = editedText ?: t.text,
                             textScale = textScale,
                             onDismiss = { readingMode = false },
+                            segments = if (t.audioPath != null) readingSegments else emptyList(),
+                            positionMs = playerState?.positionMs?.toLong() ?: -1L,
+                            isPlaying = playerState?.playing == true,
+                            onTogglePlay = viewModel::togglePlayback,
+                            onSeek = viewModel::playFromMs,
                         )
                     }
                     Spacer(Modifier.padding(bottom = 12.dp))
@@ -877,8 +903,16 @@ fun DetailScreen(
                             Text(stringResource(R.string.action_cancel))
                         }
                     }
-                    // Streaming partial text as chunks land.
+                    // Streaming partial text as chunks land; before the first
+                    // chunk commits, a live session shows its caption draft.
                     if (t.text.isNotBlank()) {
+                        if (t.completedChunks == 0) {
+                            Pill(
+                                stringResource(R.string.detail_live_draft),
+                                color = MaterialTheme.colorScheme.tertiary,
+                                background = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
+                            )
+                        }
                         Text(t.text, style = MaterialTheme.typography.bodyLarge)
                     }
                 }
@@ -1020,6 +1054,35 @@ fun DetailScreen(
 
     if (showAskAiDialog) {
         AskAiDialog(viewModel = viewModel, onDismiss = { showAskAiDialog = false })
+    }
+    renameSpeakerIndex?.let { index ->
+        val names by viewModel.speakerNames.collectAsStateWithLifecycle()
+        var name by remember(index) { mutableStateOf(names[index] ?: "") }
+        AlertDialog(
+            onDismissRequest = { renameSpeakerIndex = null },
+            title = { Text(stringResource(R.string.rename_speaker_title, index)) },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    placeholder = {
+                        Text(stringResource(R.string.detail_speaker_n, index))
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.renameSpeaker(index, name)
+                    renameSpeakerIndex = null
+                }) { Text(stringResource(R.string.action_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { renameSpeakerIndex = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 
     if (showTranslateDialog) {
@@ -1308,6 +1371,11 @@ private fun ReadingModeDialog(
     text: String,
     textScale: Float,
     onDismiss: () -> Unit,
+    segments: List<com.vocatim.app.data.db.SegmentEntity> = emptyList(),
+    positionMs: Long = -1L,
+    isPlaying: Boolean = false,
+    onTogglePlay: (() -> Unit)? = null,
+    onSeek: ((Long) -> Unit)? = null,
 ) {
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
@@ -1317,6 +1385,9 @@ private fun ReadingModeDialog(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
         ) {
+            // Teleprompter mode: karaoke follows the audio through the text.
+            var follow by rememberSaveable { mutableStateOf(false) }
+            val canFollow = segments.isNotEmpty() && onTogglePlay != null
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
                     modifier = Modifier
@@ -1331,6 +1402,21 @@ private fun ReadingModeDialog(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
+                    if (canFollow) {
+                        androidx.compose.material3.FilterChip(
+                            selected = follow,
+                            onClick = { follow = !follow },
+                            label = { Text(stringResource(R.string.reading_follow)) },
+                        )
+                        IconButton(onClick = { onTogglePlay?.invoke() }) {
+                            Icon(
+                                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = stringResource(
+                                    if (isPlaying) R.string.record_pause else R.string.record_resume
+                                ),
+                            )
+                        }
+                    }
                     IconButton(onClick = onDismiss) {
                         Icon(
                             Icons.Default.Close,
@@ -1338,19 +1424,62 @@ private fun ReadingModeDialog(
                         )
                     }
                 }
-                androidx.compose.foundation.text.selection.SelectionContainer(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    Text(
-                        text,
-                        modifier = Modifier.padding(20.dp),
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = MaterialTheme.typography.headlineSmall.fontSize * textScale,
-                            lineHeight = MaterialTheme.typography.headlineSmall.lineHeight * textScale,
-                        ),
-                    )
+                if (follow && canFollow) {
+                    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+                    val activeIndex = segments.indexOfFirst {
+                        positionMs in it.startMs until it.endMs
+                    }
+                    LaunchedEffect(activeIndex) {
+                        if (activeIndex >= 0) {
+                            listState.animateScrollToItem((activeIndex - 1).coerceAtLeast(0))
+                        }
+                    }
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+                    ) {
+                        items(segments.size) { index ->
+                            val segment = segments[index]
+                            val active = positionMs in segment.startMs until segment.endMs
+                            Text(
+                                if (active) karaokeText(
+                                    segment,
+                                    positionMs,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                ) else AnnotatedString(segment.text.trim()),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = MaterialTheme.typography.headlineSmall.fontSize * textScale,
+                                    lineHeight = MaterialTheme.typography.headlineSmall.lineHeight * textScale,
+                                    fontWeight = if (active) androidx.compose.ui.text.font.FontWeight.SemiBold
+                                    else androidx.compose.ui.text.font.FontWeight.Normal,
+                                ),
+                                color = if (active) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = onSeek != null) {
+                                        onSeek?.invoke(segment.startMs)
+                                    }
+                                    .padding(vertical = 6.dp),
+                            )
+                        }
+                    }
+                } else {
+                    androidx.compose.foundation.text.selection.SelectionContainer(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        Text(
+                            text,
+                            modifier = Modifier.padding(20.dp),
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = MaterialTheme.typography.headlineSmall.fontSize * textScale,
+                                lineHeight = MaterialTheme.typography.headlineSmall.lineHeight * textScale,
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -1668,6 +1797,9 @@ private fun SegmentList(
     onSegmentClick: (Long) -> Unit,
     onCopySegment: (String) -> Unit,
     showSpeakers: Boolean = false,
+    speakerNames: Map<Int, String> = emptyMap(),
+    /** Non-null once real diarized speakers exist: tap a label to rename. */
+    onRenameSpeaker: ((Int) -> Unit)? = null,
 ) {
     val scrollState = rememberScrollState()
     val activeIndex = segments.indexOfFirst { positionMs in it.startMs until it.endMs }
@@ -1704,13 +1836,22 @@ private fun SegmentList(
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        val hasRealSpeakers = segments.any { it.speaker != null }
         segments.forEachIndexed { index, segment ->
             if (showSpeakers && (index == 0 || speakers[index] != speakers[index - 1])) {
+                val speakerNumber = speakers[index] + 1
                 Text(
-                    stringResource(R.string.detail_speaker_n, speakers[index] + 1),
+                    speakerNames[speakerNumber]
+                        ?: stringResource(R.string.detail_speaker_n, speakerNumber),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(top = 6.dp, start = 4.dp),
+                    modifier = Modifier
+                        .padding(top = 6.dp, start = 4.dp)
+                        .then(
+                            if (hasRealSpeakers && onRenameSpeaker != null) {
+                                Modifier.clickable { onRenameSpeaker(speakerNumber) }
+                            } else Modifier
+                        ),
                 )
             }
             val active = positionMs in segment.startMs until segment.endMs
@@ -1775,18 +1916,19 @@ private fun SegmentList(
 /**
  * The uniform collapsible card every detail section uses: an icon + title
  * header with an optional badge, tap anywhere on it to reveal the content
- * below. Starts closed so the page opens as a tidy stack of headers.
+ * below. Open/closed state is owned by the caller so it can be remembered
+ * across visits (the page reopens exactly how the user left it).
  */
 @Composable
 private fun SectionCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    expanded: Boolean,
+    onToggle: () -> Unit,
     iconTint: Color = MaterialTheme.colorScheme.primary,
     badge: String? = null,
-    initiallyExpanded: Boolean = false,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
-    var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     // Smooth reveal: content height animates, chevron rotates in sync.
     val chevronAngle by androidx.compose.animation.core.animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -1806,7 +1948,7 @@ private fun SectionCard(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { expanded = !expanded },
+                modifier = Modifier.clickable(onClick = onToggle),
             ) {
                 Icon(
                     icon,

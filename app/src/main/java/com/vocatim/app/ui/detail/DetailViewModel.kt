@@ -57,6 +57,8 @@ class DetailViewModel @Inject constructor(
     private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
     private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
     private val cloudClient: com.vocatim.app.data.cloud.CloudAiClient,
+    private val llmSession: com.vocatim.app.data.summary.LlmSession,
+    private val importer: com.vocatim.app.data.audio.AudioImporter,
 ) : ViewModel() {
 
     /** True when the user has set up a BYOK cloud provider in Settings. */
@@ -214,6 +216,7 @@ class DetailViewModel @Inject constructor(
                 .threadsFor(settings.threads),
             model = com.vocatim.app.data.summary.SummaryModel.fromId(settings.summaryModel),
             ctxCapTokens = com.vocatim.app.data.summary.ContextBudget.ramCapTokens(appContext),
+            session = llmSession,
         ).answer(transcript, question, language)
     }
 
@@ -230,16 +233,36 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             _translateBusy.value = true
             _translation.value = runCatching {
-                cloudClient.chat(
-                    config = cloudAiPrefs.current(),
-                    system = com.vocatim.app.data.cloud.CloudPrompts
-                        .translateSystem(targetLanguage),
-                    user = text.take(com.vocatim.app.data.cloud.CloudPrompts.MAX_INPUT_CHARS),
-                    maxTokens = 8192,
-                )
+                if (cloudAiPrefs.current().isConfigured) {
+                    cloudClient.chat(
+                        config = cloudAiPrefs.current(),
+                        system = com.vocatim.app.data.cloud.CloudPrompts
+                            .translateSystem(targetLanguage),
+                        user = text.take(com.vocatim.app.data.cloud.CloudPrompts.MAX_INPUT_CHARS),
+                        maxTokens = 8192,
+                    )
+                } else {
+                    // No BYOK key: translate fully on-device.
+                    localTranslate(text, targetLanguage)
+                }
             }.getOrElse { it.message ?: "Translation failed" }
             _translateBusy.value = false
         }
+    }
+
+    private suspend fun localTranslate(
+        text: String,
+        targetLanguage: String,
+    ): String = withContext(Dispatchers.Default) {
+        val settings = userPrefs.current()
+        com.vocatim.app.data.summary.LocalTranslator(
+            modelManager = summaryModelManager,
+            threads = com.vocatim.app.data.transcribe.ThreadPolicy(appContext)
+                .threadsFor(settings.threads),
+            model = com.vocatim.app.data.summary.SummaryModel.fromId(settings.summaryModel),
+            ctxCapTokens = com.vocatim.app.data.summary.ContextBudget.ramCapTokens(appContext),
+            session = llmSession,
+        ).translate(text, targetLanguage)
     }
 
     fun clearTranslation() {
@@ -250,6 +273,18 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch { repository.updateSummary(transcriptId, null, null) }
     }
 
+    /** Detail sections the user last left open; sticky across visits. */
+    val expandedSections: StateFlow<Set<String>> = userPrefs.settings
+        .map { it.detailExpanded }
+        .stateIn(
+            viewModelScope, SharingStarted.WhileSubscribed(5_000),
+            com.vocatim.app.data.prefs.UserPrefs.DEFAULT_DETAIL_EXPANDED,
+        )
+
+    fun toggleSection(key: String) {
+        viewModelScope.launch { userPrefs.toggleDetailSection(key) }
+    }
+
     /** Reading-comfort multiplier for the transcript text. */
     val textScale: StateFlow<Float> = userPrefs.settings
         .map { it.textScale }
@@ -258,6 +293,25 @@ class DetailViewModel @Inject constructor(
     val transcript: StateFlow<TranscriptEntity?> =
         repository.observeById(transcriptId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // Declared AFTER [transcript]: property initializers run in order, and
+    // this one reads it during construction.
+    /** Custom display names for diarized speakers, keyed by 1-based index. */
+    val speakerNames: StateFlow<Map<Int, String>> = transcript
+        .map { com.vocatim.app.data.transcribe.SpeakerNames.decode(it?.speakerNames) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    fun renameSpeaker(index: Int, name: String) {
+        viewModelScope.launch {
+            val updated = speakerNames.value.toMutableMap().apply {
+                if (name.isBlank()) remove(index) else put(index, name.trim())
+            }
+            repository.setSpeakerNames(
+                transcriptId,
+                com.vocatim.app.data.transcribe.SpeakerNames.encode(updated),
+            )
+        }
+    }
 
     val progress: StateFlow<TranscriptionProgress?> =
         progressHolder.progress.map { it[transcriptId] }
@@ -344,8 +398,24 @@ class DetailViewModel @Inject constructor(
         val path = transcript.value?.audioPath ?: return
         viewModelScope.launch {
             _waveform.value = withContext(Dispatchers.IO) {
-                runCatching { computeWaveform(java.io.File(path)) }.getOrNull()
+                runCatching { computeWaveformAny(java.io.File(path)) }.getOrNull()
             }
+        }
+    }
+
+    /** Real peaks for any container: compressed audio (M4A after storage
+     *  compression) is decoded to a temp WAV first instead of falling back
+     *  to placeholder bars. */
+    private suspend fun computeWaveformAny(file: java.io.File): FloatArray {
+        if (file.extension.equals("wav", ignoreCase = true)) {
+            return computeWaveform(file)
+        }
+        val tmp = java.io.File(appContext.cacheDir, "wf_${transcriptId}.wav")
+        return try {
+            importer.import(Uri.fromFile(file), tmp) { }
+            computeWaveform(tmp)
+        } finally {
+            tmp.delete()
         }
     }
 

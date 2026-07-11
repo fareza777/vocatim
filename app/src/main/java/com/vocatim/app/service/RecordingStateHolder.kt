@@ -34,6 +34,10 @@ class RecordingStateHolder {
      *  for the streaming caption engine (Live recording mode). */
     @Volatile var liveTapEnabled = false
 
+    /** Rolling caption text of the live session; becomes the note's instant
+     *  draft on finish (replaced by the real transcription when it lands). */
+    @Volatile var liveDraft: String? = null
+
     private val _liveAudio = kotlinx.coroutines.flow.MutableSharedFlow<FloatArray>(
         extraBufferCapacity = 32,
         onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST,

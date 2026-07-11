@@ -6,8 +6,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [TranscriptEntity::class, SegmentEntity::class, AttachmentEntity::class],
-    version = 13,
+    entities = [
+        TranscriptEntity::class,
+        TranscriptFts::class,
+        SegmentEntity::class,
+        AttachmentEntity::class,
+    ],
+    version = 14,
     exportSchema = false,
 )
 abstract class VocatimDatabase : RoomDatabase() {
@@ -96,6 +101,19 @@ abstract class VocatimDatabase : RoomDatabase() {
         val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE segments ADD COLUMN speaker INTEGER")
+            }
+        }
+
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transcripts ADD COLUMN speakerNames TEXT")
+                db.execSQL(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS `transcripts_fts` " +
+                        "USING FTS4(`title` TEXT NOT NULL, `text` TEXT NOT NULL, " +
+                        "`summary` TEXT, `minutes` TEXT, content=`transcripts`)"
+                )
+                // Index the rows that already exist.
+                db.execSQL("INSERT INTO transcripts_fts(transcripts_fts) VALUES ('rebuild')")
             }
         }
     }

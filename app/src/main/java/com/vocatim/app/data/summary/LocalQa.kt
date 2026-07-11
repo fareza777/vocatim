@@ -1,6 +1,5 @@
 package com.vocatim.app.data.summary
 
-import com.vocatim.llm.LlamaSummarizer
 import kotlinx.coroutines.sync.withLock
 
 /**
@@ -13,6 +12,7 @@ class LocalQa(
     private val threads: Int,
     private val model: SummaryModel,
     private val ctxCapTokens: Int,
+    private val session: LlmSession = LlmSession(),
 ) {
     suspend fun answer(transcript: String, question: String, language: String): String {
         val modelPath = modelManager.modelFile(model)
@@ -35,9 +35,8 @@ class LocalQa(
         }
 
         LlmLock.mutex.withLock {
-            val engine = LlamaSummarizer.create(threads)
+            val engine = session.acquire(threads, modelPath.absolutePath, nCtx)
             try {
-                engine.loadIfNeeded(modelPath.absolutePath, nCtx)
                 return engine.chat(
                     system = system,
                     user = user,
@@ -47,7 +46,7 @@ class LocalQa(
                     repeatPenalty = model.repeatPenalty,
                 )
             } finally {
-                engine.release()
+                session.scheduleRelease()
             }
         }
     }

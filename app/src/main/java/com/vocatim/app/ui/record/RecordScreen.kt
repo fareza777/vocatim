@@ -278,9 +278,11 @@ fun RecordScreen(
                     if (isLive) {
                         val captionState by viewModel.captions.collectAsStateWithLifecycle()
                         val throttled by viewModel.liveThrottled.collectAsStateWithLifecycle()
+                        val liveError by viewModel.liveError.collectAsStateWithLifecycle()
                         LiveCaptions(
                             captions = captionState,
                             throttled = throttled,
+                            error = liveError,
                         )
                     }
 
@@ -416,6 +418,7 @@ private fun RecordButton(
 private fun LiveCaptions(
     captions: com.vocatim.app.data.transcribe.CaptionState,
     throttled: Boolean,
+    error: String? = null,
 ) {
     val scroll = rememberScrollState()
     LaunchedEffect(captions) {
@@ -435,6 +438,13 @@ private fun LiveCaptions(
                 .verticalScroll(scroll),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            error?.let {
+                Text(
+                    stringResource(R.string.record_live_error, it),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
             if (throttled) {
                 Text(
                     stringResource(R.string.record_live_throttled),
@@ -442,7 +452,7 @@ private fun LiveCaptions(
                     color = MaterialTheme.colorScheme.tertiary,
                 )
             }
-            if (captions.lines.isEmpty() && captions.partial.isEmpty() && !throttled) {
+            if (captions.lines.isEmpty() && captions.partial.isEmpty() && !throttled && error == null) {
                 Text(
                     stringResource(R.string.record_live_listening),
                     style = MaterialTheme.typography.bodyMedium,

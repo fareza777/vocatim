@@ -187,14 +187,17 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.titleSmall,
             )
             val parakeetState by viewModel.parakeetState.collectAsStateWithLifecycle()
+            val parakeetBench by viewModel.parakeetBench.collectAsStateWithLifecycle()
             Card {
                 ParakeetRow(
                     state = parakeetState,
                     selected = s.selectedModelId == com.vocatim.app.data.model.ParakeetModel.ID,
+                    bench = parakeetBench,
                     onSelect = viewModel::selectParakeet,
                     onDownload = viewModel::downloadParakeet,
                     onCancel = viewModel::cancelParakeetDownload,
                     onDelete = viewModel::deleteParakeet,
+                    onBenchmark = viewModel::benchmarkParakeet,
                 )
             }
             val liveState by viewModel.liveCaptionState.collectAsStateWithLifecycle()
@@ -949,10 +952,12 @@ private fun ModelRow(
 private fun ParakeetRow(
     state: ModelState,
     selected: Boolean,
+    bench: SettingsViewModel.Bench?,
     onSelect: () -> Unit,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
     onDelete: () -> Unit,
+    onBenchmark: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1013,6 +1018,36 @@ private fun ParakeetRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
+        }
+        if (state is ModelState.Downloaded) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.TextButton(
+                    onClick = onBenchmark,
+                    enabled = bench != SettingsViewModel.Bench.Running,
+                ) { Text(stringResource(R.string.settings_speed_test)) }
+                when (bench) {
+                    SettingsViewModel.Bench.Running -> Text(
+                        stringResource(R.string.settings_speed_running),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    is SettingsViewModel.Bench.Done -> Text(
+                        stringResource(
+                            R.string.settings_speed_result,
+                            String.format(java.util.Locale.US, "%.2f", bench.rtf),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (bench.rtf <= 1f) MaterialTheme.colorScheme.secondary
+                        else MaterialTheme.colorScheme.tertiary,
+                    )
+                    SettingsViewModel.Bench.Failed -> Text(
+                        stringResource(R.string.settings_speed_failed),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    null -> Unit
+                }
+            }
         }
     }
 }

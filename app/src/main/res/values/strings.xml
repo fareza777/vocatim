@@ -396,6 +396,11 @@
     <string name="diarize_no_audio">This note has no audio file to analyze.</string>
     <string name="diarize_too_long">Audio is longer than 60 minutes — too large to analyze on-device.</string>
     <string name="diarize_none_found">No speech found to analyze.</string>
+    <string name="rename_speaker_title">Name for Speaker %1$d</string>
+    <string name="detail_live_draft">Live draft — final transcript on the way</string>
+    <string name="reading_follow">Follow audio</string>
+    <string name="record_live_error">Captions unavailable: %1$s. Recording continues.</string>
+    <string name="record_error_mic_busy">Microphone gave no audio — it may be in use by another app or blocked by a privacy setting. Close other recording apps and try again.</string>
     <string name="summary_model_gemma3_1b">Lite</string>
     <string name="summary_model_qwen3_8b">Max</string>
     <string name="summary_model_needs_ram_12">Needs a phone with 12 GB RAM</string>

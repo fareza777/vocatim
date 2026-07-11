@@ -60,6 +60,10 @@ class RecordingService : Service() {
 
     @Volatile private var paused = false
     @Volatile private var stopping = false
+    /** The live AudioRecord, held so stop can force a blocked read() out. */
+    @Volatile private var activeRecord: AudioRecord? = null
+    /** Set by the loop's first successful read; the watchdog checks it. */
+    @Volatile private var firstBufferSeen = false
     private var btRouted = false
     private var accumulatedMs = 0L
     private var resumedAt = 0L
@@ -189,6 +193,20 @@ class RecordingService : Service() {
             }
         }
 
+        activeRecord = record
+        firstBufferSeen = false
+        // Watchdog: if the mic never delivers a single buffer (held by
+        // another app / privacy toggle), read() blocks forever and the whole
+        // session looks frozen. Surface it as an error instead.
+        scope.launch {
+            kotlinx.coroutines.delay(MIC_WATCHDOG_MS)
+            if (!firstBufferSeen && recordJob?.isActive == true && !stopping) {
+                stopping = true
+                runCatching { activeRecord?.stop() }
+                stateHolder.set(RecordingState.Error(getString(R.string.record_error_mic_busy)))
+            }
+        }
+
         recordJob = scope.launch {
             var writer: WavFileWriter? = null
             try {
@@ -201,6 +219,7 @@ class RecordingService : Service() {
                 while (!stopping) {
                     val read = record.read(buffer, 0, buffer.size)
                     if (read <= 0) continue
+                    firstBufferSeen = true
                     if (paused) continue
 
                     writer.write(buffer, read)
@@ -229,6 +248,7 @@ class RecordingService : Service() {
             } finally {
                 runCatching { record.stop() }
                 record.release()
+                activeRecord = null
                 effects.forEach { runCatching { it.release() } }
                 clearBluetoothRouting()
                 runCatching { writer?.close() }
@@ -251,9 +271,14 @@ class RecordingService : Service() {
                 SimpleDateFormat("dd MMM HH:mm", Locale.getDefault()).format(Date()),
             )
             val settings = userPrefs.current()
+            // Live sessions open with the captions as an instant draft; the
+            // full transcription replaces it as chunks commit.
+            val draft = stateHolder.liveDraft.orEmpty()
+            stateHolder.liveDraft = null
             val id = repository.create(
                 TranscriptEntity(
                     title = title,
+                    text = draft,
                     language = settings.language,
                     modelId = settings.selectedModelId,
                     audioDurationMs = durationMs,
@@ -294,6 +319,10 @@ class RecordingService : Service() {
 
     private fun stopRecording() {
         stopping = true
+        // A read() blocked on a silent/held mic never re-checks the flag;
+        // stopping the AudioRecord from here forces that read to return, so
+        // the Stop button can never be held hostage by the mic.
+        runCatching { activeRecord?.stop() }
         if (recordJob == null) cleanupAndStop()
     }
 
@@ -398,6 +427,9 @@ class RecordingService : Service() {
         private const val BUFFER_SAMPLES = SAMPLE_RATE / 5
         /** Safety cap; recording longer than 12h is out of scope. */
         private const val MAX_WAKELOCK_MS = 12L * 60 * 60 * 1000
+
+        /** If the mic delivers nothing for this long, report it as busy. */
+        private const val MIC_WATCHDOG_MS = 5_000L
 
         fun start(context: Context) = command(context, ACTION_START)
         fun pause(context: Context) = command(context, ACTION_PAUSE)
