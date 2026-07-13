@@ -46,6 +46,7 @@ object AppModule {
                 VocatimDatabase.MIGRATION_11_12,
                 VocatimDatabase.MIGRATION_12_13,
                 VocatimDatabase.MIGRATION_13_14,
+                VocatimDatabase.MIGRATION_14_15,
             )
             // Only for pre-v3 leftovers; from v3 on, real migrations apply.
             .fallbackToDestructiveMigration()

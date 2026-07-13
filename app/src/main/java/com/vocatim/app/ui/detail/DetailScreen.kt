@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -707,6 +708,54 @@ fun DetailScreen(
                         )
                     }
 
+                    // Free-form manual notes: type your own, or paste text
+                    // from elsewhere. Auto-saved as you write.
+                    val storedNotes by viewModel.userNotes.collectAsStateWithLifecycle()
+                    val notesDraft by viewModel.notesDraft.collectAsStateWithLifecycle()
+                    val notesValue = notesDraft ?: storedNotes
+                    SectionCard(
+                        title = stringResource(R.string.detail_notes_section),
+                        icon = Icons.Default.Edit,
+                        expanded = "notes" in expandedSections,
+                        onToggle = { viewModel.toggleSection("notes") },
+                        iconTint = MaterialTheme.colorScheme.tertiary,
+                        badge = if (storedNotes.isNotBlank())
+                            stringResource(R.string.detail_notes_badge) else null,
+                    ) {
+                        OutlinedTextField(
+                            value = notesValue,
+                            onValueChange = viewModel::onNotesChanged,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 120.dp),
+                            placeholder = { Text(stringResource(R.string.detail_notes_hint)) },
+                            shape = MaterialTheme.shapes.large,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ),
+                        )
+                        if (notesValue.isNotBlank()) {
+                            TextButton(onClick = {
+                                copyToClipboard(context, notesValue)
+                                Toast.makeText(
+                                    context, context.getString(R.string.copied),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }) {
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.detail_notes_copy))
+                            }
+                        }
+                    }
+
                     SectionCard(
                         title = stringResource(R.string.detail_export_section),
                         icon = Icons.Default.Share,
@@ -715,32 +764,48 @@ fun DetailScreen(
                         // Quiet upsell at the moment of highest intent.
                         badge = if (!isProTop) stringResource(R.string.export_badge_pro) else null,
                     ) {
-                        // TXT/MD/PDF can carry the transcript, the minutes, or
-                        // the AI summary — ask which when there is a choice.
+                        // Every action (copy, share, TXT/MD/PDF) can carry the
+                        // transcript, the minutes, or the AI summary — ask which
+                        // whenever the note holds more than one.
                         val multiSource = t.minutes != null || t.summary != null
-                        fun startExport(format: String) {
-                            if (multiSource) {
-                                exportPickerFormat = format
-                            } else {
-                                exportSource = EXPORT_SOURCE_TRANSCRIPT
-                                runCatching {
-                                    when (format) {
-                                        "txt" -> exportTxtLauncher.launch(exportFileName(t.title, "txt"))
-                                        "md" -> exportMdLauncher.launch(exportFileName(t.title, "md"))
-                                        else -> exportPdfLauncher.launch(exportFileName(t.title, "pdf"))
-                                    }
+                        fun runForSource(format: String, source: String) {
+                            exportSource = source
+                            when (format) {
+                                "copy" -> {
+                                    copyToClipboard(context, viewModel.contentFor(source))
+                                    Toast.makeText(
+                                        context, context.getString(R.string.copied),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                                "share" -> shareText(context, viewModel.contentFor(source))
+                                "txt" -> runCatching {
+                                    exportTxtLauncher.launch(exportFileName(t.title, "txt"))
+                                }
+                                "md" -> runCatching {
+                                    exportMdLauncher.launch(exportFileName(t.title, "md"))
+                                }
+                                else -> runCatching {
+                                    exportPdfLauncher.launch(exportFileName(t.title, "pdf"))
                                 }
                             }
                         }
+                        fun startAction(format: String) {
+                            // copy/share never need the file-export Pro gate, and
+                            // they read straight away; only ask when ambiguous.
+                            if (multiSource) exportPickerFormat = format
+                            else runForSource(format, EXPORT_SOURCE_TRANSCRIPT)
+                        }
+                        Text(
+                            stringResource(
+                                if (multiSource) R.string.export_hint_multi
+                                else R.string.export_hint_single
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         ActionGrid(
-                            onCopy = {
-                                copyToClipboard(context, viewModel.currentText())
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.copied),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            },
+                            onCopy = { startAction("copy") },
                             onCopyTimestamps = {
                                 viewModel.copyWithTimestampsAsync { text ->
                                     copyToClipboard(context, text)
@@ -751,18 +816,18 @@ fun DetailScreen(
                                     ).show()
                                 }
                             },
-                            onShare = { shareText(context, viewModel.currentText()) },
-                            onExportTxt = { startExport("txt") },
+                            onShare = { startAction("share") },
+                            onExportTxt = { startAction("txt") },
                             onExportSrt = {
                                 runCatching { exportSrtLauncher.launch(exportFileName(t.title, "srt")) }
                             },
                             onExportVtt = {
                                 runCatching { exportVttLauncher.launch(exportFileName(t.title, "vtt")) }
                             },
-                            onExportMd = { startExport("md") },
+                            onExportMd = { startAction("md") },
                             // PDF is a Pro perk; free plan keeps TXT/SRT/VTT/MD.
                             onExportPdf = {
-                                if (isProTop) startExport("pdf")
+                                if (isProTop) startAction("pdf")
                                 else {
                                     Toast.makeText(
                                         context,
@@ -777,10 +842,14 @@ fun DetailScreen(
                     }
 
                     exportPickerFormat?.let { format ->
+                        // Copy/Share only read text, so they never need the
+                        // file-export Pro gate; TXT/MD/PDF of AI outputs do.
+                        val copyOrShare = format == "copy" || format == "share"
                         ExportSourceDialog(
+                            format = format,
                             hasMinutes = t.minutes != null,
                             hasSummary = t.summary != null,
-                            isPro = isProTop,
+                            isPro = isProTop || copyOrShare,
                             onNeedPro = {
                                 exportPickerFormat = null
                                 Toast.makeText(
@@ -793,11 +862,21 @@ fun DetailScreen(
                             onPick = { source ->
                                 exportPickerFormat = null
                                 exportSource = source
-                                runCatching {
-                                    when (format) {
-                                        "txt" -> exportTxtLauncher.launch(exportFileName(t.title, "txt"))
-                                        "md" -> exportMdLauncher.launch(exportFileName(t.title, "md"))
-                                        else -> exportPdfLauncher.launch(exportFileName(t.title, "pdf"))
+                                when (format) {
+                                    "copy" -> {
+                                        copyToClipboard(context, viewModel.contentFor(source))
+                                        Toast.makeText(
+                                            context, context.getString(R.string.copied),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
+                                    "share" -> shareText(context, viewModel.contentFor(source))
+                                    else -> runCatching {
+                                        when (format) {
+                                            "txt" -> exportTxtLauncher.launch(exportFileName(t.title, "txt"))
+                                            "md" -> exportMdLauncher.launch(exportFileName(t.title, "md"))
+                                            else -> exportPdfLauncher.launch(exportFileName(t.title, "pdf"))
+                                        }
                                     }
                                 }
                             },
@@ -1980,9 +2059,11 @@ private fun SectionCard(
     }
 }
 
-/** "Export as X — of what?" chooser for notes that carry more than a transcript. */
+/** "Copy/Share/Export — which text?" chooser for notes that carry more than
+ *  a transcript. The header names the action so the choice is unambiguous. */
 @Composable
 private fun ExportSourceDialog(
+    format: String,
     hasMinutes: Boolean,
     hasSummary: Boolean,
     isPro: Boolean,
@@ -1990,9 +2071,18 @@ private fun ExportSourceDialog(
     onPick: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val actionLabel = stringResource(
+        when (format) {
+            "copy" -> R.string.action_copy
+            "share" -> R.string.action_share
+            "txt" -> R.string.format_txt
+            "md" -> R.string.format_md
+            else -> R.string.format_pdf
+        }
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.export_pick_source)) },
+        title = { Text(stringResource(R.string.export_pick_source_action, actionLabel)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 // Exporting the transcript is free; exporting AI outputs is Pro.

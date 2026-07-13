@@ -120,6 +120,9 @@ class TranscriptRepository(private val dao: TranscriptDao) {
     suspend fun setSpeakerNames(transcriptId: Long, namesJson: String?) =
         dao.setSpeakerNames(transcriptId, namesJson)
 
+    suspend fun setUserNotes(transcriptId: Long, notes: String?) =
+        dao.setUserNotes(transcriptId, notes)
+
     /** Ids of transcripts matching an FTS query, live-updating. */
     fun observeSearchIds(query: String) = dao.observeSearchIds(query)
 

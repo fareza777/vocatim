@@ -612,6 +612,32 @@ class DetailViewModel @Inject constructor(
         else -> currentText()
     }
 
+    /** Public text for the chosen source, used by Copy/Share so both act on
+     *  the same content the export picker offers. */
+    fun contentFor(source: String): String = textFor(source)
+
+    // --- Manual notes: free-form text the user types on the detail page ---
+
+    /** Stored notes for this transcript; empty until the user writes. */
+    val userNotes: StateFlow<String> = transcript
+        .map { it?.userNotes.orEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    /** Debounced auto-save so typing doesn't hit the DB on every keystroke. */
+    private val _notesDraft = MutableStateFlow<String?>(null)
+    val notesDraft: StateFlow<String?> = _notesDraft.asStateFlow()
+
+    private var notesSaveJob: kotlinx.coroutines.Job? = null
+
+    fun onNotesChanged(text: String) {
+        _notesDraft.value = text
+        notesSaveJob?.cancel()
+        notesSaveJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(600)
+            repository.setUserNotes(transcriptId, text.ifBlank { null })
+        }
+    }
+
     fun exportTxt(uri: Uri, source: String = "transcript") =
         export(uri) { textFor(source) }
 

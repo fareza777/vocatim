@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SegmentEntity::class,
         AttachmentEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = false,
 )
 abstract class VocatimDatabase : RoomDatabase() {
@@ -114,6 +114,12 @@ abstract class VocatimDatabase : RoomDatabase() {
                 )
                 // Index the rows that already exist.
                 db.execSQL("INSERT INTO transcripts_fts(transcripts_fts) VALUES ('rebuild')")
+            }
+        }
+
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transcripts ADD COLUMN userNotes TEXT")
             }
         }
     }

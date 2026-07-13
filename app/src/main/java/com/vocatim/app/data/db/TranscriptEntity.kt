@@ -64,6 +64,8 @@ data class TranscriptEntity(
     val locked: Boolean = false,
     /** Diarized speaker display names as JSON {"1":"Budi"}; null = defaults. */
     val speakerNames: String? = null,
+    /** Free-form manual notes the user types on the detail page; null = none. */
+    val userNotes: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )
 

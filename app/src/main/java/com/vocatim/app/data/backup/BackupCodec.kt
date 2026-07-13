@@ -102,6 +102,8 @@ object BackupCodec {
                     put("summarySource", t.summarySource ?: JSONObject.NULL)
                     put("minutes", t.minutes ?: JSONObject.NULL)
                     put("markers", t.markers ?: JSONObject.NULL)
+                    put("speakerNames", t.speakerNames ?: JSONObject.NULL)
+                    put("userNotes", t.userNotes ?: JSONObject.NULL)
                     put("createdAt", t.createdAt)
                 })
             }
@@ -158,6 +160,8 @@ object BackupCodec {
                     summarySource = o.optString("summarySource").ifEmpty { null },
                     minutes = o.optString("minutes").ifEmpty { null },
                     markers = o.optString("markers").ifEmpty { null },
+                    speakerNames = o.optString("speakerNames").ifEmpty { null },
+                    userNotes = o.optString("userNotes").ifEmpty { null },
                     createdAt = o.getLong("createdAt"),
                 )
             )

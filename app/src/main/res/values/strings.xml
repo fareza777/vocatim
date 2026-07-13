@@ -215,6 +215,16 @@
     <string name="detail_audio_section">Audio</string>
     <string name="detail_export_section">Export &amp; share</string>
     <string name="export_pick_source">What do you want to export?</string>
+    <string name="export_pick_source_action">%1$s — which text?</string>
+    <string name="export_hint_single">Acts on the transcript.</string>
+    <string name="export_hint_multi">You\'ll be asked which text (transcript, minutes, or summary) each action uses.</string>
+    <string name="format_txt">TXT</string>
+    <string name="format_md">Markdown</string>
+    <string name="format_pdf">PDF</string>
+    <string name="detail_notes_section">Notes</string>
+    <string name="detail_notes_badge">Saved</string>
+    <string name="detail_notes_hint">Your own notes — type here, or paste text from anywhere. Saved automatically.</string>
+    <string name="detail_notes_copy">Copy notes</string>
     <string name="export_pdf_pro">PDF export is part of Unlimited.</string>
     <string name="export_ai_pro">Exporting AI summaries and minutes is part of Unlimited.</string>
     <string name="model_name_tiny">Swift</string>
