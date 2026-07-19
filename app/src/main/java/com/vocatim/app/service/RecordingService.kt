@@ -33,7 +33,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -55,16 +58,18 @@ class RecordingService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var recordJob: Job? = null
+    private var setupJob: Job? = null
+    private var tickJob: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var focusRequest: AudioFocusRequest? = null
 
     @Volatile private var paused = false
     @Volatile private var stopping = false
-    /** The live AudioRecord, held so stop can force a blocked read() out. */
     @Volatile private var activeRecord: AudioRecord? = null
-    /** Set by the loop's first successful read; the watchdog checks it. */
-    @Volatile private var firstBufferSeen = false
-    private var btRouted = false
+    @Volatile private var lastBufferAtMs = 0L
+    /** Bumps on every Start so stale jobs never own the mic/UI. */
+    @Volatile private var sessionGen = 0
+
     private var accumulatedMs = 0L
     private var resumedAt = 0L
 
@@ -80,47 +85,8 @@ class RecordingService : Service() {
         return START_NOT_STICKY
     }
 
-    /** Records from a connected Bluetooth headset mic instead of the phone's. */
-    private fun routeToBluetoothIfAvailable() {
-        val am = getSystemService<android.media.AudioManager>() ?: return
-        runCatching {
-            if (android.os.Build.VERSION.SDK_INT >= 31) {
-                val device = am.availableCommunicationDevices.firstOrNull {
-                    it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-                }
-                if (device != null && am.setCommunicationDevice(device)) {
-                    btRouted = true
-                }
-            } else if (am.isBluetoothScoAvailableOffCall) {
-                @Suppress("DEPRECATION") am.startBluetoothSco()
-                @Suppress("DEPRECATION") am.isBluetoothScoOn = true
-                btRouted = true
-            }
-        }
-    }
-
-    private fun clearBluetoothRouting() {
-        if (!btRouted) return
-        btRouted = false
-        val am = getSystemService<android.media.AudioManager>() ?: return
-        runCatching {
-            if (android.os.Build.VERSION.SDK_INT >= 31) {
-                am.clearCommunicationDevice()
-            } else {
-                @Suppress("DEPRECATION") am.stopBluetoothSco()
-                @Suppress("DEPRECATION") am.isBluetoothScoOn = false
-            }
-        }
-    }
-
     @SuppressLint("MissingPermission") // UI checks RECORD_AUDIO before starting.
     private fun startRecording() {
-        if (recordJob != null) return
-        stopping = false
-        paused = false
-        accumulatedMs = 0
-        resumedAt = SystemClock.elapsedRealtime()
-
         ServiceCompat.startForeground(
             this,
             Notifications.NOTIFICATION_ID_RECORDING,
@@ -128,37 +94,185 @@ class RecordingService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
         )
 
-        wakeLock = getSystemService<PowerManager>()
-            ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "vocatim:recording")
-            ?.apply { acquire(MAX_WAKELOCK_MS) }
-
-        requestAudioFocus()
-        routeToBluetoothIfAvailable()
-
-        val minBuffer = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
-        )
-        val record = try {
-            AudioRecord(
-                // Speech-tuned input path; the OS applies its own filtering.
-                MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT,
-                maxOf(minBuffer * 2, BUFFER_SAMPLES * 4),
+        val gen = ++sessionGen
+        setupJob?.cancel()
+        tickJob?.cancel()
+        setupJob = scope.launch {
+            // UI feedback immediately — never look "stuck Idle" during teardown.
+            stateHolder.set(
+                RecordingState.Active(paused = false, elapsedMs = 0, amplitude = 0f)
             )
-        } catch (e: Exception) {
-            fail(getString(R.string.record_error_mic))
-            return
+
+            awaitPreviousSessionGone()
+            if (gen != sessionGen) return@launch
+
+            stopping = false
+            paused = false
+            accumulatedMs = 0
+            resumedAt = SystemClock.elapsedRealtime()
+            lastBufferAtMs = SystemClock.elapsedRealtime()
+
+            wakeLock = getSystemService<PowerManager>()
+                ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "vocatim:recording")
+                ?.apply { acquire(MAX_WAKELOCK_MS) }
+
+            requestAudioFocus()
+            // Intentionally NO Bluetooth SCO auto-routing. Paired earbuds often
+            // steal the input path and leave AudioRecord wedged — a common
+            // cause of "timer stuck / record hangs" on real devices.
+
+            val minBuffer = AudioRecord.getMinBufferSize(
+                SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
+            )
+            val bufferBytes = maxOf(minBuffer * 2, BUFFER_SAMPLES * 4)
+            val record = openMic(bufferBytes) ?: run {
+                fail(getString(R.string.record_error_mic))
+                return@launch
+            }
+            if (gen != sessionGen) {
+                forceReleaseMic(record)
+                return@launch
+            }
+
+            val effects = attachEffects(record)
+            val dir = File(filesDir, "recordings").apply { mkdirs() }
+            val outFile = File(dir, "rec_${System.currentTimeMillis()}.wav")
+
+            scope.launch {
+                runCatching {
+                    com.vocatim.app.data.model.WhisperModel
+                        .fromId(userPrefs.current().selectedModelId)
+                        ?.let { transcriber.preload(it) }
+                }
+            }
+
+            activeRecord = record
+            startTicker(gen)
+
+            val watchdog = scope.launch {
+                while (gen == sessionGen && activeRecord === record && !stopping) {
+                    kotlinx.coroutines.delay(WATCHDOG_TICK_MS)
+                    if (gen == sessionGen && activeRecord === record && !stopping && !paused &&
+                        SystemClock.elapsedRealtime() - lastBufferAtMs > MIC_STALL_MS
+                    ) {
+                        stopping = true
+                        forceReleaseMic(record)
+                        stateHolder.set(
+                            RecordingState.Error(getString(R.string.record_error_mic_busy))
+                        )
+                        break
+                    }
+                }
+            }
+
+            recordJob = scope.launch {
+                var writer: WavFileWriter? = null
+                try {
+                    writer = WavFileWriter(outFile)
+                    record.startRecording()
+                    if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                        throw IllegalStateException(getString(R.string.record_error_mic))
+                    }
+                    val buffer = ShortArray(BUFFER_SAMPLES)
+                    stateHolder.previewBuffer.clear()
+                    resumedAt = SystemClock.elapsedRealtime()
+                    stateHolder.set(
+                        RecordingState.Active(paused = false, elapsedMs = 0, amplitude = 0f)
+                    )
+
+                    while (!stopping && gen == sessionGen) {
+                        val read = record.read(buffer, 0, buffer.size)
+                        if (read <= 0) {
+                            kotlinx.coroutines.delay(20)
+                            continue
+                        }
+                        lastBufferAtMs = SystemClock.elapsedRealtime()
+                        if (paused) continue
+
+                        writer.write(buffer, read)
+                        stateHolder.previewBuffer.write(buffer, read)
+                        stateHolder.emitLiveAudio(buffer, read)
+                        var sumSq = 0.0
+                        for (i in 0 until read) {
+                            val s = buffer[i].toDouble()
+                            sumSq += s * s
+                        }
+                        val rms = kotlin.math.sqrt(sumSq / read) / 32768.0
+                        stateHolder.set(
+                            RecordingState.Active(
+                                paused = false,
+                                elapsedMs = currentElapsed(),
+                                amplitude = rms.toFloat(),
+                            )
+                        )
+                    }
+                } catch (e: Exception) {
+                    if (gen == sessionGen) {
+                        stateHolder.set(
+                            RecordingState.Error(
+                                e.message ?: getString(R.string.record_error_generic)
+                            )
+                        )
+                    }
+                } finally {
+                    tickJob?.cancel()
+                    watchdog.cancel()
+                    forceReleaseMic(record)
+                    if (activeRecord === record) activeRecord = null
+                    effects.forEach { runCatching { it.release() } }
+                    runCatching { writer?.close() }
+                }
+
+                // isActive=false => torn down for a newer Start; don't stopSelf.
+                if (isActive && gen == sessionGen) {
+                    if (stopping && outFile.exists() && (writer?.durationMs ?: 0) > 0) {
+                        finalizeRecording(outFile, writer!!.durationMs)
+                    } else {
+                        outFile.delete()
+                        if (stateHolder.state.value !is RecordingState.Error) {
+                            stateHolder.set(RecordingState.Idle)
+                        }
+                    }
+                    cleanupAndStop()
+                } else {
+                    outFile.delete()
+                }
+            }
         }
-        if (record.state != AudioRecord.STATE_INITIALIZED) {
-            record.release()
-            fail(getString(R.string.record_error_mic))
-            return
+    }
+
+    /**
+     * MIC first — most reliable for a working timer + WAV capture.
+     * VOICE_RECOGNITION is nicer for speech but broken on some OEMs.
+     */
+    @SuppressLint("MissingPermission")
+    private fun openMic(bufferBytes: Int): AudioRecord? {
+        val sources = intArrayOf(
+            MediaRecorder.AudioSource.MIC,
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            MediaRecorder.AudioSource.CAMCORDER,
+            MediaRecorder.AudioSource.DEFAULT,
+        )
+        for (source in sources) {
+            val record = try {
+                AudioRecord(
+                    source,
+                    SAMPLE_RATE,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    bufferBytes,
+                )
+            } catch (_: Exception) {
+                null
+            } ?: continue
+            if (record.state == AudioRecord.STATE_INITIALIZED) return record
+            runCatching { record.release() }
         }
-        // Hardware DSP where the device offers it: cleaner input -> better
-        // transcription. Effects die with the session; keep refs to release.
-        val effects = buildList {
+        return null
+    }
+
+    private fun attachEffects(record: AudioRecord): List<android.media.audiofx.AudioEffect> =
+        buildList {
             if (android.media.audiofx.NoiseSuppressor.isAvailable()) {
                 runCatching {
                     android.media.audiofx.NoiseSuppressor.create(record.audioSessionId)
@@ -171,96 +285,39 @@ class RecordingService : Service() {
                         ?.apply { enabled = true }
                 }.getOrNull()?.let(::add)
             }
-            if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) {
-                runCatching {
-                    android.media.audiofx.AcousticEchoCanceler.create(record.audioSessionId)
-                        ?.apply { enabled = true }
-                }.getOrNull()?.let(::add)
-            }
         }
 
-        val dir = File(filesDir, "recordings").apply { mkdirs() }
-        val outFile = File(dir, "rec_${System.currentTimeMillis()}.wav")
+    private fun forceReleaseMic(record: AudioRecord?) {
+        if (record == null) return
+        runCatching { record.stop() }
+        runCatching { record.release() }
+    }
 
-        // Warm the whisper model in parallel so transcription starts the
-        // moment recording stops instead of paying seconds of load time.
-        // Non-whisper engines (Parakeet) load fast enough to skip this.
-        scope.launch {
-            runCatching {
-                com.vocatim.app.data.model.WhisperModel
-                    .fromId(userPrefs.current().selectedModelId)
-                    ?.let { transcriber.preload(it) }
-            }
+    private suspend fun awaitPreviousSessionGone() {
+        stopping = true
+        forceReleaseMic(activeRecord)
+        activeRecord = null
+        val joined = withTimeoutOrNull(TEARDOWN_TIMEOUT_MS) {
+            recordJob?.cancelAndJoin()
         }
+        if (joined == null) recordJob?.cancel()
+        recordJob = null
+        tickJob?.cancel()
+        tickJob = null
+    }
 
-        activeRecord = record
-        firstBufferSeen = false
-        // Watchdog: if the mic never delivers a single buffer (held by
-        // another app / privacy toggle), read() blocks forever and the whole
-        // session looks frozen. Surface it as an error instead.
-        scope.launch {
-            kotlinx.coroutines.delay(MIC_WATCHDOG_MS)
-            if (!firstBufferSeen && recordJob?.isActive == true && !stopping) {
-                stopping = true
-                runCatching { activeRecord?.stop() }
-                stateHolder.set(RecordingState.Error(getString(R.string.record_error_mic_busy)))
-            }
-        }
-
-        recordJob = scope.launch {
-            var writer: WavFileWriter? = null
-            try {
-                writer = WavFileWriter(outFile)
-                record.startRecording()
-                val buffer = ShortArray(BUFFER_SAMPLES)
-                stateHolder.previewBuffer.clear()
-                stateHolder.set(RecordingState.Active(paused = false, elapsedMs = 0, amplitude = 0f))
-
-                while (!stopping) {
-                    val read = record.read(buffer, 0, buffer.size)
-                    if (read <= 0) continue
-                    firstBufferSeen = true
-                    if (paused) continue
-
-                    writer.write(buffer, read)
-                    stateHolder.previewBuffer.write(buffer, read)
-                    stateHolder.emitLiveAudio(buffer, read)
-                    // RMS, not peak: AGC pins the peak of every speech buffer
-                    // near the same level, which made the level bars look flat.
-                    var sumSq = 0.0
-                    for (i in 0 until read) {
-                        val s = buffer[i].toDouble()
-                        sumSq += s * s
-                    }
-                    val rms = kotlin.math.sqrt(sumSq / read) / 32768.0
-                    stateHolder.set(
-                        RecordingState.Active(
-                            paused = false,
-                            elapsedMs = currentElapsed(),
-                            amplitude = rms.toFloat(),
-                        )
-                    )
+    /** Wall-clock UI timer — advances even if a mic buffer stalls. */
+    private fun startTicker(gen: Int) {
+        tickJob?.cancel()
+        tickJob = scope.launch {
+            while (gen == sessionGen && isActive) {
+                kotlinx.coroutines.delay(TICK_UI_MS)
+                if (gen != sessionGen || stopping) break
+                val current = stateHolder.state.value
+                if (current is RecordingState.Active && !current.paused) {
+                    stateHolder.set(current.copy(elapsedMs = currentElapsed()))
                 }
-            } catch (e: Exception) {
-                stateHolder.set(
-                    RecordingState.Error(e.message ?: getString(R.string.record_error_generic))
-                )
-            } finally {
-                runCatching { record.stop() }
-                record.release()
-                activeRecord = null
-                effects.forEach { runCatching { it.release() } }
-                clearBluetoothRouting()
-                runCatching { writer?.close() }
             }
-
-            if (stopping && outFile.exists() && (writer?.durationMs ?: 0) > 0) {
-                finalizeRecording(outFile, writer!!.durationMs)
-            } else {
-                outFile.delete()
-                stateHolder.set(RecordingState.Idle)
-            }
-            cleanupAndStop()
         }
     }
 
@@ -271,8 +328,6 @@ class RecordingService : Service() {
                 SimpleDateFormat("dd MMM HH:mm", Locale.getDefault()).format(Date()),
             )
             val settings = userPrefs.current()
-            // Live sessions open with the captions as an instant draft; the
-            // full transcription replaces it as chunks commit.
             val draft = stateHolder.liveDraft.orEmpty()
             stateHolder.liveDraft = null
             val id = repository.create(
@@ -311,6 +366,7 @@ class RecordingService : Service() {
         if (recordJob == null || !paused) return
         paused = false
         resumedAt = SystemClock.elapsedRealtime()
+        lastBufferAtMs = SystemClock.elapsedRealtime()
         stateHolder.set(
             RecordingState.Active(paused = false, elapsedMs = accumulatedMs, amplitude = 0f)
         )
@@ -319,11 +375,8 @@ class RecordingService : Service() {
 
     private fun stopRecording() {
         stopping = true
-        // A read() blocked on a silent/held mic never re-checks the flag;
-        // stopping the AudioRecord from here forces that read to return, so
-        // the Stop button can never be held hostage by the mic.
-        runCatching { activeRecord?.stop() }
-        if (recordJob == null) cleanupAndStop()
+        forceReleaseMic(activeRecord)
+        if (recordJob == null && setupJob?.isActive != true) cleanupAndStop()
     }
 
     private fun currentElapsed(): Long =
@@ -331,8 +384,6 @@ class RecordingService : Service() {
         else accumulatedMs + (SystemClock.elapsedRealtime() - resumedAt)
 
     private fun requestAudioFocus() {
-        // Recording doesn't need focus per se, but holding it means the
-        // system tells us (LOSS_TRANSIENT) when a call takes over the mic.
         val audioManager = getSystemService<AudioManager>() ?: return
         val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(
@@ -365,6 +416,8 @@ class RecordingService : Service() {
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
         recordJob = null
+        tickJob?.cancel()
+        tickJob = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -411,7 +464,10 @@ class RecordingService : Service() {
     }
 
     override fun onDestroy() {
+        sessionGen++
         stopping = true
+        forceReleaseMic(activeRecord)
+        activeRecord = null
         scope.cancel()
         super.onDestroy()
     }
@@ -423,13 +479,12 @@ class RecordingService : Service() {
         private const val ACTION_STOP = "com.vocatim.app.record.STOP"
 
         private const val SAMPLE_RATE = WavDecoder.WHISPER_SAMPLE_RATE
-        /** 200ms per buffer: responsive amplitude UI without busy looping. */
         private const val BUFFER_SAMPLES = SAMPLE_RATE / 5
-        /** Safety cap; recording longer than 12h is out of scope. */
         private const val MAX_WAKELOCK_MS = 12L * 60 * 60 * 1000
-
-        /** If the mic delivers nothing for this long, report it as busy. */
-        private const val MIC_WATCHDOG_MS = 5_000L
+        private const val MIC_STALL_MS = 6_000L
+        private const val WATCHDOG_TICK_MS = 2_000L
+        private const val TEARDOWN_TIMEOUT_MS = 2_000L
+        private const val TICK_UI_MS = 200L
 
         fun start(context: Context) = command(context, ACTION_START)
         fun pause(context: Context) = command(context, ACTION_PAUSE)

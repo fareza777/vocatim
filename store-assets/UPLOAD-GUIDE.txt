@@ -23,3 +23,9 @@ PLAY CONSOLE PATH
 
 PRIVACY POLICY URL
   https://github.com/fareza777/vocatim/blob/main/PRIVACY_POLICY.md
+
+PROMO VIDEO (30s, 1920x1080, H.264)
+  vocatim-play-promo-v2-30s.mp4
+  Upload: Grow users → Store presence → Main store listing → Promo video
+  (or YouTube Unlisted → paste URL in Play Console)
+  Re-render: python tools/render_vocatim_promo.py

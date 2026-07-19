@@ -40,6 +40,14 @@ interface TranscriptDao {
     @Query("SELECT audioPath FROM transcripts WHERE audioPath IS NOT NULL")
     suspend fun getAllAudioPaths(): List<String>
 
+    /** Audio paths still needed by in-flight transcriptions. */
+    @Query("SELECT audioPath FROM transcripts WHERE audioPath IS NOT NULL AND status IN (:statuses)")
+    suspend fun getAudioPathsByStatuses(statuses: List<String>): List<String>
+
+    /** Detach audio from every transcript except those in :statuses. */
+    @Query("UPDATE transcripts SET audioPath = NULL WHERE status NOT IN (:statuses)")
+    suspend fun clearAudioPathsExceptStatuses(statuses: List<String>)
+
     @Query("UPDATE transcripts SET pinned = :pinned WHERE id = :id")
     suspend fun updatePinned(id: Long, pinned: Boolean)
 

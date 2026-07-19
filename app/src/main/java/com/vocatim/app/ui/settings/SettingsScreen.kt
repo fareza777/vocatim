@@ -24,9 +24,12 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ModalBottomSheet
@@ -562,6 +565,60 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            var confirmWipeAudio by remember { mutableStateOf(false) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { confirmWipeAudio = true },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.settings_wipe_audio),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        stringResource(R.string.settings_wipe_audio_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+            if (confirmWipeAudio) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { confirmWipeAudio = false },
+                    title = { Text(stringResource(R.string.settings_wipe_audio)) },
+                    text = {
+                        Text(
+                            stringResource(
+                                R.string.settings_wipe_audio_confirm,
+                                formatMb(storage?.audioBytes ?: 0L),
+                            )
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                confirmWipeAudio = false
+                                viewModel.deleteAllAudio()
+                            },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                            ),
+                        ) { Text(stringResource(R.string.settings_wipe_audio_action)) }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = { confirmWipeAudio = false },
+                        ) { Text(stringResource(R.string.action_cancel)) }
+                    },
+                )
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -591,7 +648,111 @@ fun SettingsScreen(
             )
             BackupSection(viewModel, onUpgrade = onUpgradeClick)
             }
+
+            com.vocatim.app.ui.common.ExpandableSection(
+                title = stringResource(R.string.settings_section_about),
+                icon = Icons.Default.Info,
+            ) {
+                AboutSection()
+            }
         }
+    }
+}
+
+@Composable
+private fun AboutSection() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Text(
+        stringResource(
+            R.string.about_version,
+            com.vocatim.app.BuildConfig.VERSION_NAME,
+            com.vocatim.app.BuildConfig.VERSION_CODE,
+        ),
+        style = MaterialTheme.typography.titleSmall,
+    )
+    Text(
+        stringResource(R.string.about_tagline),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    HorizontalDivider()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                val packageName = context.packageName
+                // Prefer the Play app; fall back to the web listing on
+                // devices without it.
+                val market = android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("market://details?id=$packageName"),
+                )
+                runCatching { context.startActivity(market) }.onFailure {
+                    runCatching {
+                        context.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(
+                                    "https://play.google.com/store/apps/details?id=$packageName"
+                                ),
+                            )
+                        )
+                    }
+                }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.about_rate_title))
+            Text(
+                stringResource(R.string.about_rate_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            Icons.Default.Star,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(
+                        android.content.Intent.EXTRA_TEXT,
+                        context.getString(
+                            R.string.about_share_text,
+                            "https://play.google.com/store/apps/details?id=${context.packageName}",
+                        ),
+                    )
+                }
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent.createChooser(
+                            send, context.getString(R.string.about_share_title)
+                        )
+                    )
+                }
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.about_share_title))
+            Text(
+                stringResource(R.string.about_share_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            Icons.Default.Share,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

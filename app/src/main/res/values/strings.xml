@@ -423,6 +423,18 @@
     <string name="settings_section_language">Language &amp; accuracy</string>
     <string name="settings_section_ai">AI &amp; summaries</string>
     <string name="settings_section_data">Storage, backup &amp; data</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_wipe_audio">Delete all audio files</string>
+    <string name="settings_wipe_audio_desc">Free up space — transcripts, summaries and notes are kept.</string>
+    <string name="settings_wipe_audio_confirm">Delete all recorded and imported audio (%1$s)? Transcript text stays, but playback and re-transcription of old recordings will no longer be possible. This cannot be undone.</string>
+    <string name="settings_wipe_audio_action">Delete audio</string>
+    <string name="about_version">Vocatim %1$s (build %2$d)</string>
+    <string name="about_tagline">100%% offline voice notes — your audio and transcripts never leave this device.</string>
+    <string name="about_rate_title">Rate Vocatim</string>
+    <string name="about_rate_desc">Enjoying the app? A quick rating on Google Play helps a lot.</string>
+    <string name="about_share_title">Share Vocatim</string>
+    <string name="about_share_desc">Tell a friend about private, offline transcription.</string>
+    <string name="about_share_text">Vocatim — private, 100%% offline voice-to-text notes: %1$s</string>
 
     <!-- Home enhancements -->
     <string name="home_import_cta">Import audio</string>

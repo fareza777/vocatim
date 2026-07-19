@@ -4,6 +4,7 @@ import com.vocatim.app.data.db.AttachmentEntity
 import com.vocatim.app.data.db.SegmentEntity
 import com.vocatim.app.data.db.TranscriptDao
 import com.vocatim.app.data.db.TranscriptEntity
+import com.vocatim.app.data.db.TranscriptStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -83,6 +84,22 @@ class TranscriptRepository(private val dao: TranscriptDao) {
     suspend fun restoreFromTrash(id: Long) = dao.setDeletedAt(id, null)
 
     suspend fun getAllAudioPaths(): List<String> = dao.getAllAudioPaths()
+
+    /**
+     * Detaches audio from every finished transcript. Audio still needed by
+     * in-flight transcriptions is left alone; returns those paths so the
+     * caller can skip their files when wiping the audio directories.
+     */
+    suspend fun clearAllAudio(): Set<String> {
+        val busy = listOf(
+            TranscriptStatus.PENDING,
+            TranscriptStatus.CONVERTING,
+            TranscriptStatus.TRANSCRIBING,
+        )
+        val keep = dao.getAudioPathsByStatuses(busy).toSet()
+        dao.clearAudioPathsExceptStatuses(busy)
+        return keep
+    }
 
     /** Hard-deletes trashed rows past the retention window, files included. */
     suspend fun purgeExpiredTrash(retentionMs: Long = TRASH_RETENTION_MS) {

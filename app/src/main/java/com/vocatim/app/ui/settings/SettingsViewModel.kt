@@ -55,6 +55,7 @@ class SettingsViewModel @Inject constructor(
     private val cloudClient: com.vocatim.app.data.cloud.CloudAiClient,
     private val transcriber: com.vocatim.app.data.transcribe.WhisperTranscriber,
     private val parakeetTranscriber: com.vocatim.app.data.transcribe.ParakeetTranscriber,
+    private val transcriptRepository: com.vocatim.app.data.repository.TranscriptRepository,
     quotaStore: com.vocatim.app.data.billing.QuotaStore,
 ) : ViewModel() {
 
@@ -470,6 +471,27 @@ class SettingsViewModel @Inject constructor(
     fun delete(model: WhisperModel) {
         modelManager.delete(model)
         refreshStorage()
+    }
+
+    /**
+     * Deletes every audio file (recordings + imports) and detaches them from
+     * their transcripts; text, summaries and notes stay. Audio still feeding
+     * an in-flight transcription is kept so the job can finish.
+     */
+    fun deleteAllAudio() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val keep = transcriptRepository.clearAllAudio()
+                listOf("recordings", "imports").forEach { name ->
+                    File(appContext.filesDir, name).listFiles()?.forEach { f ->
+                        if (f.isFile && f.absolutePath !in keep) {
+                            runCatching { f.delete() }
+                        }
+                    }
+                }
+            }
+            refreshStorage()
+        }
     }
 
     private fun refreshStorage() {
