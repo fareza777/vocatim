@@ -8,6 +8,7 @@ import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult
+import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
@@ -43,7 +44,10 @@ class BillingManager(
 
     private val client: BillingClient = BillingClient.newBuilder(context)
         .setListener(this)
-        .enablePendingPurchases()
+        // Billing 8 requires the params form; one-time products only.
+        .enablePendingPurchases(
+            PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()
+        )
         .build()
 
     fun connect() {
@@ -141,9 +145,9 @@ class BillingManager(
                 )
             )
             .build()
-        client.queryProductDetailsAsync(params) { result, detailsList ->
+        client.queryProductDetailsAsync(params) { result, detailsResult ->
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                _productDetails.value = detailsList.firstOrNull()
+                _productDetails.value = detailsResult.productDetailsList.firstOrNull()
             }
         }
     }

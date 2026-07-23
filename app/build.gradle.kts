@@ -17,12 +17,12 @@ val keyProps = Properties().apply {
 
 android {
     namespace = "com.vocatim.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.vocatim.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 32
         versionName = "1.13.3"
 

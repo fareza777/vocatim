@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.vocatim.llm"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = "27.1.12297006"
 
     defaultConfig {
