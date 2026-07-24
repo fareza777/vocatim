@@ -21,6 +21,10 @@ android {
                 // ggml without -O3 is 50-100x slower; unusable even in debug
                 // builds. Force an optimized native build for every variant.
                 arguments += "-DCMAKE_BUILD_TYPE=Release"
+                // Android 15+ devices can use 16 KB memory pages, and a 4 KB
+                // aligned .so simply will not load there. NDK r27 needs this
+                // opt-in; without it Play rejects the release.
+                arguments += "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
             }
         }
     }

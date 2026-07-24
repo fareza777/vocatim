@@ -20,6 +20,10 @@ android {
                 // Summarization runs at low temperature; -O3 matters a lot.
                 arguments += "-DCMAKE_BUILD_TYPE=Release"
                 cppFlags += "-O3"
+                // Android 15+ devices can use 16 KB memory pages, and a 4 KB
+                // aligned .so simply will not load there. NDK r27 needs this
+                // opt-in; without it Play rejects the release.
+                arguments += "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
             }
         }
     }
