@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import com.vocatim.app.data.prefs.prefsDataStore
+import com.vocatim.app.data.prefs.secretsDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -12,6 +13,10 @@ import kotlinx.coroutines.flow.map
 /**
  * Local free-tier bookkeeping: total transcribed audio time, plus the
  * cached lifetime entitlement so the app stays unlocked offline.
+ *
+ * Usage lives in the ordinary prefs file, but the entitlement lives in the
+ * secrets file so a restored Auto Backup can never hand Pro to a device that
+ * did not buy it.
  */
 class QuotaStore(private val context: Context) {
 
@@ -22,7 +27,7 @@ class QuotaStore(private val context: Context) {
      * on. The override is a separate key that Billing never writes, so a Play
      * re-sync can't clear it; it's only ever set from the debug screen.
      */
-    val isProCached: Flow<Boolean> = context.prefsDataStore.data.map {
+    val isProCached: Flow<Boolean> = context.secretsDataStore.data.map {
         (it[PRO_KEY] ?: false) || (it[DEV_PRO_KEY] ?: false)
     }
 
@@ -34,12 +39,12 @@ class QuotaStore(private val context: Context) {
     }
 
     suspend fun setPro(pro: Boolean) {
-        context.prefsDataStore.edit { it[PRO_KEY] = pro }
+        context.secretsDataStore.edit { it[PRO_KEY] = pro }
     }
 
     /** Debug-only entitlement override; never called from release code. */
     suspend fun setDevPro(enabled: Boolean) {
-        context.prefsDataStore.edit { it[DEV_PRO_KEY] = enabled }
+        context.secretsDataStore.edit { it[DEV_PRO_KEY] = enabled }
     }
 
     suspend fun currentUsedMs(): Long = usedMs.first()

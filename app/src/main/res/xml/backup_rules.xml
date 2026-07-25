@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Auto Backup has a 25 MB budget; excluding the heavyweight media dirs
-     keeps the valuable small data (Room DB with transcripts, DataStore with
-     settings/quota/entitlement) under it so backup actually runs. -->
+<!-- Allowlist, not a denylist: anything not named here stays on the device.
+     That keeps the promise in PRIVACY_POLICY.md ("never leave your phone
+     unless you explicitly share, export, or back them up yourself") true for
+     transcripts (vocatim.db), the BYOK API key and the purchase entitlement
+     (vocatim_secrets), and the heavyweight media dirs. Settings are the only
+     thing worth restoring automatically, and they carry no personal data.
+
+     Transcripts still have a migration path: Settings -> encrypted backup. -->
 <full-backup-content>
-    <exclude domain="file" path="models" />
-    <exclude domain="file" path="recordings" />
-    <exclude domain="file" path="imports" />
+    <include domain="file" path="datastore/vocatim_prefs.preferences_pb" />
 </full-backup-content>

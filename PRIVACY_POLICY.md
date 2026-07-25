@@ -16,6 +16,7 @@ Vocatim is built so that your data stays yours. By default, everything runs on y
 - **Speech recognition** runs entirely on-device using the Whisper model. No audio or text is sent to any server for transcription.
 - **AI Summary (local)** runs on-device when you use the built-in summarizer. No transcript text is sent to us or to any third party.
 - **Encrypted backup & restore** (optional) writes an AES-256 encrypted file to a folder you choose (for example Google Drive or local storage). The backup is protected by a password you set. We do not receive backup files or passwords. Audio files are not included in backups — only transcript metadata and text.
+- **Android Auto Backup** (the system feature that copies app data to your Google account) is limited to your app settings. Your transcripts, recordings, and API key are explicitly excluded, so they are never uploaded to Google's servers by the app. Moving transcripts to a new device is done with the encrypted backup above, on purpose and under your control.
 
 ### Internet access
 
@@ -35,7 +36,7 @@ Cloud AI is **off by default** and entirely optional. If you choose to enter you
 - Vocatim **never** sends your API key, audio, or transcript text to us.
 - We have **no access** to data sent between your device and your chosen provider.
 - You can remove your key at any time in Settings → Cloud AI → Clear.
-- Cloud AI settings are excluded from encrypted backups.
+- Cloud AI settings are excluded from encrypted backups and from Android Auto Backup.
 
 If you do not configure Cloud AI, no transcript or audio data is sent to any third-party AI service.
 

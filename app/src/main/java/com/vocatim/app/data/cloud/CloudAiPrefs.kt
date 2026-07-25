@@ -3,7 +3,7 @@ package com.vocatim.app.data.cloud
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.vocatim.app.data.prefs.prefsDataStore
+import com.vocatim.app.data.prefs.secretsDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -11,7 +11,8 @@ import kotlinx.coroutines.flow.map
 /**
  * BYOK (bring-your-own-key) cloud AI settings. The key belongs to the user
  * and only ever travels to the provider THEY configured — never to us.
- * Stored in app-private DataStore; excluded from encrypted backups.
+ * Stored in the app-private secrets DataStore, which is excluded from both
+ * encrypted backups and Android Auto Backup — the key never leaves the device.
  */
 data class CloudAiConfig(
     val baseUrl: String,
@@ -24,7 +25,7 @@ data class CloudAiConfig(
 
 class CloudAiPrefs(private val context: Context) {
 
-    val config: Flow<CloudAiConfig> = context.prefsDataStore.data.map { prefs ->
+    val config: Flow<CloudAiConfig> = context.secretsDataStore.data.map { prefs ->
         CloudAiConfig(
             baseUrl = prefs[BASE_URL_KEY] ?: "",
             apiKey = prefs[API_KEY_KEY] ?: "",
@@ -35,7 +36,7 @@ class CloudAiPrefs(private val context: Context) {
     suspend fun current(): CloudAiConfig = config.first()
 
     suspend fun save(baseUrl: String, apiKey: String, model: String) {
-        context.prefsDataStore.edit { prefs ->
+        context.secretsDataStore.edit { prefs ->
             prefs[BASE_URL_KEY] = baseUrl.trim().trimEnd('/')
             prefs[API_KEY_KEY] = apiKey.trim()
             prefs[MODEL_KEY] = model.trim()
@@ -43,7 +44,7 @@ class CloudAiPrefs(private val context: Context) {
     }
 
     suspend fun clear() {
-        context.prefsDataStore.edit { prefs ->
+        context.secretsDataStore.edit { prefs ->
             prefs.remove(BASE_URL_KEY)
             prefs.remove(API_KEY_KEY)
             prefs.remove(MODEL_KEY)

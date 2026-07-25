@@ -23,8 +23,8 @@ android {
         applicationId = "com.vocatim.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 34
-        versionName = "1.13.5"
+        versionCode = 35
+        versionName = "1.13.6"
 
         ndk {
             abiFilters += "arm64-v8a"
@@ -59,6 +59,13 @@ android {
             manifestPlaceholders["appLabel"] = "Vocatim"
             isMinifyEnabled = true
             isShrinkResources = true
+            // Ships whisper/llama/sherpa symbols in the AAB so native crashes
+            // in Play Vitals come back with function names instead of raw
+            // addresses. SYMBOL_TABLE rather than FULL: it is what Vitals
+            // symbolicates with, at a fraction of the upload size.
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -164,8 +164,14 @@ class BillingManager(
             }
             purchases.forEach(::handlePurchase)
             scope.launch {
-                quotaStore.setPro(owned)
-                if (!owned && notifyWhenNone) {
+                if (owned) {
+                    quotaStore.setPro(true)
+                } else if (notifyWhenNone) {
+                    // Only an explicit Restore may clear the cache. A background
+                    // sync can report "not owned" just because Play is signed
+                    // into another account, and that must never lock out
+                    // someone who actually paid.
+                    quotaStore.setPro(false)
                     _purchaseMessage.value = "RESTORE_NONE"
                 }
             }
