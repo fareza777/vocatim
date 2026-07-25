@@ -39,6 +39,9 @@
     <string name="home_empty_body">Tap the mic to record, or + to import audio</string>
     <string name="status_queued">Waiting…</string>
     <string name="status_converting">Converting audio…</string>
+    <string name="status_downloading_model">Downloading speech model…</string>
+    <string name="detail_downloading_model_hint">Your recording is safe. Vocatim is fetching the speech model it needs — this happens once, then everything works offline.</string>
+    <string name="detail_model_download_failed">Your recording is safe. Vocatim still needs to download the speech model once — connect to the internet and tap Retry. After that it works offline.</string>
     <string name="status_transcribing">Transcribing…</string>
     <string name="status_failed">Transcription failed</string>
 
@@ -176,9 +179,6 @@
     <string name="onboarding_model_title">Download the engine</string>
     <string name="onboarding_model_body">Vocatim needs a speech model (%1$s, ±%2$d MB) — a one-time download. After this, everything works offline.</string>
     <string name="onboarding_model_ready">Model ready — you\'re all set!</string>
-    <string name="onboarding_engine_whisper">Balanced · %1$d MB</string>
-    <string name="onboarding_engine_parakeet">Best English · %1$d MB</string>
-    <string name="onboarding_engine_parakeet_hint">Parakeet is faster and more accurate on English, but it is a much larger download. You can switch later in Settings.</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_start">Start</string>

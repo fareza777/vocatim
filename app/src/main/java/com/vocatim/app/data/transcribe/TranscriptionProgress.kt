@@ -9,6 +9,8 @@ data class TranscriptionProgress(
     val transcriptId: Long,
     /** True while converting an imported file, before transcription. */
     val converting: Boolean = false,
+    /** True while fetching a missing speech model, before transcription. */
+    val downloadingModel: Boolean = false,
     /** 0..1 within the current phase. */
     val fraction: Float = 0f,
     val chunksDone: Int = 0,

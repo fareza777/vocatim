@@ -920,6 +920,15 @@ fun DetailScreen(
                                     )
                                 }
                             }
+                            "MODEL_DOWNLOAD_FAILED" -> {
+                                Text(
+                                    stringResource(R.string.detail_model_download_failed),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Button(onClick = viewModel::retry, enabled = t.audioPath != null) {
+                                    Text(stringResource(R.string.action_retry))
+                                }
+                            }
                             "CANCELLED" -> {
                                 Text(
                                     stringResource(R.string.detail_cancelled),
@@ -951,6 +960,8 @@ fun DetailScreen(
                     StatusCard {
                         Pill(
                             when {
+                                p?.downloadingModel == true ->
+                                    stringResource(R.string.status_downloading_model)
                                 p?.converting == true -> stringResource(R.string.status_converting)
                                 p != null -> stringResource(R.string.status_transcribing)
                                 else -> stringResource(R.string.status_queued)
@@ -959,6 +970,16 @@ fun DetailScreen(
                             background = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
                             dot = true,
                         )
+                        // Skipping the onboarding download lands here. Say what
+                        // is happening and why, or a one-time wait on someone
+                        // else's schedule just looks like the app is stuck.
+                        if (p?.downloadingModel == true) {
+                            Text(
+                                stringResource(R.string.detail_downloading_model_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         if (p != null && p.fraction > 0f) {
                             LinearProgressIndicator(
                                 progress = { p.fraction },

@@ -14,6 +14,7 @@ import com.vocatim.app.data.repository.TranscriptRepository
 import com.vocatim.whisper.WhisperSegment
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileNotFoundException
@@ -26,6 +27,9 @@ import java.io.FileNotFoundException
  */
 class QuotaExceededException : Exception("QUOTA_EXCEEDED")
 
+/** The speech model is missing and could not be fetched (usually offline). */
+class ModelUnavailableException : Exception("MODEL_DOWNLOAD_FAILED")
+
 class TranscriptionRunner(
     private val repository: TranscriptRepository,
     private val transcriber: WhisperTranscriber,
@@ -34,6 +38,7 @@ class TranscriptionRunner(
     private val rtfStore: RtfStore,
     private val progressHolder: TranscriptionProgressHolder,
     private val userPrefs: UserPrefs,
+    private val modelManager: com.vocatim.app.data.model.ModelManager,
     private val threadPolicy: ThreadPolicy,
     private val quotaStore: com.vocatim.app.data.billing.QuotaStore,
     private val importDir: File,
@@ -113,6 +118,46 @@ class TranscriptionRunner(
             quotaStore.currentUsedMs() >= com.vocatim.app.data.billing.QuotaStore.FREE_LIMIT_MS
         ) {
             throw QuotaExceededException()
+        }
+
+        // Onboarding can be skipped before the model finishes downloading, and
+        // the engine can be switched in Settings without fetching the new one.
+        // Failing here would strand someone who has already recorded, with a
+        // technical message and no way forward, so fetch it instead.
+        if (model != null && !modelManager.isDownloaded(model)) {
+            repository.updateStatus(transcriptId, TranscriptStatus.CONVERTING)
+            progressHolder.update(
+                TranscriptionProgress(transcriptId, downloadingModel = true)
+            )
+            // download() reports through its state flow, so mirror that into
+            // the job's progress for the duration of the fetch.
+            kotlinx.coroutines.coroutineScope {
+                val mirror = launch {
+                    modelManager.state(model).collect { state ->
+                        if (state is com.vocatim.app.data.model.ModelState.Downloading) {
+                            progressHolder.update(
+                                TranscriptionProgress(
+                                    transcriptId,
+                                    downloadingModel = true,
+                                    fraction = state.progress,
+                                )
+                            )
+                        }
+                    }
+                }
+                try {
+                    modelManager.download(model)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Almost always "no connection". Carry a sentinel so the
+                    // UI can explain it and offer retry instead of showing a
+                    // raw exception to someone who just wanted a transcript.
+                    throw ModelUnavailableException()
+                } finally {
+                    mirror.cancel()
+                }
+            }
         }
 
         val resumeFrom = entity.completedChunks
