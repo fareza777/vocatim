@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Declaring the supported languages gives Android 13+ a per-app language
+     entry under Settings, so anyone whose phone is in one language but who
+     wants Vocatim in the other can switch without us building a picker.
+     Below API 33 the app simply follows the device language. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="in" />
+</locale-config>
