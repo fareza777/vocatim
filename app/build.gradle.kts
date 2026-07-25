@@ -23,8 +23,8 @@ android {
         applicationId = "com.vocatim.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 33
-        versionName = "1.13.4"
+        versionCode = 34
+        versionName = "1.13.5"
 
         ndk {
             abiFilters += "arm64-v8a"
