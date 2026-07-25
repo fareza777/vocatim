@@ -179,6 +179,8 @@
     <string name="onboarding_model_title">Download the engine</string>
     <string name="onboarding_model_body">Vocatim needs a speech model (%1$s, ±%2$d MB) — a one-time download. After this, everything works offline.</string>
     <string name="onboarding_model_ready">Model ready — you\'re all set!</string>
+    <string name="onboarding_engine_standard_desc">Works in every language. Small download, good accuracy.</string>
+    <string name="onboarding_engine_parakeet_desc">Sharpest and fastest on English, but English only — and a much bigger download. You can switch any time in Settings.</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_start">Start</string>
@@ -384,7 +386,7 @@
     <string name="model_speed_turbo">Best accuracy available, slow — for important recordings</string>
     <string name="model_name_medium">Master</string>
     <string name="model_name_turbo_q8">Ultra+</string>
-    <string name="model_name_parakeet">Parakeet</string>
+    <string name="model_name_parakeet">English Ultra</string>
     <string name="settings_english_engine">English engine — NVIDIA Parakeet</string>
     <string name="parakeet_note">English only · top accuracy at Swift-class speed</string>
     <string name="live_model_name">Live captions</string>

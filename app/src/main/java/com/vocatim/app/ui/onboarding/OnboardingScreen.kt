@@ -60,6 +60,8 @@ fun OnboardingScreen(
     val modelState by viewModel.modelState.collectAsStateWithLifecycle()
     val selectedLanguage by viewModel.selectedLanguage.collectAsStateWithLifecycle()
     val recommendedModel by viewModel.recommendedModel.collectAsStateWithLifecycle()
+    val parakeetOffered by viewModel.parakeetOffered.collectAsStateWithLifecycle()
+    val useParakeet by viewModel.useParakeet.collectAsStateWithLifecycle()
 
     fun finish() {
         viewModel.finish()
@@ -112,10 +114,47 @@ fun OnboardingScreen(
                     title = stringResource(R.string.onboarding_model_title),
                     body = stringResource(
                         R.string.onboarding_model_body,
-                        com.vocatim.app.ui.common.modelDisplayName(recommendedModel.id),
-                        recommendedModel.approxSizeBytes / (1024 * 1024),
+                        com.vocatim.app.ui.common.modelDisplayName(
+                            if (useParakeet) com.vocatim.app.data.model.ParakeetModel.ID
+                            else recommendedModel.id
+                        ),
+                        (if (useParakeet) viewModel.parakeetBytes
+                        else recommendedModel.approxSizeBytes) / (1024 * 1024),
                     ),
                 ) {
+                    // English gets a choice here so nobody has to discover the
+                    // better engine buried in Settings. Names and one-liners
+                    // do the explaining — the size alone means nothing to a
+                    // first-time user.
+                    if (parakeetOffered) {
+                        val options = listOf(false, true)
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            options.forEachIndexed { index, parakeet ->
+                                SegmentedButton(
+                                    selected = useParakeet == parakeet,
+                                    onClick = { viewModel.setUseParakeet(parakeet) },
+                                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                                ) {
+                                    Text(
+                                        com.vocatim.app.ui.common.modelDisplayName(
+                                            if (parakeet) com.vocatim.app.data.model.ParakeetModel.ID
+                                            else recommendedModel.id
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(
+                                if (useParakeet) R.string.onboarding_engine_parakeet_desc
+                                else R.string.onboarding_engine_standard_desc
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                    }
                     when (val state = modelState) {
                         is ModelState.NotDownloaded ->
                             Button(onClick = viewModel::downloadRecommended) {
