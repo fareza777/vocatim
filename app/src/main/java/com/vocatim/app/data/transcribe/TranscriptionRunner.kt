@@ -190,7 +190,15 @@ class TranscriptionRunner(
                             language = entity.language,
                             translate = entity.translate,
                             numThreads = threadPolicy.threadsFor(settings.threads),
-                            initialPrompt = settings.customVocab.trim().ifBlank { null },
+                            // Prime the output style so the raw transcript is
+                            // punctuated. On "auto" the language is unknown
+                            // for chunk 0, so the seed joins from the chunk
+                            // after detection resolves it.
+                            initialPrompt = TranscriptPrompt.build(
+                                language = entity.language.takeIf { it != AUTO_LANGUAGE }
+                                    ?: detectedLanguage,
+                                customVocab = settings.customVocab,
+                            ),
                             beamSize = if (settings.highAccuracy) 5 else 0,
                             vadModelPath = vadModelPath,
                         )
@@ -277,6 +285,9 @@ class TranscriptionRunner(
     private companion object {
         /** First-run ETA guess for Parakeet — it runs well under realtime. */
         const val PARAKEET_RTF_GUESS = 0.3f
+
+        /** Sentinel stored on a transcript when whisper should auto-detect. */
+        const val AUTO_LANGUAGE = "auto"
     }
 
     private fun remainingAudioMs(chunks: List<Chunk>, fromChunk: Int, audioDurationMs: Long): Long =
