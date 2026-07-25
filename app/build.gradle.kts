@@ -43,7 +43,20 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Debug builds are signed with the debug key, so they can never
+            // update a Play install — Android refuses on signature mismatch,
+            // and the only way to force it is uninstalling, which destroys
+            // every transcript on the device. A separate id sidesteps that:
+            // test builds live beside the real app instead of fighting it.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            // Distinct launcher label: two identical icons side by side is a
+            // good way to delete the wrong app's data by mistake.
+            manifestPlaceholders["appLabel"] = "Vocatim Debug"
+        }
         release {
+            manifestPlaceholders["appLabel"] = "Vocatim"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
