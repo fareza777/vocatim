@@ -1183,6 +1183,16 @@ fun DetailScreen(
                     placeholder = {
                         Text(stringResource(R.string.detail_speaker_n, index))
                     },
+                    trailingIcon = {
+                        if (name.isNotEmpty()) {
+                            IconButton(onClick = { name = "" }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = stringResource(R.string.action_clear),
+                                )
+                            }
+                        }
+                    },
                 )
             },
             confirmButton = {
@@ -1882,6 +1892,16 @@ private fun FolderRow(
                     onValueChange = { newName = it },
                     singleLine = true,
                     placeholder = { Text(stringResource(R.string.folder_new_hint)) },
+                    trailingIcon = {
+                        if (newName.isNotEmpty()) {
+                            IconButton(onClick = { newName = "" }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = stringResource(R.string.action_clear),
+                                )
+                            }
+                        }
+                    },
                 )
             },
             confirmButton = {
