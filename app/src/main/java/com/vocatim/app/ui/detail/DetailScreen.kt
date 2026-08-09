@@ -32,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -1029,6 +1030,19 @@ fun DetailScreen(
                     value = draft,
                     onValueChange = { renameDraft = it },
                     singleLine = true,
+                    // Renaming almost always means replacing the auto-generated
+                    // title outright, and holding backspace through it is the
+                    // slowest part of the job.
+                    trailingIcon = {
+                        if (draft.isNotEmpty()) {
+                            IconButton(onClick = { renameDraft = "" }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = stringResource(R.string.action_clear),
+                                )
+                            }
+                        }
+                    },
                 )
             },
             confirmButton = {

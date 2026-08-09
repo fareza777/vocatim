@@ -72,6 +72,7 @@
     <string name="action_copy">Salin</string>
     <string name="action_share">Bagikan</string>
     <string name="action_retry">Coba lagi</string>
+    <string name="action_clear">Kosongkan</string>
     <string name="action_export_txt">Ekspor TXT</string>
     <string name="action_export_srt">Ekspor SRT</string>
     <string name="copied">Disalin ke papan klip</string>

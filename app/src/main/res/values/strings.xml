@@ -65,6 +65,7 @@
     <string name="action_copy">Copy</string>
     <string name="action_share">Share</string>
     <string name="action_retry">Retry</string>
+    <string name="action_clear">Clear</string>
     <string name="action_export_txt">Export TXT</string>
     <string name="action_export_srt">Export SRT</string>
     <string name="copied">Copied to clipboard</string>
