@@ -46,8 +46,6 @@ data class HomeItem(
     }
 }
 
-data class QuotaBanner(val remainingMinutes: Long, val exhausted: Boolean)
-
 data class HomeStats(
     val transcriptCount: Int,
     val totalDurationMs: Long,
@@ -61,7 +59,7 @@ enum class HomeSort { NEWEST, OLDEST, LONGEST, TITLE }
 class HomeViewModel @Inject constructor(
     repository: TranscriptRepository,
     progressHolder: TranscriptionProgressHolder,
-    quotaStore: com.vocatim.app.data.billing.QuotaStore,
+    adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
     private val importCoordinator: ImportCoordinator,
     private val transcriptRepository: TranscriptRepository,
     private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
@@ -76,19 +74,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch { userPrefs.setHomeTourDone() }
     }
 
-    val quotaBanner: StateFlow<QuotaBanner?> =
-        combine(quotaStore.isProCached, quotaStore.usedMs) { pro, used ->
-            if (pro) null
-            else {
-                val remaining =
-                    (com.vocatim.app.data.billing.QuotaStore.FREE_LIMIT_MS - used)
-                        .coerceAtLeast(0)
-                QuotaBanner(
-                    remainingMinutes = remaining / 60_000,
-                    exhausted = remaining <= 0,
-                )
-            }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    /** True while ads should be shown: everything is free, only ads are paid off. */
+    val showAds: StateFlow<Boolean> = adFreeStore.isAdFree
+        .map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val stats: StateFlow<HomeStats> =
         repository.observeAll().map { list ->

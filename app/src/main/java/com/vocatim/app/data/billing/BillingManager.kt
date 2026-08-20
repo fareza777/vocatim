@@ -23,15 +23,19 @@ import kotlinx.coroutines.launch
 private const val TAG = "BillingManager"
 
 /**
- * One-time "Lifetime Unlimited" purchase via Google Play Billing.
+ * One-time "Remove ads" purchase via Google Play Billing.
  *
- * Entitlement is cached in [QuotaStore] so a bought app stays unlocked with
- * no network/Play connection — this app must work fully offline. When Play
- * is reachable, the cache re-syncs with the real purchase state.
+ * Two products matter here. [PRODUCT_REMOVE_ADS] is what the paywall sells
+ * today. [PRODUCT_LIFETIME] is the retired tier from when the app charged for
+ * features; it is never offered again, only honoured — anyone who bought it
+ * stays ad-free forever.
+ *
+ * The entitlement is cached in [AdFreeStore] so a paid app stays ad-free with
+ * no network or Play connection, which this app has to support.
  */
 class BillingManager(
     context: Context,
-    private val quotaStore: QuotaStore,
+    private val adFreeStore: AdFreeStore,
     private val scope: CoroutineScope,
 ) : PurchasesUpdatedListener {
 
@@ -58,7 +62,7 @@ class BillingManager(
                     queryProduct()
                     refreshEntitlement()
                 } else {
-                    Log.w(TAG, "Billing setup failed: ${result.debugMessage}")
+                    Log.w(TAG, "Billing setup failed: " + result.debugMessage)
                 }
             }
 
@@ -107,18 +111,21 @@ class BillingManager(
             }
             BillingClient.BillingResponseCode.USER_CANCELED -> Unit
             else -> {
-                Log.w(TAG, "Purchase failed: ${result.responseCode} ${result.debugMessage}")
+                Log.w(TAG, "Purchase failed: " + result.responseCode + " " + result.debugMessage)
                 _purchaseMessage.value = "PURCHASE_FAILED"
             }
         }
     }
 
     private fun handlePurchase(purchase: Purchase) {
-        if (!purchase.products.contains(PRODUCT_ID)) return
         if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) return
+        val removeAds = purchase.products.contains(PRODUCT_REMOVE_ADS)
+        val legacy = purchase.products.contains(PRODUCT_LIFETIME)
+        if (!removeAds && !legacy) return
 
         scope.launch {
-            quotaStore.setPro(true)
+            if (removeAds) adFreeStore.setAdFree(true)
+            if (legacy) adFreeStore.setLegacyLifetime(true)
             _purchaseMessage.value = "PURCHASE_SUCCESS"
         }
         if (!purchase.isAcknowledged) {
@@ -128,18 +135,19 @@ class BillingManager(
                     .build()
             ) { ackResult ->
                 if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
-                    Log.w(TAG, "Acknowledge failed: ${ackResult.debugMessage}")
+                    Log.w(TAG, "Acknowledge failed: " + ackResult.debugMessage)
                 }
             }
         }
     }
 
+    /** Only the remove-ads product is offered; the retired tier is not listed. */
     private fun queryProduct() {
         val params = QueryProductDetailsParams.newBuilder()
             .setProductList(
                 listOf(
                     QueryProductDetailsParams.Product.newBuilder()
-                        .setProductId(PRODUCT_ID)
+                        .setProductId(PRODUCT_REMOVE_ADS)
                         .setProductType(BillingClient.ProductType.INAPP)
                         .build()
                 )
@@ -158,20 +166,23 @@ class BillingManager(
             .build()
         client.queryPurchasesAsync(params) { result, purchases ->
             if (result.responseCode != BillingClient.BillingResponseCode.OK) return@queryPurchasesAsync
-            val owned = purchases.any { p ->
-                p.products.contains(PRODUCT_ID) &&
+            fun owns(productId: String) = purchases.any { p ->
+                p.products.contains(productId) &&
                     p.purchaseState == Purchase.PurchaseState.PURCHASED
             }
+            val hasRemoveAds = owns(PRODUCT_REMOVE_ADS)
+            val hasLegacy = owns(PRODUCT_LIFETIME)
             purchases.forEach(::handlePurchase)
             scope.launch {
-                if (owned) {
-                    quotaStore.setPro(true)
-                } else if (notifyWhenNone) {
+                if (hasRemoveAds) adFreeStore.setAdFree(true)
+                if (hasLegacy) adFreeStore.setLegacyLifetime(true)
+                if (!hasRemoveAds && !hasLegacy && notifyWhenNone) {
                     // Only an explicit Restore may clear the cache. A background
                     // sync can report "not owned" just because Play is signed
-                    // into another account, and that must never lock out
-                    // someone who actually paid.
-                    quotaStore.setPro(false)
+                    // into another account, and that must never put ads back in
+                    // front of someone who actually paid.
+                    adFreeStore.setAdFree(false)
+                    adFreeStore.setLegacyLifetime(false)
                     _purchaseMessage.value = "RESTORE_NONE"
                 }
             }
@@ -179,6 +190,10 @@ class BillingManager(
     }
 
     companion object {
-        const val PRODUCT_ID = "lifetime_unlimited"
+        /** Current product: removes ads, nothing else is gated. */
+        const val PRODUCT_REMOVE_ADS = "remove_ads"
+
+        /** Retired paid tier — honoured for existing buyers, never sold again. */
+        const val PRODUCT_LIFETIME = "lifetime_unlimited"
     }
 }

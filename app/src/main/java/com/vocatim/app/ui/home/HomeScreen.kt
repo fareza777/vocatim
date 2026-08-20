@@ -95,7 +95,7 @@ fun HomeScreen(
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
-    val quotaBanner by viewModel.quotaBanner.collectAsStateWithLifecycle()
+    val showAds by viewModel.showAds.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
     val folders by viewModel.folders.collectAsStateWithLifecycle()
@@ -143,6 +143,9 @@ fun HomeScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHost) },
+        // Bottom bar rather than inline: an ad between the header and the
+        // list would sit in the middle of the one thing people came for.
+        bottomBar = { com.vocatim.app.ads.BannerAd(visible = showAds) },
         floatingActionButton = {
             Box(
                 modifier = Modifier
@@ -243,50 +246,6 @@ fun HomeScreen(
                                 },
                             )
                         }
-                    }
-                }
-            }
-
-            quotaBanner?.let { banner ->
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp)
-                        .clip(MaterialTheme.shapes.medium)
-                        .clickable(onClick = onUpgradeClick),
-                    shape = MaterialTheme.shapes.medium,
-                    color = if (banner.exhausted) {
-                        MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
-                    } else {
-                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
-                    },
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                if (banner.exhausted) {
-                                    stringResource(R.string.quota_banner_exhausted)
-                                } else {
-                                    stringResource(R.string.quota_banner, banner.remainingMinutes)
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            if (!banner.exhausted) {
-                                Text(
-                                    stringResource(R.string.quota_silence_free),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                        Text(
-                            stringResource(R.string.quota_banner_cta),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
                     }
                 }
             }

@@ -113,11 +113,11 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            val isPro by viewModel.isPro.collectAsStateWithLifecycle()
+            val isAdFree by viewModel.isAdFree.collectAsStateWithLifecycle()
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = !isPro, onClick = onUpgradeClick),
+                    .clickable(enabled = !isAdFree, onClick = onUpgradeClick),
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -130,7 +130,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.tertiary,
                         )
                         Text(
-                            if (isPro) stringResource(R.string.settings_unlimited_active)
+                            if (isAdFree) stringResource(R.string.settings_unlimited_active)
                             else stringResource(R.string.settings_unlimited_upsell),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -646,7 +646,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            BackupSection(viewModel, onUpgrade = onUpgradeClick)
+            BackupSection(viewModel)
             }
 
             com.vocatim.app.ui.common.ExpandableSection(
@@ -849,8 +849,7 @@ private fun CloudAiSection(viewModel: SettingsViewModel) {
 }
 
 @Composable
-private fun BackupSection(viewModel: SettingsViewModel, onUpgrade: () -> Unit) {
-    val isPro by viewModel.isPro.collectAsStateWithLifecycle()
+private fun BackupSection(viewModel: SettingsViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val backupEvent by viewModel.backupEvent.collectAsStateWithLifecycle()
     var pendingExportUri by remember { mutableStateOf<android.net.Uri?>(null) }
@@ -925,7 +924,6 @@ private fun BackupSection(viewModel: SettingsViewModel, onUpgrade: () -> Unit) {
             checked = autoBackupOn,
             onCheckedChange = { on ->
                 when {
-                    on && !isPro -> onUpgrade()
                     on -> treeLauncher.launch(null)
                     else -> viewModel.disableAutoBackup()
                 }

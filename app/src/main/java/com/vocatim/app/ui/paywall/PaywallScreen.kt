@@ -20,12 +20,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AllInclusive
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vocatim.app.R
-import com.vocatim.app.data.billing.QuotaStore
 import com.vocatim.app.ui.theme.BrandGradient
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,8 +58,7 @@ fun PaywallScreen(
     onBack: () -> Unit,
     viewModel: PaywallViewModel = hiltViewModel(),
 ) {
-    val isPro by viewModel.isPro.collectAsStateWithLifecycle()
-    val usedMs by viewModel.usedMs.collectAsStateWithLifecycle()
+    val isAdFree by viewModel.isAdFree.collectAsStateWithLifecycle()
     val product by viewModel.productDetails.collectAsStateWithLifecycle()
     val message by viewModel.purchaseMessage.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -136,37 +130,19 @@ fun PaywallScreen(
                 modifier = Modifier.padding(horizontal = 8.dp),
             )
 
-            if (isPro) {
+            if (isAdFree) {
                 Text(
                     stringResource(R.string.paywall_already_pro),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.secondary,
                 )
-            } else {
-                val remainingMin =
-                    ((QuotaStore.FREE_LIMIT_MS - usedMs).coerceAtLeast(0) / 60_000)
-                Surface(
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        stringResource(R.string.paywall_quota_status, remainingMin),
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        textAlign = TextAlign.Center,
-                    )
-                }
             }
 
             FeaturesCard()
 
-            ComparisonTable()
-
             Spacer(Modifier.height(8.dp))
 
-            if (!isPro) {
+            if (!isAdFree) {
                 val price = product?.oneTimePurchaseOfferDetails?.formattedPrice
                 Button(
                     onClick = { (context as? Activity)?.let(viewModel::buy) },
@@ -198,121 +174,10 @@ fun PaywallScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    stringResource(R.string.paywall_byok_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
             Spacer(Modifier.height(24.dp))
         }
     }
-}
-
-@Composable
-private fun ComparisonTable() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text("", modifier = Modifier.weight(1.2f))
-                Text(
-                    stringResource(R.string.paywall_col_free),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelMedium,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    stringResource(R.string.paywall_col_pro),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-            // The one row people pay for leads with explicit values;
-            // identical checkmarks in both columns sell nothing.
-            CompareValueRow(
-                label = stringResource(R.string.paywall_row_transcription),
-                freeValue = stringResource(R.string.paywall_value_free_minutes),
-                proValue = stringResource(R.string.paywall_value_unlimited),
-            )
-            CompareRow(stringResource(R.string.paywall_row_record), true, true)
-            CompareValueRow(
-                label = stringResource(R.string.paywall_row_export),
-                freeValue = stringResource(R.string.paywall_value_export_free),
-                proValue = stringResource(R.string.paywall_value_export_pro),
-            )
-            CompareRow(stringResource(R.string.paywall_row_ai), false, true)
-            CompareRow(stringResource(R.string.paywall_row_offline), true, true)
-        }
-    }
-}
-
-@Composable
-private fun CompareValueRow(label: String, freeValue: String, proValue: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodyMedium)
-        Text(
-            freeValue,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
-            ) {
-                Text(
-                    proValue,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CompareRow(label: String, free: Boolean, pro: Boolean) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodyMedium)
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            CompareIcon(free)
-        }
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            CompareIcon(pro)
-        }
-    }
-}
-
-@Composable
-private fun CompareIcon(enabled: Boolean) {
-    Icon(
-        if (enabled) Icons.Default.Check else Icons.Default.Close,
-        contentDescription = null,
-        tint = if (enabled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outlineVariant,
-        modifier = Modifier.size(20.dp),
-    )
 }
 
 private data class Feature(
@@ -324,10 +189,8 @@ private data class Feature(
 @Composable
 private fun FeaturesCard() {
     val features = listOf(
-        Feature(Icons.Default.AllInclusive, R.string.paywall_feat_unlimited_title, R.string.paywall_feat_unlimited_desc),
-        Feature(Icons.Default.AutoAwesome, R.string.paywall_feat_ai_title, R.string.paywall_feat_ai_desc),
-        Feature(Icons.Default.Description, R.string.paywall_feat_export_title, R.string.paywall_feat_export_desc),
-        Feature(Icons.Default.Lock, R.string.paywall_feat_secure_title, R.string.paywall_feat_secure_desc),
+        Feature(Icons.Default.Block, R.string.paywall_feat_noads_title, R.string.paywall_feat_noads_desc),
+        Feature(Icons.Default.AllInclusive, R.string.paywall_feat_allfree_title, R.string.paywall_feat_allfree_desc),
         Feature(Icons.Default.CloudOff, R.string.paywall_feat_private_title, R.string.paywall_feat_private_desc),
         Feature(Icons.Default.Payments, R.string.paywall_feat_once_title, R.string.paywall_feat_once_desc),
     )
@@ -340,11 +203,6 @@ private fun FeaturesCard() {
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Text(
-                stringResource(R.string.paywall_features_header),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
             features.forEach { FeatureRow(it) }
         }
     }

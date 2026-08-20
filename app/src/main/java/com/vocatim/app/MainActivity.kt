@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.enableEdgeToEdge
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
@@ -32,6 +33,8 @@ class MainActivity : FragmentActivity() {
 
     @Inject lateinit var importCoordinator: ImportCoordinator
     @Inject lateinit var userPrefs: UserPrefs
+    @Inject lateinit var adsController: com.vocatim.app.ads.AdsController
+    @Inject lateinit var adEvents: com.vocatim.app.ads.AdEvents
 
     /** null = prefs not loaded yet (render nothing to avoid content flash). */
     private var locked by mutableStateOf<Boolean?>(null)
@@ -79,7 +82,23 @@ class MainActivity : FragmentActivity() {
             }
         }
 
+        // Consent first, SDK second — an Activity is required for the form,
+        // and nothing may load before consent resolves.
+        adsController.start(this)
+
         setContent {
+            // A finished transcription flags an interstitial; the Activity is
+            // the only place that can show one, and only once the user is
+            // actually looking at the app.
+            val interstitialPending by adEvents.interstitialPending
+                .collectAsStateWithLifecycle()
+            androidx.compose.runtime.LaunchedEffect(interstitialPending) {
+                if (interstitialPending) {
+                    adEvents.consume()
+                    adsController.showInterstitial(this@MainActivity)
+                }
+            }
+
             val darkTheme = when (themeMode) {
                 UserPrefs.THEME_LIGHT -> false
                 UserPrefs.THEME_DARK -> true

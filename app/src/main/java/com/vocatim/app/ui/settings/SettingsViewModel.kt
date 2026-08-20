@@ -56,7 +56,7 @@ class SettingsViewModel @Inject constructor(
     private val transcriber: com.vocatim.app.data.transcribe.WhisperTranscriber,
     private val parakeetTranscriber: com.vocatim.app.data.transcribe.ParakeetTranscriber,
     private val transcriptRepository: com.vocatim.app.data.repository.TranscriptRepository,
-    quotaStore: com.vocatim.app.data.billing.QuotaStore,
+    adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
 ) : ViewModel() {
 
     /** Realtime-factor benchmark per model: null=idle, running, or a value. */
@@ -224,7 +224,7 @@ class SettingsViewModel @Inject constructor(
         _backupEvent.value = null
     }
 
-    val isPro: StateFlow<Boolean> = quotaStore.isProCached
+    val isAdFree: StateFlow<Boolean> = adFreeStore.isAdFree
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val settings: StateFlow<UserSettings?> =

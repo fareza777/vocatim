@@ -142,7 +142,6 @@ fun DetailScreen(
     val isMinutesNote =
         transcript?.modelId == com.vocatim.app.service.SummaryService.MODEL_ID_MINUTES
     // Cloud AI (summaries + minutes) is a paid Pro feature.
-    val isProTop by viewModel.isPro.collectAsStateWithLifecycle()
     val summaryModelStateTop by viewModel.summaryModelState.collectAsStateWithLifecycle()
     // Sections reopen exactly how the user last left them.
     val expandedSections by viewModel.expandedSections.collectAsStateWithLifecycle()
@@ -270,19 +269,8 @@ fun DetailScreen(
                                     text = { Text(stringResource(R.string.action_share_pdf)) },
                                     onClick = {
                                         overflowOpen = false
-                                        // Same gate as PDF export: sharing IS
-                                        // an export, just via a different door.
-                                        if (!isProTop) {
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.export_pdf_pro),
-                                                Toast.LENGTH_LONG,
-                                            ).show()
-                                            onUpgrade()
-                                        } else {
-                                            viewModel.sharePdf { uri ->
-                                                shareStream(context, uri, "application/pdf")
-                                            }
+                                        viewModel.sharePdf { uri ->
+                                            shareStream(context, uri, "application/pdf")
                                         }
                                     },
                                 )
@@ -309,14 +297,6 @@ fun DetailScreen(
                                     onClick = {
                                         overflowOpen = false
                                         when {
-                                            !isProTop -> {
-                                                Toast.makeText(
-                                                    context,
-                                                    context.getString(R.string.cloud_need_pro),
-                                                    Toast.LENGTH_LONG,
-                                                ).show()
-                                                onUpgrade()
-                                            }
                                             // Cloud when configured; otherwise
                                             // the local model answers on-device.
                                             cloudConfiguredTop || summaryModelStateTop
@@ -335,14 +315,6 @@ fun DetailScreen(
                                     onClick = {
                                         overflowOpen = false
                                         when {
-                                            !isProTop -> {
-                                                Toast.makeText(
-                                                    context,
-                                                    context.getString(R.string.cloud_need_pro),
-                                                    Toast.LENGTH_LONG,
-                                                ).show()
-                                                onUpgrade()
-                                            }
                                             // Cloud when configured; otherwise
                                             // the local model translates on-device.
                                             cloudConfiguredTop || summaryModelStateTop
@@ -361,14 +333,6 @@ fun DetailScreen(
                                     onClick = {
                                         overflowOpen = false
                                         when {
-                                            !isProTop -> {
-                                                Toast.makeText(
-                                                    context,
-                                                    context.getString(R.string.cloud_need_pro),
-                                                    Toast.LENGTH_LONG,
-                                                ).show()
-                                                onUpgrade()
-                                            }
                                             minutesEngineReady -> {
                                                 viewModel.createMinutes()
                                                 Toast.makeText(
@@ -456,7 +420,7 @@ fun DetailScreen(
                                         Text(stringResource(R.string.action_share))
                                     }
                                     OutlinedButton(onClick = {
-                                        if (isProTop && minutesEngineReady) {
+                                        if (minutesEngineReady) {
                                             viewModel.createMinutes()
                                             Toast.makeText(
                                                 context,
@@ -554,14 +518,6 @@ fun DetailScreen(
                                     enabled = diarizeProgress == null,
                                     onClick = {
                                         when {
-                                            !isProTop -> {
-                                                Toast.makeText(
-                                                    context,
-                                                    context.getString(R.string.ai_need_pro),
-                                                    Toast.LENGTH_LONG,
-                                                ).show()
-                                                onUpgrade()
-                                            }
                                             !viewModel.diarizeModelReady -> Toast.makeText(
                                                 context,
                                                 context.getString(R.string.diarize_need_model),
@@ -762,8 +718,6 @@ fun DetailScreen(
                         icon = Icons.Default.Share,
                         expanded = "export" in expandedSections,
                         onToggle = { viewModel.toggleSection("export") },
-                        // Quiet upsell at the moment of highest intent.
-                        badge = if (!isProTop) stringResource(R.string.export_badge_pro) else null,
                     ) {
                         // Every action (copy, share, TXT/MD/PDF) can carry the
                         // transcript, the minutes, or the AI summary — ask which
@@ -826,40 +780,16 @@ fun DetailScreen(
                                 runCatching { exportVttLauncher.launch(exportFileName(t.title, "vtt")) }
                             },
                             onExportMd = { startAction("md") },
-                            // PDF is a Pro perk; free plan keeps TXT/SRT/VTT/MD.
-                            onExportPdf = {
-                                if (isProTop) startAction("pdf")
-                                else {
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.export_pdf_pro),
-                                        Toast.LENGTH_LONG,
-                                    ).show()
-                                    onUpgrade()
-                                }
-                            },
+                            onExportPdf = { startAction("pdf") },
                             showTimestamped = hasAudio,
                         )
                     }
 
                     exportPickerFormat?.let { format ->
-                        // Copy/Share only read text, so they never need the
-                        // file-export Pro gate; TXT/MD/PDF of AI outputs do.
-                        val copyOrShare = format == "copy" || format == "share"
                         ExportSourceDialog(
                             format = format,
                             hasMinutes = t.minutes != null,
                             hasSummary = t.summary != null,
-                            isPro = isProTop || copyOrShare,
-                            onNeedPro = {
-                                exportPickerFormat = null
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.export_ai_pro),
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                                onUpgrade()
-                            },
                             onPick = { source ->
                                 exportPickerFormat = null
                                 exportSource = source
@@ -905,22 +835,6 @@ fun DetailScreen(
                 TranscriptStatus.FAILED -> {
                     StatusCard {
                         when (t.errorMessage) {
-                            "QUOTA_EXCEEDED" -> {
-                                Text(
-                                    stringResource(R.string.detail_quota_exceeded),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                Button(onClick = onUpgrade) {
-                                    Text(stringResource(R.string.quota_banner_cta))
-                                }
-                                if (t.audioPath != null) {
-                                    Text(
-                                        stringResource(R.string.detail_quota_audio_kept),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
                             "MODEL_DOWNLOAD_FAILED" -> {
                                 Text(
                                     stringResource(R.string.detail_model_download_failed),
@@ -2121,8 +2035,6 @@ private fun ExportSourceDialog(
     format: String,
     hasMinutes: Boolean,
     hasSummary: Boolean,
-    isPro: Boolean,
-    onNeedPro: () -> Unit,
     onPick: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -2140,16 +2052,15 @@ private fun ExportSourceDialog(
         title = { Text(stringResource(R.string.export_pick_source_action, actionLabel)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                // Exporting the transcript is free; exporting AI outputs is Pro.
-                data class Opt(val source: String, val label: Int, val pro: Boolean)
+                data class Opt(val source: String, val label: Int)
                 val options = buildList {
-                    add(Opt(EXPORT_SOURCE_TRANSCRIPT, R.string.detail_transcript_section, false))
-                    if (hasMinutes) add(Opt(EXPORT_SOURCE_MINUTES, R.string.detail_minutes_section, true))
-                    if (hasSummary) add(Opt(EXPORT_SOURCE_SUMMARY, R.string.summary_title, true))
+                    add(Opt(EXPORT_SOURCE_TRANSCRIPT, R.string.detail_transcript_section))
+                    if (hasMinutes) add(Opt(EXPORT_SOURCE_MINUTES, R.string.detail_minutes_section))
+                    if (hasSummary) add(Opt(EXPORT_SOURCE_SUMMARY, R.string.summary_title))
                 }
                 options.forEach { opt ->
                     Surface(
-                        onClick = { if (opt.pro && !isPro) onNeedPro() else onPick(opt.source) },
+                        onClick = { onPick(opt.source) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -2163,14 +2074,6 @@ private fun ExportSourceDialog(
                                 style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.weight(1f),
                             )
-                            if (opt.pro && !isPro) {
-                                Icon(
-                                    Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
                         }
                     }
                 }
@@ -2191,7 +2094,6 @@ private fun SummaryBody(
     viewModel: DetailViewModel,
     onUpgrade: () -> Unit,
 ) {
-    val isPro by viewModel.isPro.collectAsStateWithLifecycle()
     val modelState by viewModel.summaryModelState.collectAsStateWithLifecycle()
     val progress by viewModel.summaryProgress.collectAsStateWithLifecycle()
     val modelSizeBytes by viewModel.summaryModelSizeBytes.collectAsStateWithLifecycle()
@@ -2245,16 +2147,6 @@ private fun SummaryBody(
                                 Text(stringResource(R.string.summary_generate_cloud))
                             }
                         }
-                    }
-                }
-                !isPro -> {
-                    Text(
-                        stringResource(R.string.summary_pro_pitch),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Button(onClick = onUpgrade) {
-                        Text(stringResource(R.string.summary_unlock))
                     }
                 }
                 modelState is ModelState.Downloaded -> {

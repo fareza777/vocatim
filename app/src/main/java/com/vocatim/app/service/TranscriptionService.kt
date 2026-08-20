@@ -39,7 +39,7 @@ class TranscriptionService : Service() {
     @Inject lateinit var progressHolder: TranscriptionProgressHolder
     @Inject lateinit var userPrefs: com.vocatim.app.data.prefs.UserPrefs
     @Inject lateinit var repository: com.vocatim.app.data.repository.TranscriptRepository
-    @Inject lateinit var quotaStore: com.vocatim.app.data.billing.QuotaStore
+    @Inject lateinit var adEvents: com.vocatim.app.ads.AdEvents
     @Inject lateinit var cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs
     @Inject lateinit var summaryModelManager: com.vocatim.app.data.summary.SummaryModelManager
 
@@ -121,6 +121,9 @@ class TranscriptionService : Service() {
                 if (succeeded) {
                     maybeCompressAudio(job.transcriptId)
                     maybeAutoSummarize(job.transcriptId)
+                    // The Activity shows it; a service cannot. Flag only, so
+                    // a queue of finished jobs still costs the user one ad.
+                    adEvents.markTranscriptionFinished()
                 }
             }
             wakeLock?.let { if (it.isHeld) it.release() }
@@ -189,11 +192,10 @@ class TranscriptionService : Service() {
         }
     }
 
-    /** Optionally kick off an AI summary once a transcript finishes (Pro). */
+    /** Optionally kick off an AI summary once a transcript finishes. */
     private suspend fun maybeAutoSummarize(transcriptId: Long) {
         val settings = userPrefs.current()
         if (!settings.autoSummarize) return
-        if (!quotaStore.currentIsPro()) return
         val localModel = com.vocatim.app.data.summary.SummaryModel.fromId(settings.summaryModel)
         val mode = when {
             cloudAiPrefs.config.first().isConfigured -> SummaryService.MODE_CLOUD

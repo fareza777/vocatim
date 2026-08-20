@@ -136,47 +136,31 @@
     <string name="settings_text_size">Ukuran teks transkrip</string>
     <string name="tile_record">Rekam dengan Vocatim</string>
 
-    <string name="paywall_title">Vocatim Unlimited</string>
-    <string name="paywall_subtitle">Satu kali beli membuka semua fitur — transkrip tanpa batas, selamanya.</string>
-    <string name="paywall_features_header">Semua yang Anda dapat</string>
-    <string name="paywall_feat_unlimited_title">Transkripsi tanpa batas</string>
-    <string name="paywall_feat_unlimited_desc">Transkrip audio berjam-jam tanpa batas bulanan atau batas waktu.</string>
-    <string name="paywall_feat_ai_title">Ringkasan AI &amp; notulen rapat</string>
-    <string name="paywall_feat_ai_desc">Ubah rekaman panjang jadi ringkasan rapi dan notulen terstruktur — di perangkat, atau dengan kunci cloud Anda sendiri.</string>
-    <string name="paywall_feat_export_title">Ekspor Pro</string>
-    <string name="paywall_feat_export_desc">Dokumen PDF rapi dengan foto terlampir, plus ekspor ringkasan AI dan notulen rapat.</string>
-    <string name="paywall_feat_secure_title">Cadangan mingguan otomatis</string>
-    <string name="paywall_feat_secure_desc">Cadangan terenkripsi AES ke folder pilihan Anda, tanpa perlu diurus — catatan tidak akan hilang.</string>
+    <string name="paywall_title">Hilangkan iklan</string>
+    <string name="paywall_subtitle">Semua fitur gratis. Bayar sekali untuk mematikan iklan — tanpa langganan.</string>
     <string name="paywall_feat_private_title">Privat &amp; offline</string>
     <string name="paywall_feat_private_desc">Transkripsi berjalan sepenuhnya di HP Anda. Audio tidak pernah keluar dari perangkat.</string>
     <string name="paywall_feat_once_title">Bayar sekali, milik selamanya</string>
-    <string name="paywall_feat_once_desc">Satu kali pembelian membuka semuanya. Tanpa langganan, tanpa biaya berulang.</string>
-    <string name="paywall_already_pro">Unlimited aktif. Terima kasih!</string>
-    <string name="paywall_quota_status">Paket gratis: sisa %1$d menit transkripsi</string>
-    <string name="paywall_benefit_unlimited">Transkripsi tanpa batas, selamanya</string>
-    <string name="paywall_benefit_offline">Bekerja sepenuhnya offline</string>
-    <string name="paywall_benefit_private">Audio tidak pernah keluar dari HP</string>
-    <string name="paywall_benefit_once">Bayar sekali — tanpa langganan</string>
-    <string name="paywall_buy_with_price">Buka seharga %1$s</string>
-    <string name="paywall_buy">Buka Lifetime Unlimited</string>
+    <string name="paywall_feat_once_desc">Satu kali pembelian menghilangkan iklan selamanya. Tanpa langganan, tanpa biaya berulang.</string>
+    <string name="paywall_already_pro">Iklan sudah mati. Terima kasih!</string>
+    <string name="paywall_feat_noads_title">Bebas iklan, di mana pun</string>
+    <string name="paywall_feat_noads_desc">Menghilangkan banner dan iklan yang muncul setelah transkripsi selesai. Selain itu tidak ada yang berubah.</string>
+    <string name="paywall_feat_allfree_title">Sisanya memang sudah gratis</string>
+    <string name="paywall_feat_allfree_desc">Transkripsi tanpa batas, ringkasan AI, notulen rapat, ekspor PDF, dan cadangan semuanya tanpa biaya.</string>
+    <string name="paywall_buy_with_price">Hilangkan iklan seharga %1$s</string>
+    <string name="paywall_buy">Hilangkan iklan</string>
     <string name="paywall_restore">Pulihkan pembelian</string>
-    <string name="paywall_restore_hint">Sudah pernah beli Unlimited? Pastikan perangkat ini memakai akun Google yang sama, lalu ketuk Pulihkan.</string>
-    <string name="paywall_price_angle">Layanan transkripsi cloud menagih sebesar ini setiap satu-dua bulan — di sini cukup sekali, selamanya.</string>
-    <string name="paywall_footnote">Pembelian sekali lewat Google Play. Paket gratis mencakup 30 menit transkripsi (hanya waktu bicara yang dihitung) — merekam, mengedit, dan ekspor teks (TXT, SRT, VTT, Markdown) selalu gratis.</string>
-    <string name="paywall_byok_note">Unlimited sudah termasuk AI yang berjalan di HP Anda. Cloud AI opsional — pakai kunci API sendiri, ditagih oleh penyedia Anda.</string>
+    <string name="paywall_restore_hint">Sudah pernah beli? Pastikan perangkat ini memakai akun Google yang sama, lalu ketuk Pulihkan.</string>
+    <string name="paywall_price_angle">Sekali bayar, selamanya. Tanpa langganan, tanpa perpanjangan.</string>
+    <string name="paywall_footnote">Pembelian sekali lewat Google Play. Semua fitur — transkripsi, ringkasan AI, notulen rapat, ekspor PDF, cadangan — tetap gratis, dibeli atau tidak.</string>
     <string name="paywall_success">Unlimited terbuka. Selamat menikmati!</string>
     <string name="paywall_restore_none">Tidak ditemukan pembelian sebelumnya untuk akun Google ini.</string>
     <string name="paywall_store_unavailable">Google Play sedang tidak tersedia. Coba lagi sebentar.</string>
     <string name="paywall_failed">Pembelian tidak selesai. Anda tidak ditagih.</string>
-    <string name="quota_banner">Paket gratis: sisa %1$d mnt transkripsi</string>
-    <string name="quota_silence_free">Hanya waktu bicara yang dihitung — keheningan gratis</string>
-    <string name="quota_banner_exhausted">Waktu transkripsi gratis sudah habis</string>
     <string name="quota_banner_cta">Tingkatkan</string>
-    <string name="detail_quota_exceeded">30 menit transkripsi gratis Anda sudah habis. Buka Unlimited untuk mentranskrip rekaman ini.</string>
-    <string name="detail_quota_audio_kept">Audio Anda tersimpan — tidak ada yang hilang.</string>
-    <string name="settings_unlimited_title">Vocatim Unlimited</string>
-    <string name="settings_unlimited_active">Aktif — transkripsi tanpa batas</string>
-    <string name="settings_unlimited_upsell">Transkripsi tanpa batas, bayar sekali</string>
+    <string name="settings_unlimited_title">Hilangkan iklan</string>
+    <string name="settings_unlimited_active">Iklan sudah dihilangkan — terima kasih!</string>
+    <string name="settings_unlimited_upsell">Hilangkan iklan, bayar sekali</string>
 
     <string name="onboarding_privacy_title">Privat sejak awal</string>
     <string name="onboarding_privacy_body">Vocatim mengubah suara jadi teks sepenuhnya di HP Anda. Tanpa cloud, tanpa akun, tidak ada data yang keluar dari perangkat.</string>
@@ -192,8 +176,6 @@
     <string name="onboarding_skip">Lewati</string>
     <string name="onboarding_next">Lanjut</string>
     <string name="onboarding_start">Mulai</string>
-    <string name="paywall_value_free_minutes">30 mnt</string>
-    <string name="paywall_value_unlimited">Tanpa batas</string>
     <string name="action_more">Lainnya</string>
     <string name="action_key_points">Poin penting</string>
     <string name="key_points_title">Poin penting</string>
@@ -238,8 +220,6 @@
     <string name="detail_notes_badge">Tersimpan</string>
     <string name="detail_notes_hint">Catatan Anda sendiri — ketik di sini, atau tempel teks dari mana saja. Tersimpan otomatis.</string>
     <string name="detail_notes_copy">Salin catatan</string>
-    <string name="export_pdf_pro">Ekspor PDF termasuk dalam Unlimited.</string>
-    <string name="export_ai_pro">Ekspor ringkasan AI dan notulen termasuk dalam Unlimited.</string>
     <string name="model_name_tiny">Swift</string>
     <string name="model_name_base">Balanced</string>
     <string name="model_name_small_q5">Precise</string>
@@ -302,9 +282,6 @@
     <string name="action_translate">Terjemahkan</string>
     <string name="translate_pick">Terjemahkan catatan ini ke:</string>
     <string name="translate_busy">Menerjemahkan…</string>
-    <string name="cloud_need_pro">Cloud AI adalah fitur Pro. Buka Unlimited untuk memakainya.</string>
-    <string name="ai_need_pro">Fitur AI termasuk dalam Unlimited. Buka untuk memakainya.</string>
-    <string name="export_badge_pro">PDF · Unlimited</string>
     <string name="settings_model_ladder_hint">Tips: Precise (190 MB) dan Ultra (574 MB) terasa jauh lebih akurat — layak untuk bahasa Indonesia dan rekaman berisik.</string>
     <string name="minutes_title_prefix">Notulen:</string>
     <string name="minutes_ready_title">Notulen rapat siap</string>
@@ -348,8 +325,6 @@
     <string name="summary_regenerate">Buat ulang</string>
     <string name="summary_regenerate_local">Buat ulang (Di perangkat)</string>
     <string name="summary_ready_pitch">Buat ringkasan padat berisi poin penting dan tindak lanjut — sepenuhnya offline.</string>
-    <string name="summary_pro_pitch">Ringkasan AI termasuk dalam Vocatim Unlimited — offline, privat, bayar sekali.</string>
-    <string name="summary_unlock">Buka Ringkasan AI</string>
     <string name="summary_download_pitch">Ringkasan AI perlu unduhan model sekali saja (±%1$d MB). Setelah itu jalan sepenuhnya offline.</string>
     <string name="summary_download">Unduh model AI</string>
     <string name="summary_downloading">Mengunduh model AI… %1$d / %2$d MB</string>
@@ -486,15 +461,6 @@
     <string name="action_export_pdf">Ekspor PDF</string>
 
     <!-- Paywall comparison -->
-    <string name="paywall_col_free">Gratis</string>
-    <string name="paywall_col_pro">Unlimited</string>
-    <string name="paywall_row_transcription">Transkripsi</string>
-    <string name="paywall_row_record">Rekam &amp; edit</string>
-    <string name="paywall_row_export">Format ekspor</string>
-    <string name="paywall_row_ai">Ringkasan AI &amp; notulen</string>
-    <string name="paywall_value_export_free">TXT · SRT · VTT · MD</string>
-    <string name="paywall_value_export_pro">+ PDF &amp; AI</string>
-    <string name="paywall_row_offline">Sepenuhnya offline</string>
 
     <!-- Widget & shortcuts -->
     <string name="widget_title">Rekam Vocatim</string>

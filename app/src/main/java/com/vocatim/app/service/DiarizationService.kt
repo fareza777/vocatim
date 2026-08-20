@@ -43,7 +43,6 @@ class DiarizationService : Service() {
     @Inject lateinit var diarizer: SpeakerDiarizer
     @Inject lateinit var progressHolder: DiarizationProgressHolder
     @Inject lateinit var importer: AudioImporter
-    @Inject lateinit var quotaStore: com.vocatim.app.data.billing.QuotaStore
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
@@ -91,11 +90,6 @@ class DiarizationService : Service() {
     }
 
     private suspend fun run(transcriptId: Long) {
-        // Server-side of the paywall, like every other AI feature.
-        if (!quotaStore.currentIsPro()) {
-            notifyFailure(getString(R.string.ai_need_pro))
-            return
-        }
         val entity = repository.getById(transcriptId) ?: return
         val audioPath = entity.audioPath
             ?: run { notifyFailure(getString(R.string.diarize_no_audio)); return }

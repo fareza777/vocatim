@@ -40,7 +40,7 @@ class TranscriptionRunner(
     private val userPrefs: UserPrefs,
     private val modelManager: com.vocatim.app.data.model.ModelManager,
     private val threadPolicy: ThreadPolicy,
-    private val quotaStore: com.vocatim.app.data.billing.QuotaStore,
+    private val adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
     private val importDir: File,
     private val modelsDir: File,
     private val httpClient: okhttp3.OkHttpClient,
@@ -109,15 +109,6 @@ class TranscriptionRunner(
         )
         if (!audioFile.exists()) {
             throw FileNotFoundException("Audio file for this transcript is gone")
-        }
-
-        // Free tier: a job may only START while under the 30-minute total.
-        // Once started it always finishes — no mid-file cutoffs.
-        val isPro = quotaStore.currentIsPro()
-        if (!isPro && entity.completedChunks == 0 &&
-            quotaStore.currentUsedMs() >= com.vocatim.app.data.billing.QuotaStore.FREE_LIMIT_MS
-        ) {
-            throw QuotaExceededException()
         }
 
         // Onboarding can be skipped before the model finishes downloading, and
@@ -270,13 +261,6 @@ class TranscriptionRunner(
                     )
 
                     val chunkMs = chunk.sampleCount * 1000L / WavDecoder.WHISPER_SAMPLE_RATE
-                    // Free quota charges SPEECH time, not wall-clock audio:
-                    // silence (skipped chunks, VAD-trimmed stretches) is free.
-                    if (!isPro) {
-                        val speechMs = accepted.sumOf { it.endMs - it.startMs }
-                            .coerceIn(0L, chunkMs)
-                        quotaStore.addUsage(speechMs)
-                    }
                     processedAudioMs += chunkMs
                     val elapsed = SystemClock.elapsedRealtime() - startedAt
                     // Live estimate from this run's own pace.

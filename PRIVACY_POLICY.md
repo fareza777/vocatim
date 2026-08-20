@@ -6,7 +6,15 @@ Vocatim is built so that your data stays yours. By default, everything runs on y
 
 ## What we collect
 
-**Nothing.** Vocatim does not collect, transmit, store remotely, or share any personal data, audio, transcripts, usage analytics, or device identifiers. We operate no servers and have no user accounts.
+**We collect nothing ourselves.** Vocatim has no servers and no user accounts. We never receive your audio, transcripts, or notes.
+
+**Ads are the exception, and they are not ours.** The free version shows ads served by Google AdMob. To do that, the Google Mobile Ads SDK running inside the app collects device and usage information — including your device's advertising ID, approximate location derived from your IP address, and ad interaction data — and sends it to Google. This happens inside the app, on Google's terms, not ours; we do not receive that data and cannot see it.
+
+- In regions where consent is required, you are asked before any personalised ad is served, and declining is respected.
+- Buying **Remove ads** stops this entirely: no ads load, and the ads SDK makes no requests.
+- Google explains what it collects here: https://policies.google.com/technologies/partner-sites
+
+Your recordings, transcripts, summaries, and notes are never part of this. They stay on your device.
 
 ## How your data is handled
 
@@ -23,10 +31,13 @@ Vocatim is built so that your data stays yours. By default, everything runs on y
 Internet is used only for:
 
 1. **Downloading speech models** from Hugging Face on first use (model files only — not your recordings).
-2. **Google Play Billing** when you choose to purchase Lifetime Unlimited.
-3. **Optional Cloud AI (BYOK)** — only if you turn this on in Settings (see below).
+2. **Ads**, in the free version — see above. Removed permanently by the one-time purchase.
+3. **Google Play Billing** when you choose to buy Remove ads.
+4. **Optional Cloud AI (BYOK)** — only if you turn this on in Settings (see below).
 
 Purchases are processed by Google Play. We receive no personal information from the transaction.
+
+Every feature of Vocatim — transcription, AI summaries, meeting minutes, exports, backups — is free. The only thing the purchase changes is that ads stop.
 
 ### Optional Cloud AI (Bring Your Own Key)
 
@@ -52,7 +63,7 @@ Deleting a transcript in the app permanently removes it and its audio file. Clea
 
 ## Children
 
-Vocatim does not collect data from anyone, including children.
+Vocatim itself does not collect data from anyone, including children. Note that the free version serves ads through Google AdMob, which does collect the advertising data described above; the paid version serves no ads at all.
 
 ## Contact
 

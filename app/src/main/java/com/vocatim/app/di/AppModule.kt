@@ -191,7 +191,7 @@ object AppModule {
         progressHolder: TranscriptionProgressHolder,
         userPrefs: UserPrefs,
         modelManager: com.vocatim.app.data.model.ModelManager,
-        quotaStore: com.vocatim.app.data.billing.QuotaStore,
+        adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
         client: OkHttpClient,
         parakeetTranscriber: com.vocatim.app.data.transcribe.ParakeetTranscriber,
     ): TranscriptionRunner = TranscriptionRunner(
@@ -204,7 +204,7 @@ object AppModule {
         userPrefs = userPrefs,
         modelManager = modelManager,
         threadPolicy = ThreadPolicy(context),
-        quotaStore = quotaStore,
+        adFreeStore = adFreeStore,
         importDir = File(context.filesDir, "imports"),
         modelsDir = File(context.filesDir, "models"),
         httpClient = client,
@@ -212,18 +212,35 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideQuotaStore(@ApplicationContext context: Context): com.vocatim.app.data.billing.QuotaStore =
-        com.vocatim.app.data.billing.QuotaStore(context)
+    fun provideQuotaStore(@ApplicationContext context: Context): com.vocatim.app.data.billing.AdFreeStore =
+        com.vocatim.app.data.billing.AdFreeStore(context)
+
+    @Provides
+    @Singleton
+    fun provideAdEvents(): com.vocatim.app.ads.AdEvents = com.vocatim.app.ads.AdEvents()
+
+    @Provides
+    @Singleton
+    fun provideAdsController(
+        @ApplicationContext context: Context,
+        adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
+    ): com.vocatim.app.ads.AdsController = com.vocatim.app.ads.AdsController(
+        context = context,
+        adFreeStore = adFreeStore,
+        scope = kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main
+        ),
+    )
 
     @Provides
     @Singleton
     fun provideBillingManager(
         @ApplicationContext context: Context,
-        quotaStore: com.vocatim.app.data.billing.QuotaStore,
+        adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
     ): com.vocatim.app.data.billing.BillingManager =
         com.vocatim.app.data.billing.BillingManager(
             context = context,
-            quotaStore = quotaStore,
+            adFreeStore = adFreeStore,
             scope = kotlinx.coroutines.CoroutineScope(
                 kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default
             ),

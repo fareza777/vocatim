@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Ads: Google Mobile Ads reads the advertising id. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
     <application
         android:name=".VocatimApp"
@@ -22,6 +24,13 @@
         android:localeConfig="@xml/locales_config"
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Vocatim">
+
+        <!-- Filled from local.properties at build time; falls back to
+             Google's test id so a clean clone still launches. A wrong or
+             missing value crashes the app on startup. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}" />
 
         <activity
             android:name=".MainActivity"

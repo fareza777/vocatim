@@ -129,47 +129,31 @@
     <string name="settings_text_size">Transcript text size</string>
     <string name="tile_record">Record with Vocatim</string>
 
-    <string name="paywall_title">Vocatim Unlimited</string>
-    <string name="paywall_subtitle">One purchase unlocks every feature — transcribe without limits, forever.</string>
-    <string name="paywall_features_header">Everything you unlock</string>
-    <string name="paywall_feat_unlimited_title">Unlimited transcription</string>
-    <string name="paywall_feat_unlimited_desc">Transcribe hours of audio with no monthly caps or time limits.</string>
-    <string name="paywall_feat_ai_title">AI summaries &amp; meeting minutes</string>
-    <string name="paywall_feat_ai_desc">Turn long recordings into clean summaries and structured minutes — on-device or with your own cloud key.</string>
-    <string name="paywall_feat_export_title">Pro exports</string>
-    <string name="paywall_feat_export_desc">Polished PDF documents with attached photos, plus export of AI summaries and meeting minutes.</string>
-    <string name="paywall_feat_secure_title">Automatic weekly backups</string>
-    <string name="paywall_feat_secure_desc">Hands-free AES-encrypted backups to a folder you choose — never lose a note.</string>
+    <string name="paywall_title">Remove ads</string>
+    <string name="paywall_subtitle">Every feature is free. Pay once to switch the ads off — no subscription.</string>
     <string name="paywall_feat_private_title">Private &amp; offline</string>
     <string name="paywall_feat_private_desc">Transcription runs entirely on your phone. Your audio never leaves the device.</string>
     <string name="paywall_feat_once_title">Pay once, yours forever</string>
-    <string name="paywall_feat_once_desc">A single purchase unlocks everything. No subscriptions, no recurring fees.</string>
-    <string name="paywall_already_pro">Unlimited is active. Thank you!</string>
-    <string name="paywall_quota_status">Free plan: %1$d minutes of transcription left</string>
-    <string name="paywall_benefit_unlimited">Unlimited transcription, forever</string>
-    <string name="paywall_benefit_offline">Works fully offline</string>
-    <string name="paywall_benefit_private">Audio never leaves your phone</string>
-    <string name="paywall_benefit_once">Pay once — no subscription</string>
-    <string name="paywall_buy_with_price">Unlock for %1$s</string>
-    <string name="paywall_buy">Unlock Lifetime Unlimited</string>
+    <string name="paywall_feat_once_desc">A single purchase removes ads for good. No subscriptions, no recurring fees.</string>
+    <string name="paywall_already_pro">Ads are off. Thank you!</string>
+    <string name="paywall_feat_noads_title">No ads, anywhere</string>
+    <string name="paywall_feat_noads_desc">Removes the banner and the ad after a transcription finishes. Nothing else changes.</string>
+    <string name="paywall_feat_allfree_title">Everything else is already free</string>
+    <string name="paywall_feat_allfree_desc">Unlimited transcription, AI summaries, meeting minutes, PDF export and backups cost nothing.</string>
+    <string name="paywall_buy_with_price">Remove ads for %1$s</string>
+    <string name="paywall_buy">Remove ads</string>
     <string name="paywall_restore">Restore purchase</string>
-    <string name="paywall_restore_hint">Bought Unlimited before? Make sure this device uses the same Google account, then tap Restore.</string>
-    <string name="paywall_price_angle">Cloud transcription services charge this much every month or two — here it\'s once, forever.</string>
-    <string name="paywall_footnote">One-time purchase via Google Play. The free plan includes 30 minutes of transcription (only speech time counts) — recording, editing, and text exports (TXT, SRT, VTT, Markdown) are always free.</string>
-    <string name="paywall_byok_note">Unlimited includes AI that runs on your phone. Cloud AI is optional — bring your own API key, billed by your provider.</string>
+    <string name="paywall_restore_hint">Bought this before? Make sure this device uses the same Google account, then tap Restore.</string>
+    <string name="paywall_price_angle">One payment, forever. No subscription, no renewals.</string>
+    <string name="paywall_footnote">One-time purchase via Google Play. Every feature — transcription, AI summaries, meeting minutes, PDF export, backups — stays free whether you buy or not.</string>
     <string name="paywall_success">Unlimited unlocked. Enjoy!</string>
     <string name="paywall_restore_none">No previous purchase found for this Google account.</string>
     <string name="paywall_store_unavailable">Google Play is unavailable right now. Try again shortly.</string>
     <string name="paywall_failed">Purchase didn\'t complete. You were not charged.</string>
-    <string name="quota_banner">Free plan: %1$d min of transcription left</string>
-    <string name="quota_silence_free">Only speech time counts — silence is free</string>
-    <string name="quota_banner_exhausted">Free transcription time used up</string>
     <string name="quota_banner_cta">Upgrade</string>
-    <string name="detail_quota_exceeded">Your 30 free minutes of transcription are used up. Unlock Unlimited to transcribe this recording.</string>
-    <string name="detail_quota_audio_kept">Your audio is saved — nothing is lost.</string>
-    <string name="settings_unlimited_title">Vocatim Unlimited</string>
-    <string name="settings_unlimited_active">Active — unlimited transcription</string>
-    <string name="settings_unlimited_upsell">Unlimited transcription, pay once</string>
+    <string name="settings_unlimited_title">Remove ads</string>
+    <string name="settings_unlimited_active">Ads removed — thank you!</string>
+    <string name="settings_unlimited_upsell">Remove ads, pay once</string>
 
     <string name="onboarding_privacy_title">Private by design</string>
     <string name="onboarding_privacy_body">Vocatim transcribes speech to text entirely on your phone. No cloud, no account, no data ever leaves your device.</string>
@@ -185,8 +169,6 @@
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_start">Start</string>
-    <string name="paywall_value_free_minutes">30 min</string>
-    <string name="paywall_value_unlimited">Unlimited</string>
     <string name="action_more">More</string>
     <string name="action_key_points">Key points</string>
     <string name="key_points_title">Key points</string>
@@ -231,8 +213,6 @@
     <string name="detail_notes_badge">Saved</string>
     <string name="detail_notes_hint">Your own notes — type here, or paste text from anywhere. Saved automatically.</string>
     <string name="detail_notes_copy">Copy notes</string>
-    <string name="export_pdf_pro">PDF export is part of Unlimited.</string>
-    <string name="export_ai_pro">Exporting AI summaries and minutes is part of Unlimited.</string>
     <string name="model_name_tiny">Swift</string>
     <string name="model_name_base">Balanced</string>
     <string name="model_name_small_q5">Precise</string>
@@ -295,9 +275,6 @@
     <string name="action_translate">Translate</string>
     <string name="translate_pick">Translate this note into:</string>
     <string name="translate_busy">Translating…</string>
-    <string name="cloud_need_pro">Cloud AI is a Pro feature. Unlock unlimited to use it.</string>
-    <string name="ai_need_pro">AI features are part of Unlimited. Unlock to use them.</string>
-    <string name="export_badge_pro">PDF · Unlimited</string>
     <string name="settings_model_ladder_hint">Tip: Precise (190 MB) and Ultra (574 MB) are noticeably more accurate — worth it for Indonesian and noisy recordings.</string>
     <string name="minutes_title_prefix">Minutes:</string>
     <string name="minutes_ready_title">Meeting minutes ready</string>
@@ -341,8 +318,6 @@
     <string name="summary_regenerate">Regenerate</string>
     <string name="summary_regenerate_local">Regenerate (On-device)</string>
     <string name="summary_ready_pitch">Generate a concise summary with key points and action items — fully offline.</string>
-    <string name="summary_pro_pitch">AI summaries are part of Vocatim Unlimited — offline, private, pay once.</string>
-    <string name="summary_unlock">Unlock AI Summary</string>
     <string name="summary_download_pitch">AI summary needs a one-time model download (±%1$d MB). It then runs fully offline.</string>
     <string name="summary_download">Download AI model</string>
     <string name="summary_downloading">Downloading AI model… %1$d / %2$d MB</string>
@@ -479,15 +454,6 @@
     <string name="action_export_pdf">Export PDF</string>
 
     <!-- Paywall comparison -->
-    <string name="paywall_col_free">Free</string>
-    <string name="paywall_col_pro">Unlimited</string>
-    <string name="paywall_row_transcription">Transcription</string>
-    <string name="paywall_row_record">Record &amp; edit</string>
-    <string name="paywall_row_export">Export formats</string>
-    <string name="paywall_row_ai">AI summaries &amp; minutes</string>
-    <string name="paywall_value_export_free">TXT · SRT · VTT · MD</string>
-    <string name="paywall_value_export_pro">+ PDF &amp; AI</string>
-    <string name="paywall_row_offline">Fully offline</string>
 
     <!-- Widget & shortcuts -->
     <string name="widget_title">Vocatim Record</string>

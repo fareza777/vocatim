@@ -15,6 +15,22 @@ val keyProps = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
+// AdMob ids come from local.properties (gitignored). The fallbacks are
+// Google's official *test* ids, on purpose: a missing or malformed AdMob
+// application id crashes the app on startup, so a clean clone has to build
+// into something that runs. Real ids never enter the repository.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun adId(key: String, testDefault: String): String =
+    localProps.getProperty(key)?.takeIf { it.isNotBlank() } ?: testDefault
+
+val admobAppId = adId("admob.appId", "ca-app-pub-3940256099942544~3347511713")
+val admobBannerId = adId("admob.bannerUnitId", "ca-app-pub-3940256099942544/6300978111")
+val admobInterstitialId =
+    adId("admob.interstitialUnitId", "ca-app-pub-3940256099942544/1033173712")
+
 android {
     namespace = "com.vocatim.app"
     compileSdk = 36
@@ -23,12 +39,22 @@ android {
         applicationId = "com.vocatim.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 37
-        versionName = "1.13.8"
+        versionCode = 38
+        versionName = "1.14.0"
 
         ndk {
             abiFilters += "arm64-v8a"
         }
+
+        manifestPlaceholders["admobAppId"] = admobAppId
+        buildConfigField("String", "ADMOB_BANNER_UNIT_ID", "\"" + admobBannerId + "\"")
+        buildConfigField(
+            "String", "ADMOB_INTERSTITIAL_UNIT_ID", "\"" + admobInterstitialId + "\""
+        )
+        // Lets the UI warn during testing that these are Google's test ads.
+        buildConfigField(
+            "boolean", "ADMOB_TEST_IDS", (admobAppId.contains("3940256099942544")).toString()
+        )
     }
 
     signingConfigs {
@@ -130,6 +156,8 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.splashscreen)
     implementation(libs.billing.ktx)
+    implementation(libs.play.services.ads)
+    implementation(libs.user.messaging.platform)
     implementation(libs.coil.compose)
 
     debugImplementation(libs.androidx.compose.ui.tooling)

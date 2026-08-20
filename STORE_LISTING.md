@@ -41,7 +41,7 @@ Vocatim is an offline transcription app powered by Whisper AI that converts voic
 **Free vs Unlimited**
 Recording, editing, search, and text exports (TXT, SRT, VTT, Markdown) are always free. The free plan includes 30 minutes of transcription — and only speech time counts: silence is free. One purchase unlocks unlimited transcription, all AI features, PDF export, and auto-backup, forever.
 
-No ads. No tracking. No data collection. Read our privacy policy: [link]
+Free, ad-supported. One small purchase removes the ads — every feature stays free either way. Read our privacy policy: [link]
 
 *Keywords woven in: offline transcription, voice to text offline, transcribe audio to text, private transcription, whisper, no subscription, speech to text, subtitle SRT, voice notes.*
 
@@ -77,7 +77,7 @@ Vocatim adalah aplikasi transkripsi offline bertenaga Whisper AI yang mengubah s
 **Gratis vs Unlimited**
 Merekam, mengedit, mencari, dan ekspor teks (TXT, SRT, VTT, Markdown) selalu gratis. Paket gratis mencakup 30 menit transkripsi — dan hanya waktu bicara yang dihitung: keheningan gratis. Satu kali pembelian membuka transkripsi tanpa batas, semua fitur AI, ekspor PDF, dan auto-backup, selamanya.
 
-Tanpa iklan. Tanpa pelacakan. Tanpa pengumpulan data.
+Gratis dengan iklan. Satu kali beli untuk menghilangkan iklan — semua fitur tetap gratis, dibeli atau tidak.
 
 ## Screenshots yang perlu dibuat (8, urutan story-telling)
 1. **Hero** — Home dengan beberapa transkrip + tagline overlay "Unlimited transcription. Fully offline."

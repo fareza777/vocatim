@@ -53,7 +53,7 @@ class DetailViewModel @Inject constructor(
     summaryProgressHolder: com.vocatim.app.data.summary.SummaryProgressHolder,
     private val diarizationModelManager: com.vocatim.app.data.model.DiarizationModelManager,
     diarizationProgressHolder: com.vocatim.app.data.transcribe.DiarizationProgressHolder,
-    quotaStore: com.vocatim.app.data.billing.QuotaStore,
+    adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
     private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
     private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
     private val cloudClient: com.vocatim.app.data.cloud.CloudAiClient,
@@ -71,7 +71,7 @@ class DetailViewModel @Inject constructor(
         ?: savedStateHandle.get<Int>("transcriptId")?.toLong()
         ?: error("Detail screen opened without transcriptId")
 
-    val isPro: StateFlow<Boolean> = quotaStore.isProCached
+    val isAdFree: StateFlow<Boolean> = adFreeStore.isAdFree
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** The user-selected on-device model, from Settings. */

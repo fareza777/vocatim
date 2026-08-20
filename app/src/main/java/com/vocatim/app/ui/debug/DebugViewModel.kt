@@ -55,14 +55,14 @@ class DebugViewModel @Inject constructor(
     private val transcriptDao: TranscriptDao,
     private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
     private val rtfStore: com.vocatim.app.data.prefs.RtfStore,
-    private val quotaStore: com.vocatim.app.data.billing.QuotaStore,
+    private val adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
 ) : ViewModel() {
 
-    val devPro: StateFlow<Boolean> = quotaStore.isProCached
+    val devPro: StateFlow<Boolean> = adFreeStore.isAdFree
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     fun setDevPro(enabled: Boolean) {
-        viewModelScope.launch { quotaStore.setDevPro(enabled) }
+        viewModelScope.launch { adFreeStore.setDevOverride(enabled) }
     }
 
     /** Reads the last-run AI-summary crash trace, if any. */
