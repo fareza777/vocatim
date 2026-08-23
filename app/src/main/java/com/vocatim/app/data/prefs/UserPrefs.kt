@@ -228,7 +228,7 @@ class UserPrefs(private val context: Context) {
         private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         private val TEXT_SCALE_KEY = androidx.datastore.preferences.core.floatPreferencesKey("text_scale")
         private val ONBOARDING_KEY = booleanPreferencesKey("onboarding_done")
-        private val HOME_TOUR_KEY = booleanPreferencesKey("home_tour_done")
+        private val HOME_TOUR_KEY = booleanPreferencesKey("home_tour_done_v2")
         private val CUSTOM_VOCAB_KEY = stringPreferencesKey("custom_vocab")
         private val HIGH_ACCURACY_KEY = booleanPreferencesKey("high_accuracy")
         private val VAD_ENABLED_KEY = booleanPreferencesKey("vad_enabled")

@@ -138,9 +138,9 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
             val devPro by viewModel.devPro.collectAsStateWithLifecycle()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Unlock Pro (debug)", style = MaterialTheme.typography.titleSmall)
+                    Text("Skip ads (debug)", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        "Forces Unlimited on for testing AI summary & billing.",
+                        "Hides ads without buying Remove ads. Release builds ignore this.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -150,6 +150,8 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
                     onCheckedChange = viewModel::setDevPro,
                 )
             }
+
+            AdsDiagnosticsCard(viewModel)
 
             var diagText by remember { mutableStateOf<String?>(null) }
             OutlinedButton(onClick = { diagText = viewModel.readSummaryDiag() }) {
@@ -173,6 +175,62 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Live readout of every stage that can silently suppress ads. A screenshot of
+ * this card replaces a logcat session when diagnosing "no ads" reports.
+ */
+@Composable
+private fun AdsDiagnosticsCard(viewModel: DebugViewModel) {
+    val breakdown by viewModel.adFreeBreakdown.collectAsStateWithLifecycle()
+    val ready by viewModel.adsReady.collectAsStateWithLifecycle()
+    val d = viewModel.adsDiagnostics
+    val blocked by d.blockedByEntitlement.collectAsStateWithLifecycle()
+    val started by d.controllerStarted.collectAsStateWithLifecycle()
+    val canRequest by d.consentCanRequestAds.collectAsStateWithLifecycle()
+    val consentErr by d.lastConsentError.collectAsStateWithLifecycle()
+    val bannerLoaded by d.bannerLoaded.collectAsStateWithLifecycle()
+    val bannerErr by d.lastBannerError.collectAsStateWithLifecycle()
+    val interLoaded by d.interstitialLoaded.collectAsStateWithLifecycle()
+    val interErr by d.lastInterstitialError.collectAsStateWithLifecycle()
+    val decision by d.lastShowDecision.collectAsStateWithLifecycle()
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Ads diagnostics", style = MaterialTheme.typography.titleMedium)
+        Card {
+            SelectionContainer {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    val lines = listOf(
+                        "ad units: " + if (BuildConfig.ADMOB_TEST_IDS) "TEST" else "PRODUCTION",
+                        "banner id: " + BuildConfig.ADMOB_BANNER_UNIT_ID,
+                        "interstitial id: " + BuildConfig.ADMOB_INTERSTITIAL_UNIT_ID,
+                        "entitlement: removeAds=${breakdown?.removeAds} " +
+                            "legacyPro=${breakdown?.legacyPro} " +
+                            "devOverride=${breakdown?.devOverride}",
+                        "controller: started=$started blockedByEntitlement=$blocked",
+                        "consent: canRequestAds=$canRequest error=${consentErr ?: "-"}",
+                        "sdk ready: $ready",
+                        "banner: loaded=$bannerLoaded error=${bannerErr ?: "-"}",
+                        "interstitial: loaded=$interLoaded error=${interErr ?: "-"}",
+                        "last show decision: ${decision ?: "-"}",
+                    )
+                    lines.forEach {
+                        Text(it, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+        Text(
+            "error 'code 3' = NO_FILL dari AdMob; 'code 0' = masalah jaringan/SDK. " +
+                "Screenshot kartu ini saat iklan tidak tampil.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

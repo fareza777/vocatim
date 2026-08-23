@@ -60,6 +60,8 @@ class HomeViewModel @Inject constructor(
     repository: TranscriptRepository,
     progressHolder: TranscriptionProgressHolder,
     adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
+    adsController: com.vocatim.app.ads.AdsController,
+    billingManager: com.vocatim.app.data.billing.BillingManager,
     private val importCoordinator: ImportCoordinator,
     private val transcriptRepository: TranscriptRepository,
     private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
@@ -78,6 +80,17 @@ class HomeViewModel @Inject constructor(
     val showAds: StateFlow<Boolean> = adFreeStore.isAdFree
         .map { !it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val adsReady: StateFlow<Boolean> = adsController.ready
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Play-formatted price, or null until billing answers. */
+    val removeAdsPrice: StateFlow<String?> = billingManager.formattedPrice
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    init {
+        billingManager.connect()
+    }
 
     val stats: StateFlow<HomeStats> =
         repository.observeAll().map { list ->

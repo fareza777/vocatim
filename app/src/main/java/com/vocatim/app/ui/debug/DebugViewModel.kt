@@ -56,10 +56,19 @@ class DebugViewModel @Inject constructor(
     private val userPrefs: com.vocatim.app.data.prefs.UserPrefs,
     private val rtfStore: com.vocatim.app.data.prefs.RtfStore,
     private val adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
+    adsController: com.vocatim.app.ads.AdsController,
+    val adsDiagnostics: com.vocatim.app.ads.AdsDiagnostics,
 ) : ViewModel() {
 
     val devPro: StateFlow<Boolean> = adFreeStore.isAdFree
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Per-key entitlement truth, so "no ads" is explainable at a glance. */
+    val adFreeBreakdown: StateFlow<com.vocatim.app.data.billing.AdFreeStore.Breakdown?> =
+        adFreeStore.breakdown
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val adsReady: StateFlow<Boolean> = adsController.ready
 
     fun setDevPro(enabled: Boolean) {
         viewModelScope.launch { adFreeStore.setDevOverride(enabled) }

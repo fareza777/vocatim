@@ -23,6 +23,7 @@ class VocatimApp : android.app.Application() {
     @Inject lateinit var startupRecovery: StartupRecovery
     @Inject lateinit var transcriptRepository: TranscriptRepository
     @Inject lateinit var autoBackup: com.vocatim.app.data.backup.AutoBackup
+    @Inject lateinit var billingManager: com.vocatim.app.data.billing.BillingManager
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -45,6 +46,7 @@ class VocatimApp : android.app.Application() {
         // Foreground services (recording/transcription) post to these
         // channels; without them startForeground throws on API 26+.
         Notifications.createChannels(this)
+        billingManager.connect()
         appScope.launch {
             runCatching { startupRecovery.recover() }
             runCatching { autoBackup.runIfDue() }

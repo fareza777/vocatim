@@ -90,12 +90,10 @@ fun HomeScreen(
     onSettingsClick: () -> Unit,
     onCalendarClick: () -> Unit,
     onDebugClick: () -> Unit,
-    onUpgradeClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
-    val showAds by viewModel.showAds.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
     val folders by viewModel.folders.collectAsStateWithLifecycle()
@@ -143,9 +141,6 @@ fun HomeScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHost) },
-        // Bottom bar rather than inline: an ad between the header and the
-        // list would sit in the middle of the one thing people came for.
-        bottomBar = { com.vocatim.app.ads.BannerAd(visible = showAds) },
         floatingActionButton = {
             Box(
                 modifier = Modifier

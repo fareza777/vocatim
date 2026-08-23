@@ -139,21 +139,21 @@
     <string name="paywall_feat_noads_title">No ads, anywhere</string>
     <string name="paywall_feat_noads_desc">Removes the banner and the ad after a transcription finishes. Nothing else changes.</string>
     <string name="paywall_feat_allfree_title">Everything else is already free</string>
-    <string name="paywall_feat_allfree_desc">Unlimited transcription, AI summaries, meeting minutes, PDF export and backups cost nothing.</string>
+    <string name="paywall_feat_allfree_desc">Transcription, AI summaries, meeting minutes, PDF export and backups cost nothing.</string>
     <string name="paywall_buy_with_price">Remove ads for %1$s</string>
     <string name="paywall_buy">Remove ads</string>
     <string name="paywall_restore">Restore purchase</string>
     <string name="paywall_restore_hint">Bought this before? Make sure this device uses the same Google account, then tap Restore.</string>
     <string name="paywall_price_angle">One payment, forever. No subscription, no renewals.</string>
     <string name="paywall_footnote">One-time purchase via Google Play. Every feature — transcription, AI summaries, meeting minutes, PDF export, backups — stays free whether you buy or not.</string>
-    <string name="paywall_success">Unlimited unlocked. Enjoy!</string>
+    <string name="paywall_success">Ads removed. Thank you!</string>
     <string name="paywall_restore_none">No previous purchase found for this Google account.</string>
     <string name="paywall_store_unavailable">Google Play is unavailable right now. Try again shortly.</string>
     <string name="paywall_failed">Purchase didn\'t complete. You were not charged.</string>
-    <string name="quota_banner_cta">Upgrade</string>
-    <string name="settings_unlimited_title">Remove ads</string>
-    <string name="settings_unlimited_active">Ads removed — thank you!</string>
-    <string name="settings_unlimited_upsell">Remove ads, pay once</string>
+    <string name="remove_ads_price_fallback">$4.99</string>
+    <string name="settings_remove_ads_title">Remove ads</string>
+    <string name="settings_remove_ads_active">Ads removed — thank you!</string>
+    <string name="settings_remove_ads_upsell">Remove ads for %1$s · pay once</string>
 
     <string name="onboarding_privacy_title">Private by design</string>
     <string name="onboarding_privacy_body">Vocatim transcribes speech to text entirely on your phone. No cloud, no account, no data ever leaves your device.</string>
@@ -251,7 +251,7 @@
     <string name="settings_high_accuracy">High accuracy mode</string>
     <string name="settings_high_accuracy_desc">Beam search — more accurate, noticeably slower.</string>
     <string name="settings_auto_summarize">Auto-summarize when done</string>
-    <string name="settings_auto_summarize_desc">Create an AI summary automatically after transcription (Unlimited).</string>
+    <string name="settings_auto_summarize_desc">Create an AI summary automatically after transcription.</string>
     <string name="settings_minutes_template">Minutes template</string>
     <string name="settings_minutes_template_desc">How AI meeting minutes are structured.</string>
     <string name="minutes_template_general">General meeting</string>

@@ -114,6 +114,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             val isAdFree by viewModel.isAdFree.collectAsStateWithLifecycle()
+            val removeAdsPrice by viewModel.removeAdsPrice.collectAsStateWithLifecycle()
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -125,13 +126,17 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            stringResource(R.string.settings_unlimited_title),
+                            stringResource(R.string.settings_remove_ads_title),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.tertiary,
                         )
                         Text(
-                            if (isAdFree) stringResource(R.string.settings_unlimited_active)
-                            else stringResource(R.string.settings_unlimited_upsell),
+                            if (isAdFree) stringResource(R.string.settings_remove_ads_active)
+                            else stringResource(
+                                R.string.settings_remove_ads_upsell,
+                                removeAdsPrice
+                                    ?: stringResource(R.string.remove_ads_price_fallback),
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

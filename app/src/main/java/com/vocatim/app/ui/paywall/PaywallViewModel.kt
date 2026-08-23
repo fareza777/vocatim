@@ -23,6 +23,8 @@ class PaywallViewModel @Inject constructor(
 
     val productDetails: StateFlow<ProductDetails?> = billingManager.productDetails
 
+    val formattedPrice: StateFlow<String?> = billingManager.formattedPrice
+
     val purchaseMessage: StateFlow<String?> = billingManager.purchaseMessage
 
     init {

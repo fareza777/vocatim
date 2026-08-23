@@ -146,21 +146,21 @@
     <string name="paywall_feat_noads_title">Bebas iklan, di mana pun</string>
     <string name="paywall_feat_noads_desc">Menghilangkan banner dan iklan yang muncul setelah transkripsi selesai. Selain itu tidak ada yang berubah.</string>
     <string name="paywall_feat_allfree_title">Sisanya memang sudah gratis</string>
-    <string name="paywall_feat_allfree_desc">Transkripsi tanpa batas, ringkasan AI, notulen rapat, ekspor PDF, dan cadangan semuanya tanpa biaya.</string>
+    <string name="paywall_feat_allfree_desc">Transkripsi, ringkasan AI, notulen rapat, ekspor PDF, dan cadangan semuanya tanpa biaya.</string>
     <string name="paywall_buy_with_price">Hilangkan iklan seharga %1$s</string>
     <string name="paywall_buy">Hilangkan iklan</string>
     <string name="paywall_restore">Pulihkan pembelian</string>
     <string name="paywall_restore_hint">Sudah pernah beli? Pastikan perangkat ini memakai akun Google yang sama, lalu ketuk Pulihkan.</string>
     <string name="paywall_price_angle">Sekali bayar, selamanya. Tanpa langganan, tanpa perpanjangan.</string>
     <string name="paywall_footnote">Pembelian sekali lewat Google Play. Semua fitur — transkripsi, ringkasan AI, notulen rapat, ekspor PDF, cadangan — tetap gratis, dibeli atau tidak.</string>
-    <string name="paywall_success">Unlimited terbuka. Selamat menikmati!</string>
+    <string name="paywall_success">Iklan dihilangkan. Terima kasih!</string>
     <string name="paywall_restore_none">Tidak ditemukan pembelian sebelumnya untuk akun Google ini.</string>
     <string name="paywall_store_unavailable">Google Play sedang tidak tersedia. Coba lagi sebentar.</string>
     <string name="paywall_failed">Pembelian tidak selesai. Anda tidak ditagih.</string>
-    <string name="quota_banner_cta">Tingkatkan</string>
-    <string name="settings_unlimited_title">Hilangkan iklan</string>
-    <string name="settings_unlimited_active">Iklan sudah dihilangkan — terima kasih!</string>
-    <string name="settings_unlimited_upsell">Hilangkan iklan, bayar sekali</string>
+    <string name="remove_ads_price_fallback">$4.99</string>
+    <string name="settings_remove_ads_title">Hilangkan iklan</string>
+    <string name="settings_remove_ads_active">Iklan sudah dihilangkan — terima kasih!</string>
+    <string name="settings_remove_ads_upsell">Hilangkan iklan seharga %1$s · bayar sekali</string>
 
     <string name="onboarding_privacy_title">Privat sejak awal</string>
     <string name="onboarding_privacy_body">Vocatim mengubah suara jadi teks sepenuhnya di HP Anda. Tanpa cloud, tanpa akun, tidak ada data yang keluar dari perangkat.</string>
@@ -258,7 +258,7 @@
     <string name="settings_high_accuracy">Mode akurasi tinggi</string>
     <string name="settings_high_accuracy_desc">Beam search — lebih akurat, terasa lebih lambat.</string>
     <string name="settings_auto_summarize">Ringkas otomatis setelah selesai</string>
-    <string name="settings_auto_summarize_desc">Buat ringkasan AI otomatis setelah transkripsi (Unlimited).</string>
+    <string name="settings_auto_summarize_desc">Buat ringkasan AI otomatis setelah transkripsi.</string>
     <string name="settings_minutes_template">Templat notulen</string>
     <string name="settings_minutes_template_desc">Bagaimana notulen rapat AI disusun.</string>
     <string name="minutes_template_general">Rapat umum</string>

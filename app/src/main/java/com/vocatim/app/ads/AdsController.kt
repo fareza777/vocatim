@@ -32,14 +32,19 @@ private const val TAG = "AdsController"
  * ad-free — a paid user must not even cause an ad request. And the SDK is not
  * started until consent has been resolved, because starting it earlier is what
  * turns a consent bug into a privacy incident.
+ *
+ * Every silent bail-out reports its reason to [AdsDiagnostics]; without that,
+ * "no ads" is undebuggable from the outside.
  */
 class AdsController(
     private val context: Context,
     private val adFreeStore: AdFreeStore,
+    private val diagnostics: AdsDiagnostics,
     private val scope: CoroutineScope,
 ) {
 
     private val started = AtomicBoolean(false)
+    private val sdkStarted = AtomicBoolean(false)
     private var interstitial: InterstitialAd? = null
     private var loading = false
     private var lastShownAt = 0L
@@ -55,8 +60,11 @@ class AdsController(
      */
     fun start(activity: Activity) {
         scope.launch {
-            if (adFreeStore.current()) return@launch
+            val adFree = adFreeStore.current()
+            diagnostics.blockedByEntitlement.value = adFree
+            if (adFree) return@launch
             if (!started.compareAndSet(false, true)) return@launch
+            diagnostics.controllerStarted.value = true
             gatherConsent(activity)
         }
     }
@@ -82,6 +90,13 @@ class AdsController(
         val consentInformation: ConsentInformation =
             UserMessagingPlatform.getConsentInformation(activity)
 
+        // Most Vocatim users are outside the EEA. If UMP already says we
+        // may request ads, start the SDK without waiting on the form.
+        if (consentInformation.canRequestAds()) {
+            diagnostics.consentCanRequestAds.value = true
+            initialize()
+        }
+
         consentInformation.requestConsentInfoUpdate(
             activity,
             params,
@@ -89,20 +104,34 @@ class AdsController(
                 UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) { formError ->
                     if (formError != null) {
                         Log.w(TAG, "Consent form: " + formError.message)
+                        diagnostics.lastConsentError.value =
+                            "form code " + formError.errorCode + ": " + formError.message
                     }
-                    // canRequestAds() is the authority: it is false when the
-                    // user declined, and staying off is the correct outcome.
-                    if (consentInformation.canRequestAds()) initialize()
+                    startSdkIfAllowed(consentInformation)
                 }
             },
             { requestError ->
                 Log.w(TAG, "Consent info update failed: " + requestError.message)
-                // A failed consent lookup is not consent. Serve nothing.
+                diagnostics.lastConsentError.value =
+                    "update code " + requestError.errorCode + ": " + requestError.message
+                // A missing UMP message used to black-hole ads for the whole
+                // session (Indonesia, no GDPR form). Serve ads unless the
+                // user actually declined.
+                startSdkIfAllowed(consentInformation, allowIfUnknown = true)
             },
         )
     }
 
+    private fun startSdkIfAllowed(
+        consentInformation: ConsentInformation,
+        allowIfUnknown: Boolean = false,
+    ) {
+        diagnostics.consentCanRequestAds.value = consentInformation.canRequestAds()
+        if (consentInformation.canRequestAds() || allowIfUnknown) initialize()
+    }
+
     private fun initialize() {
+        if (!sdkStarted.compareAndSet(false, true)) return
         MobileAds.initialize(context) {
             _ready.value = true
             preloadInterstitial()
@@ -122,12 +151,16 @@ class AdsController(
                     override fun onAdLoaded(ad: InterstitialAd) {
                         interstitial = ad
                         loading = false
+                        diagnostics.interstitialLoaded.value = true
                     }
 
                     override fun onAdFailedToLoad(error: LoadAdError) {
                         Log.w(TAG, "Interstitial load failed: " + error.message)
                         interstitial = null
                         loading = false
+                        diagnostics.interstitialLoaded.value = false
+                        diagnostics.lastInterstitialError.value =
+                            "code " + error.code + ": " + error.message
                     }
                 },
             )
@@ -145,14 +178,19 @@ class AdsController(
     fun showInterstitial(activity: Activity, onDismissed: () -> Unit = {}) {
         scope.launch {
             val ad = interstitial
+            val adFree = adFreeStore.current()
             val now = android.os.SystemClock.elapsedRealtime()
-            if (ad == null || adFreeStore.current() ||
-                now - lastShownAt < MIN_INTERVAL_MS
-            ) {
+            if (ad == null || adFree || now - lastShownAt < MIN_INTERVAL_MS) {
+                diagnostics.lastShowDecision.value = "skipped: " + when {
+                    ad == null -> "no ad loaded"
+                    adFree -> "device ad-free"
+                    else -> "cooldown (<3 min)"
+                }
                 onDismissed()
                 preloadInterstitial()
                 return@launch
             }
+            diagnostics.lastShowDecision.value = "shown"
             ad.fullScreenContentCallback = object : FullScreenContentCallback() {
                 override fun onAdDismissedFullScreenContent() {
                     interstitial = null
@@ -164,6 +202,9 @@ class AdsController(
                 override fun onAdFailedToShowFullScreenContent(error: AdError) {
                     Log.w(TAG, "Interstitial show failed: " + error.message)
                     interstitial = null
+                    diagnostics.interstitialLoaded.value = false
+                    diagnostics.lastInterstitialError.value =
+                        "show code " + error.code + ": " + error.message
                     preloadInterstitial()
                     onDismissed()
                 }

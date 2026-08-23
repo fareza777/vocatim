@@ -6,11 +6,17 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.vocatim.app.ads.MonetizedBanner
 import com.vocatim.app.ui.debug.DebugScreen
 import com.vocatim.app.ui.detail.DetailScreen
 import com.vocatim.app.ui.home.HomeScreen
@@ -54,18 +60,31 @@ fun VocatimNavHost(
         }
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = Routes.HOME,
-        enterTransition = {
-            slideInHorizontally(initialOffsetX = { it / 4 }) + fadeIn()
+    val currentRoute by navController.currentBackStackEntryAsState()
+    val route = currentRoute?.destination?.route
+    // Collapse on Record only. Unmounting the banner on Settings/Paywall
+    // destroyed the AdView; the next load often came back empty.
+    val hideBanner = route?.startsWith("record") == true
+
+    Scaffold(
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
+        bottomBar = {
+            MonetizedBanner(hidden = hideBanner)
         },
-        exitTransition = { fadeOut() },
-        popEnterTransition = { fadeIn() },
-        popExitTransition = {
-            slideOutHorizontally(targetOffsetX = { it / 4 }) + fadeOut()
-        },
-    ) {
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            startDestination = Routes.HOME,
+            modifier = Modifier.padding(padding),
+            enterTransition = {
+                slideInHorizontally(initialOffsetX = { it / 4 }) + fadeIn()
+            },
+            exitTransition = { fadeOut() },
+            popEnterTransition = { fadeIn() },
+            popExitTransition = {
+                slideOutHorizontally(targetOffsetX = { it / 4 }) + fadeOut()
+            },
+        ) {
         composable(Routes.HOME) {
             HomeScreen(
                 onRecordClick = { navController.navigate(Routes.record()) },
@@ -73,7 +92,6 @@ fun VocatimNavHost(
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) },
                 onCalendarClick = { navController.navigate(Routes.CALENDAR) },
                 onDebugClick = { navController.navigate(Routes.DEBUG) },
-                onUpgradeClick = { navController.navigate(Routes.PAYWALL) },
             )
         }
         composable(Routes.SETTINGS) {
@@ -124,12 +142,12 @@ fun VocatimNavHost(
         ) { entry ->
             DetailScreen(
                 onBack = { navController.popBackStack() },
-                onUpgrade = { navController.navigate(Routes.PAYWALL) },
                 viewModel = androidx.hilt.navigation.compose.hiltViewModel(entry),
             )
         }
         composable(Routes.DEBUG) {
             DebugScreen()
+        }
         }
     }
 }

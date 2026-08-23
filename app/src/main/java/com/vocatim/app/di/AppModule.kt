@@ -221,12 +221,19 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideAdsDiagnostics(): com.vocatim.app.ads.AdsDiagnostics =
+        com.vocatim.app.ads.AdsDiagnostics()
+
+    @Provides
+    @Singleton
     fun provideAdsController(
         @ApplicationContext context: Context,
         adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
+        diagnostics: com.vocatim.app.ads.AdsDiagnostics,
     ): com.vocatim.app.ads.AdsController = com.vocatim.app.ads.AdsController(
         context = context,
         adFreeStore = adFreeStore,
+        diagnostics = diagnostics,
         scope = kotlinx.coroutines.CoroutineScope(
             kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main
         ),

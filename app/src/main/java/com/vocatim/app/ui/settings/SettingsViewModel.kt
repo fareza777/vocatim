@@ -57,6 +57,7 @@ class SettingsViewModel @Inject constructor(
     private val parakeetTranscriber: com.vocatim.app.data.transcribe.ParakeetTranscriber,
     private val transcriptRepository: com.vocatim.app.data.repository.TranscriptRepository,
     adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
+    billingManager: com.vocatim.app.data.billing.BillingManager,
 ) : ViewModel() {
 
     /** Realtime-factor benchmark per model: null=idle, running, or a value. */
@@ -226,6 +227,13 @@ class SettingsViewModel @Inject constructor(
 
     val isAdFree: StateFlow<Boolean> = adFreeStore.isAdFree
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val removeAdsPrice: StateFlow<String?> = billingManager.formattedPrice
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    init {
+        billingManager.connect()
+    }
 
     val settings: StateFlow<UserSettings?> =
         userPrefs.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

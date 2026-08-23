@@ -60,6 +60,7 @@ fun PaywallScreen(
 ) {
     val isAdFree by viewModel.isAdFree.collectAsStateWithLifecycle()
     val product by viewModel.productDetails.collectAsStateWithLifecycle()
+    val playPrice by viewModel.formattedPrice.collectAsStateWithLifecycle()
     val message by viewModel.purchaseMessage.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -110,7 +111,7 @@ fun PaywallScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    Icons.Default.AllInclusive,
+                    Icons.Default.Block,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(40.dp),
@@ -143,18 +144,14 @@ fun PaywallScreen(
             Spacer(Modifier.height(8.dp))
 
             if (!isAdFree) {
-                val price = product?.oneTimePurchaseOfferDetails?.formattedPrice
+                val price = playPrice
+                    ?: product?.oneTimePurchaseOfferDetails?.formattedPrice
+                    ?: stringResource(R.string.remove_ads_price_fallback)
                 Button(
                     onClick = { (context as? Activity)?.let(viewModel::buy) },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        if (price != null) {
-                            stringResource(R.string.paywall_buy_with_price, price)
-                        } else {
-                            stringResource(R.string.paywall_buy)
-                        }
-                    )
+                    Text(stringResource(R.string.paywall_buy_with_price, price))
                 }
                 Text(
                     stringResource(R.string.paywall_price_angle),

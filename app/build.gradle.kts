@@ -39,8 +39,8 @@ android {
         applicationId = "com.vocatim.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 38
-        versionName = "1.14.0"
+        versionCode = 46
+        versionName = "1.14.8"
 
         ndk {
             abiFilters += "arm64-v8a"
@@ -80,6 +80,20 @@ android {
             // Distinct launcher label: two identical icons side by side is a
             // good way to delete the wrong app's data by mistake.
             manifestPlaceholders["appLabel"] = "Vocatim Debug"
+            // Dev builds never touch the production ad units: impressions from
+            // your own devices are an AdMob policy violation. Debug always
+            // uses Google's official test units, which are guaranteed to fill.
+            manifestPlaceholders["admobAppId"] =
+                "ca-app-pub-3940256099942544~3347511713"
+            buildConfigField(
+                "String", "ADMOB_BANNER_UNIT_ID",
+                "\"ca-app-pub-3940256099942544/6300978111\"",
+            )
+            buildConfigField(
+                "String", "ADMOB_INTERSTITIAL_UNIT_ID",
+                "\"ca-app-pub-3940256099942544/1033173712\"",
+            )
+            buildConfigField("boolean", "ADMOB_TEST_IDS", "true")
         }
         release {
             manifestPlaceholders["appLabel"] = "Vocatim"

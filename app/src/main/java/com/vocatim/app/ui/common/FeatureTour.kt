@@ -25,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,7 +52,13 @@ import kotlin.math.roundToInt
 /** One spotlight stop: which registered target to highlight and what to say. */
 data class TourStep(val targetKey: String, val title: String, val body: String)
 
-/** Registers this element as a spotlight target under [key]. */
+/**
+ * Registers this element as a spotlight target under [key].
+ *
+ * Coordinates are stored in root space. [TourOverlay] converts them into its
+ * own local space so the hole stays glued to the control when a parent
+ * (status bar insets, ad banner padding) offsets the overlay.
+ */
 fun Modifier.tourTarget(targets: MutableMap<String, Rect>, key: String): Modifier =
     onGloballyPositioned { targets[key] = it.boundsInRoot() }
 
@@ -80,20 +87,15 @@ fun TourOverlay(
     )
 
     val holePadding = with(density) { 8.dp.toPx() }
-    val hole = Rect(
-        left = target.left - holePadding,
-        top = target.top - holePadding,
-        right = target.right + holePadding,
-        bottom = target.bottom + holePadding,
-    )
-    val corner = minOf(hole.width, hole.height) / 2
 
+    var overlayOrigin by remember { mutableStateOf<Offset?>(null) }
     var rootHeightPx by remember { mutableIntStateOf(0) }
     var cardHeightPx by remember { mutableIntStateOf(0) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .onGloballyPositioned { overlayOrigin = it.boundsInRoot().topLeft }
             .onSizeChanged { rootHeightPx = it.height }
             // Consume every tap; a tap anywhere moves the tour forward.
             .clickable(
@@ -102,6 +104,15 @@ fun TourOverlay(
                 onClick = onNext,
             ),
     ) {
+        val origin = overlayOrigin ?: return@Box
+        val hole = Rect(
+            left = target.left - origin.x - holePadding,
+            top = target.top - origin.y - holePadding,
+            right = target.right - origin.x + holePadding,
+            bottom = target.bottom - origin.y + holePadding,
+        )
+        val corner = minOf(hole.width, hole.height) / 2
+
         Canvas(
             modifier = Modifier
                 .fillMaxSize()

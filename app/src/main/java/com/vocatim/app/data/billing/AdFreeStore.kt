@@ -3,6 +3,7 @@ package com.vocatim.app.data.billing
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import com.vocatim.app.BuildConfig
 import com.vocatim.app.data.prefs.secretsDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -25,10 +26,28 @@ class AdFreeStore(private val context: Context) {
     val isAdFree: Flow<Boolean> = context.secretsDataStore.data.map {
         (it[AD_FREE_KEY] ?: false) ||
             (it[LEGACY_PRO_KEY] ?: false) ||
-            (it[DEV_OVERRIDE_KEY] ?: false)
+            // The dev toggle must never leak into production: only honour it
+            // in debug builds, so a flag set during testing cannot silently
+            // disable ads for a release install forever.
+            (BuildConfig.DEBUG && (it[DEV_OVERRIDE_KEY] ?: false))
     }
 
     suspend fun current(): Boolean = isAdFree.first()
+
+    /** Which entitlement keys are currently set; powers the debug ads panel. */
+    data class Breakdown(
+        val removeAds: Boolean,
+        val legacyPro: Boolean,
+        val devOverride: Boolean,
+    )
+
+    val breakdown: Flow<Breakdown> = context.secretsDataStore.data.map {
+        Breakdown(
+            removeAds = it[AD_FREE_KEY] ?: false,
+            legacyPro = it[LEGACY_PRO_KEY] ?: false,
+            devOverride = it[DEV_OVERRIDE_KEY] ?: false,
+        )
+    }
 
     /** Set from the current remove-ads product. */
     suspend fun setAdFree(value: Boolean) {

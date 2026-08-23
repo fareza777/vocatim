@@ -118,7 +118,6 @@ const val EXPORT_SOURCE_SUMMARY = "summary"
 @Composable
 fun DetailScreen(
     onBack: () -> Unit,
-    onUpgrade: () -> Unit = {},
     viewModel: DetailViewModel = hiltViewModel(),
 ) {
     val transcript by viewModel.transcript.collectAsStateWithLifecycle()
@@ -449,7 +448,6 @@ fun DetailScreen(
                             SummaryBody(
                                 summary = t.summary,
                                 viewModel = viewModel,
-                                onUpgrade = onUpgrade,
                             )
                         }
                     }
@@ -2092,7 +2090,6 @@ private fun ExportSourceDialog(
 private fun SummaryBody(
     summary: String?,
     viewModel: DetailViewModel,
-    onUpgrade: () -> Unit,
 ) {
     val modelState by viewModel.summaryModelState.collectAsStateWithLifecycle()
     val progress by viewModel.summaryProgress.collectAsStateWithLifecycle()

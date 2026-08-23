@@ -42,6 +42,10 @@ class BillingManager(
     private val _productDetails = MutableStateFlow<ProductDetails?>(null)
     val productDetails: StateFlow<ProductDetails?> = _productDetails.asStateFlow()
 
+    private val _formattedPrice = MutableStateFlow<String?>(null)
+    /** Play's formatted price (e.g. "$4.99"), or null until the catalog loads. */
+    val formattedPrice: StateFlow<String?> = _formattedPrice.asStateFlow()
+
     private val _purchaseMessage = MutableStateFlow<String?>(null)
     /** One-shot user-facing feedback from the last purchase attempt. */
     val purchaseMessage: StateFlow<String?> = _purchaseMessage.asStateFlow()
@@ -155,7 +159,14 @@ class BillingManager(
             .build()
         client.queryProductDetailsAsync(params) { result, detailsResult ->
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                _productDetails.value = detailsResult.productDetailsList.firstOrNull()
+                val details = detailsResult.productDetailsList.firstOrNull()
+                _productDetails.value = details
+                _formattedPrice.value = details?.oneTimePurchaseOfferDetails?.formattedPrice
+                if (details == null) {
+                    Log.w(TAG, "Product $PRODUCT_REMOVE_ADS not in catalog")
+                }
+            } else {
+                Log.w(TAG, "Product query failed: " + result.debugMessage)
             }
         }
     }
