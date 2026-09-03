@@ -182,6 +182,23 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideCloudTranscriber(
+        @ApplicationContext context: Context,
+        client: OkHttpClient,
+    ): com.vocatim.app.data.transcribe.CloudTranscriber =
+        com.vocatim.app.data.transcribe.CloudTranscriber(
+            // Uploads and cloud inference are minutes-long for a long
+            // recording; the shared client's 60s read timeout would abort them.
+            client = client.newBuilder()
+                .callTimeout(20, TimeUnit.MINUTES)
+                .writeTimeout(10, TimeUnit.MINUTES)
+                .readTimeout(20, TimeUnit.MINUTES)
+                .build(),
+            cacheDir = context.cacheDir,
+        )
+
+    @Provides
+    @Singleton
     fun provideTranscriptionRunner(
         @ApplicationContext context: Context,
         repository: TranscriptRepository,
@@ -192,6 +209,8 @@ object AppModule {
         userPrefs: UserPrefs,
         modelManager: com.vocatim.app.data.model.ModelManager,
         adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
+        cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
+        cloudTranscriber: com.vocatim.app.data.transcribe.CloudTranscriber,
         client: OkHttpClient,
         parakeetTranscriber: com.vocatim.app.data.transcribe.ParakeetTranscriber,
     ): TranscriptionRunner = TranscriptionRunner(
@@ -205,6 +224,8 @@ object AppModule {
         modelManager = modelManager,
         threadPolicy = ThreadPolicy(context),
         adFreeStore = adFreeStore,
+        cloudAiPrefs = cloudAiPrefs,
+        cloudTranscriber = cloudTranscriber,
         importDir = File(context.filesDir, "imports"),
         modelsDir = File(context.filesDir, "models"),
         httpClient = client,

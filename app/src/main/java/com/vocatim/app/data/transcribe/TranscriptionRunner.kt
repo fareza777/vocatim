@@ -41,6 +41,8 @@ class TranscriptionRunner(
     private val modelManager: com.vocatim.app.data.model.ModelManager,
     private val threadPolicy: ThreadPolicy,
     private val adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
+    private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
+    private val cloudTranscriber: CloudTranscriber,
     private val importDir: File,
     private val modelsDir: File,
     private val httpClient: okhttp3.OkHttpClient,
@@ -74,10 +76,11 @@ class TranscriptionRunner(
     private suspend fun runInner(transcriptId: Long, sourceUriParam: Uri?) {
         var entity = repository.getById(transcriptId)
             ?: throw IllegalStateException("Transcript $transcriptId not found")
-        // Parakeet is a parallel engine, not a whisper model; route around
-        // the whisper path entirely so it stays untouched.
+        // Parakeet and the cloud engine are parallel engines, not whisper
+        // models; route around the whisper path entirely so it stays untouched.
+        val useCloud = entity.modelId == com.vocatim.app.data.model.CloudEngine.ID
         val useParakeet = entity.modelId == com.vocatim.app.data.model.ParakeetModel.ID
-        val model = if (useParakeet) null else {
+        val model = if (useParakeet || useCloud) null else {
             WhisperModel.fromId(entity.modelId)
                 ?: throw IllegalStateException("Unknown model ${entity.modelId}")
         }
@@ -109,6 +112,13 @@ class TranscriptionRunner(
         )
         if (!audioFile.exists()) {
             throw FileNotFoundException("Audio file for this transcript is gone")
+        }
+
+        // The cloud engine needs no local model and no chunk loop; it has its
+        // own path and returns before any of that.
+        if (useCloud) {
+            runCloud(transcriptId, entity, audioFile)
+            return
         }
 
         // Onboarding can be skipped before the model finishes downloading, and
@@ -277,34 +287,101 @@ class TranscriptionRunner(
                 }
 
                 val elapsed = SystemClock.elapsedRealtime() - startedAt
-                val finished = repository.getById(transcriptId) ?: return@use
-                // Recordings get a title from their content; imports keep the
-                // file name and renamed items are never touched.
-                val autoTitle =
-                    if (!finished.customTitle && finished.sourceName == null) {
-                        TitleGenerator.fromText(finished.text)
-                    } else null
-                // Reflow the raw text into paragraphs at speaker pauses.
-                val segments = repository.getSegments(transcriptId)
-                val readableText =
-                    if (segments.isNotEmpty()) TranscriptFormatter.paragraphed(segments)
-                    else finished.text
-                repository.update(
-                    finished.copy(
-                        status = TranscriptStatus.DONE,
-                        text = readableText,
-                        // Accumulates across resumed runs.
-                        processingTimeMs = finished.processingTimeMs + elapsed,
-                        errorMessage = null,
-                        title = autoTitle ?: finished.title,
-                        detectedLanguage = detectedLanguage ?: finished.detectedLanguage,
-                    )
-                )
+                finalizeTranscript(transcriptId, elapsed, detectedLanguage)
                 if (processedAudioMs > 0 && model != null) {
                     rtfStore.recordMeasurement(model, elapsed.toFloat() / processedAudioMs)
                 }
             }
         }
+    }
+
+    /**
+     * Shared tail for every engine: auto-title, paragraph reflow, DONE.
+     * Whisper and cloud produce the same segments, so they finish the same way.
+     */
+    private suspend fun finalizeTranscript(
+        transcriptId: Long,
+        elapsedMs: Long,
+        detectedLanguage: String?,
+    ) {
+        val finished = repository.getById(transcriptId) ?: return
+        // Recordings get a title from their content; imports keep the file
+        // name and renamed items are never touched.
+        val autoTitle =
+            if (!finished.customTitle && finished.sourceName == null) {
+                TitleGenerator.fromText(finished.text)
+            } else null
+        // Reflow the raw text into paragraphs at speaker pauses.
+        val segments = repository.getSegments(transcriptId)
+        val readableText =
+            if (segments.isNotEmpty()) TranscriptFormatter.paragraphed(segments)
+            else finished.text
+        repository.update(
+            finished.copy(
+                status = TranscriptStatus.DONE,
+                text = readableText,
+                // Accumulates across resumed runs.
+                processingTimeMs = finished.processingTimeMs + elapsedMs,
+                errorMessage = null,
+                title = autoTitle ?: finished.title,
+                detectedLanguage = detectedLanguage ?: finished.detectedLanguage,
+            )
+        )
+    }
+
+    /**
+     * Cloud engine: the whole recording goes up in one request (or a few for
+     * very long audio), so there is no local model, no chunk loop and no
+     * resume — a half-finished upload is simply retried from the start.
+     */
+    private suspend fun runCloud(
+        transcriptId: Long,
+        entity: com.vocatim.app.data.db.TranscriptEntity,
+        audioFile: File,
+    ) = withContext(Dispatchers.IO) {
+        val config = cloudAiPrefs.current()
+        if (!config.isConfigured) throw CloudTranscribeException("CLOUD_NOT_CONFIGURED")
+
+        var row = entity
+        WavStreamReader(audioFile).use { reader ->
+            if (row.audioDurationMs != reader.durationMs) {
+                row = row.copy(audioDurationMs = reader.durationMs)
+                repository.update(row)
+            }
+        }
+
+        repository.clearSegments(transcriptId)
+        repository.updateStatus(transcriptId, TranscriptStatus.TRANSCRIBING)
+        val startedAt = SystemClock.elapsedRealtime()
+        progressHolder.update(TranscriptionProgress(transcriptId, uploading = true))
+
+        val segments = cloudTranscriber.transcribe(
+            config = config,
+            model = cloudAiPrefs.currentTranscribeModel(),
+            wav = audioFile,
+            language = row.language.takeIf { it != AUTO_LANGUAGE },
+            translate = row.translate,
+            onProgress = { fraction ->
+                progressHolder.update(
+                    TranscriptionProgress(transcriptId, uploading = true, fraction = fraction)
+                )
+            },
+        )
+
+        repository.commitChunk(
+            transcriptId = transcriptId,
+            segments = segments.map {
+                SegmentEntity(
+                    transcriptId = transcriptId,
+                    startMs = it.startMs,
+                    endMs = it.endMs,
+                    text = it.text,
+                )
+            },
+            text = SegmentMerger.mergeText(segments),
+            completedChunks = 1,
+        )
+        finalizeTranscript(transcriptId, SystemClock.elapsedRealtime() - startedAt, null)
     }
 
     suspend fun markCancelled(transcriptId: Long) {

@@ -833,6 +833,25 @@ fun DetailScreen(
                 TranscriptStatus.FAILED -> {
                     StatusCard {
                         when (t.errorMessage) {
+                            "CLOUD_NOT_CONFIGURED", "CLOUD_BAD_KEY", "CLOUD_BAD_MODEL",
+                            "CLOUD_TOO_LARGE", "CLOUD_RATE_LIMIT" -> {
+                                Text(
+                                    stringResource(
+                                        when (t.errorMessage) {
+                                            "CLOUD_NOT_CONFIGURED" ->
+                                                R.string.detail_cloud_not_configured
+                                            "CLOUD_BAD_KEY" -> R.string.detail_cloud_bad_key
+                                            "CLOUD_BAD_MODEL" -> R.string.detail_cloud_bad_model
+                                            "CLOUD_TOO_LARGE" -> R.string.detail_cloud_too_large
+                                            else -> R.string.detail_cloud_rate_limit
+                                        }
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Button(onClick = viewModel::retry, enabled = t.audioPath != null) {
+                                    Text(stringResource(R.string.action_retry))
+                                }
+                            }
                             "MODEL_DOWNLOAD_FAILED" -> {
                                 Text(
                                     stringResource(R.string.detail_model_download_failed),
@@ -873,6 +892,8 @@ fun DetailScreen(
                     StatusCard {
                         Pill(
                             when {
+                                p?.uploading == true ->
+                                    stringResource(R.string.status_uploading)
                                 p?.downloadingModel == true ->
                                     stringResource(R.string.status_downloading_model)
                                 p?.converting == true -> stringResource(R.string.status_converting)
@@ -886,6 +907,15 @@ fun DetailScreen(
                         // Skipping the onboarding download lands here. Say what
                         // is happening and why, or a one-time wait on someone
                         // else's schedule just looks like the app is stuck.
+                        // Audio leaving the device deserves a sentence, not a
+                        // silent progress bar.
+                        if (p?.uploading == true) {
+                            Text(
+                                stringResource(R.string.detail_uploading_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         if (p?.downloadingModel == true) {
                             Text(
                                 stringResource(R.string.detail_downloading_model_hint),

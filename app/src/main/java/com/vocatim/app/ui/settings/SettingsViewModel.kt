@@ -128,6 +128,26 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { cloudAiPrefs.clear() }
     }
 
+    val cloudTranscribeModel: StateFlow<String> = cloudAiPrefs.transcribeModel
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            com.vocatim.app.data.cloud.CloudAiPrefs.DEFAULT_TRANSCRIBE_MODEL,
+        )
+
+    fun saveCloudTranscribeModel(model: String) {
+        viewModelScope.launch { cloudAiPrefs.saveTranscribeModel(model) }
+    }
+
+    /** Selecting the cloud engine only makes sense once a key is configured. */
+    fun selectCloudEngine() {
+        viewModelScope.launch {
+            if (cloudAiPrefs.current().isConfigured) {
+                userPrefs.setModelId(com.vocatim.app.data.model.CloudEngine.ID)
+            }
+        }
+    }
+
     private val _cloudTest = MutableStateFlow<CloudTestState>(CloudTestState.Idle)
     val cloudTest: StateFlow<CloudTestState> = _cloudTest.asStateFlow()
 

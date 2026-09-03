@@ -32,12 +32,27 @@ Internet is used only for:
 
 1. **Downloading speech models** from Hugging Face on first use (model files only — not your recordings).
 2. **Ads**, in the free version — see above. Removed permanently by the one-time purchase.
-3. **Google Play Billing** when you choose to buy Remove ads.
-4. **Optional Cloud AI (BYOK)** — only if you turn this on in Settings (see below).
+3. **Optional cloud transcription** — only if you turn it on in Settings (see below).
+4. **Google Play Billing** when you choose to buy Remove ads.
+5. **Optional Cloud AI (BYOK)** — only if you turn this on in Settings (see below).
 
 Purchases are processed by Google Play. We receive no personal information from the transaction.
 
 Every feature of Vocatim — transcription, AI summaries, meeting minutes, exports, backups — is free. The only thing the purchase changes is that ads stop.
+
+### Optional cloud transcription (Bring Your Own Key)
+
+Transcription runs **on your device by default**. You can switch to a cloud engine in Settings → Transcription model → Cloud engine. It is off unless you turn it on, and it needs the API key you configured under Cloud AI.
+
+When it is on, and only for the recordings you transcribe while it is on:
+
+- **Your audio is uploaded** to the provider you configured (for example Groq or OpenAI), compressed, and transcribed there.
+- The audio also stays on your device — uploading is a copy, not a move.
+- We never receive the audio, the transcript, or your key. The upload goes straight from your phone to your provider.
+- Your provider's own terms govern what they do with it. Check them before transcribing anything confidential.
+- Switch back to an on-device model at any time and nothing leaves the device again.
+
+The screen says "Uploading audio…" while this is happening, so it is never silent.
 
 ### Optional Cloud AI (Bring Your Own Key)
 

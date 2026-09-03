@@ -208,6 +208,23 @@ fun SettingsScreen(
                     onBenchmark = viewModel::benchmarkParakeet,
                 )
             }
+            Text(
+                stringResource(R.string.settings_cloud_engine),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            val cloudCfg by viewModel.cloudConfig.collectAsStateWithLifecycle()
+            val cloudTranscribeModel by viewModel.cloudTranscribeModel
+                .collectAsStateWithLifecycle()
+            Card {
+                CloudEngineRow(
+                    configured = cloudCfg?.isConfigured == true,
+                    selected = s.selectedModelId == com.vocatim.app.data.model.CloudEngine.ID,
+                    model = cloudTranscribeModel,
+                    onSelect = viewModel::selectCloudEngine,
+                    onModelChange = viewModel::saveCloudTranscribeModel,
+                )
+            }
+
             val liveState by viewModel.liveCaptionState.collectAsStateWithLifecycle()
             Card {
                 LiveCaptionRow(
@@ -1112,6 +1129,70 @@ private fun ModelRow(
 
 /** The NVIDIA Parakeet English engine: same row anatomy as ModelRow, but a
  *  multi-file bundle managed by its own manager. */
+@Composable
+private fun CloudEngineRow(
+    configured: Boolean,
+    selected: Boolean,
+    model: String,
+    onSelect: () -> Unit,
+    onModelChange: (String) -> Unit,
+) {
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.cloud_engine_name),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    stringResource(R.string.cloud_engine_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (selected) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                )
+            } else {
+                // Without a key there is nothing to send audio to, so the
+                // button points at the thing that has to happen first.
+                androidx.compose.material3.TextButton(onClick = onSelect, enabled = configured) {
+                    Text(stringResource(R.string.settings_change))
+                }
+            }
+        }
+        if (!configured) {
+            Text(
+                stringResource(R.string.cloud_engine_needs_key),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        } else {
+            var draft by remember(model) { mutableStateOf(model) }
+            androidx.compose.material3.OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                label = { Text(stringResource(R.string.cloud_engine_model)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (draft.trim() != model) {
+                androidx.compose.material3.TextButton(onClick = { onModelChange(draft) }) {
+                    Text(stringResource(R.string.action_save))
+                }
+            }
+        }
+        Text(
+            stringResource(R.string.cloud_engine_privacy),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 private fun ParakeetRow(
     state: ModelState,

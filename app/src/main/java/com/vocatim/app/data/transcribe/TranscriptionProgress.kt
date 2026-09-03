@@ -11,6 +11,8 @@ data class TranscriptionProgress(
     val converting: Boolean = false,
     /** True while fetching a missing speech model, before transcription. */
     val downloadingModel: Boolean = false,
+    /** True while audio is being uploaded to the cloud engine. */
+    val uploading: Boolean = false,
     /** 0..1 within the current phase. */
     val fraction: Float = 0f,
     val chunksDone: Int = 0,
