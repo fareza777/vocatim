@@ -212,16 +212,15 @@ fun SettingsScreen(
                 stringResource(R.string.settings_cloud_engine),
                 style = MaterialTheme.typography.titleSmall,
             )
-            val cloudCfg by viewModel.cloudConfig.collectAsStateWithLifecycle()
-            val cloudTranscribeModel by viewModel.cloudTranscribeModel
-                .collectAsStateWithLifecycle()
+            val cloudTx by viewModel.cloudTx.collectAsStateWithLifecycle()
             Card {
-                CloudEngineRow(
-                    configured = cloudCfg?.isConfigured == true,
+                OnlineTranscriptionRow(
+                    config = cloudTx,
                     selected = s.selectedModelId == com.vocatim.app.data.model.CloudEngine.ID,
-                    model = cloudTranscribeModel,
-                    onSelect = viewModel::selectCloudEngine,
-                    onModelChange = viewModel::saveCloudTranscribeModel,
+                    onProvider = viewModel::setCloudTxProvider,
+                    onApiKey = viewModel::setCloudTxApiKey,
+                    onUse = viewModel::selectCloudEngine,
+                    onClear = viewModel::clearCloudTx,
                 )
             }
 
@@ -1130,63 +1129,108 @@ private fun ModelRow(
 /** The NVIDIA Parakeet English engine: same row anatomy as ModelRow, but a
  *  multi-file bundle managed by its own manager. */
 @Composable
-private fun CloudEngineRow(
-    configured: Boolean,
+private fun OnlineTranscriptionRow(
+    config: com.vocatim.app.data.cloud.CloudTranscribeConfig?,
     selected: Boolean,
-    model: String,
-    onSelect: () -> Unit,
-    onModelChange: (String) -> Unit,
+    onProvider: (com.vocatim.app.data.cloud.CloudTranscribeProvider) -> Unit,
+    onApiKey: (String) -> Unit,
+    onUse: () -> Unit,
+    onClear: () -> Unit,
 ) {
-    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.cloud_engine_name),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                    stringResource(R.string.cloud_engine_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val provider = config?.provider
+        ?: com.vocatim.app.data.cloud.CloudTranscribeProvider.DEFAULT
+    val hasKey = config?.isConfigured == true
+
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            stringResource(R.string.cloud_tx_pitch),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        // Picking a provider fills the URL and the speech model; the user
+        // never types either.
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            val providers = com.vocatim.app.data.cloud.CloudTranscribeProvider.entries
+            providers.forEachIndexed { index, p ->
+                SegmentedButton(
+                    selected = provider == p,
+                    onClick = { onProvider(p) },
+                    shape = SegmentedButtonDefaults.itemShape(index, providers.size),
+                ) { Text(p.label) }
             }
-            if (selected) {
+        }
+        Text(
+            stringResource(provider.noteRes),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        var key by remember(config?.apiKey, provider) { mutableStateOf(config?.apiKey ?: "") }
+        androidx.compose.material3.OutlinedTextField(
+            value = key,
+            onValueChange = { key = it },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.cloud_tx_api_key)) },
+            placeholder = { Text(stringResource(R.string.cloud_tx_api_key_hint)) },
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // The wall for most people is not the form, it is not knowing
+            // where a key comes from. Take them straight there.
+            OutlinedButton(onClick = {
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(
+                            android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse(provider.keyUrl),
+                        )
+                    )
+                }
+            }) { Text(stringResource(R.string.cloud_tx_get_key)) }
+
+            if (key.trim() != (config?.apiKey ?: "")) {
+                Button(onClick = { onApiKey(key) }) {
+                    Text(stringResource(R.string.action_save))
+                }
+            }
+        }
+
+        HorizontalDivider()
+
+        when {
+            !hasKey -> Text(
+                stringResource(R.string.cloud_tx_needs_key),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            selected -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.Check,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.secondary,
                 )
-            } else {
-                // Without a key there is nothing to send audio to, so the
-                // button points at the thing that has to happen first.
-                androidx.compose.material3.TextButton(onClick = onSelect, enabled = configured) {
-                    Text(stringResource(R.string.settings_change))
+                Text(
+                    stringResource(R.string.cloud_tx_active),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 8.dp).weight(1f),
+                )
+                androidx.compose.material3.TextButton(onClick = onClear) {
+                    Text(stringResource(R.string.settings_cloud_clear))
+                }
+            }
+            else -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onUse) { Text(stringResource(R.string.cloud_tx_use)) }
+                androidx.compose.material3.TextButton(onClick = onClear) {
+                    Text(stringResource(R.string.settings_cloud_clear))
                 }
             }
         }
-        if (!configured) {
-            Text(
-                stringResource(R.string.cloud_engine_needs_key),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        } else {
-            var draft by remember(model) { mutableStateOf(model) }
-            androidx.compose.material3.OutlinedTextField(
-                value = draft,
-                onValueChange = { draft = it },
-                label = { Text(stringResource(R.string.cloud_engine_model)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (draft.trim() != model) {
-                androidx.compose.material3.TextButton(onClick = { onModelChange(draft) }) {
-                    Text(stringResource(R.string.action_save))
-                }
-            }
-        }
+
         Text(
-            stringResource(R.string.cloud_engine_privacy),
+            stringResource(R.string.cloud_tx_privacy),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

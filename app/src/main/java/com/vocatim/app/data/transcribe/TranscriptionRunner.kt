@@ -41,7 +41,7 @@ class TranscriptionRunner(
     private val modelManager: com.vocatim.app.data.model.ModelManager,
     private val threadPolicy: ThreadPolicy,
     private val adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
-    private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
+    private val cloudTranscribePrefs: com.vocatim.app.data.cloud.CloudTranscribePrefs,
     private val cloudTranscriber: CloudTranscriber,
     private val importDir: File,
     private val modelsDir: File,
@@ -339,7 +339,7 @@ class TranscriptionRunner(
         entity: com.vocatim.app.data.db.TranscriptEntity,
         audioFile: File,
     ) = withContext(Dispatchers.IO) {
-        val config = cloudAiPrefs.current()
+        val config = cloudTranscribePrefs.current()
         if (!config.isConfigured) throw CloudTranscribeException("CLOUD_NOT_CONFIGURED")
 
         var row = entity
@@ -357,7 +357,6 @@ class TranscriptionRunner(
 
         val segments = cloudTranscriber.transcribe(
             config = config,
-            model = cloudAiPrefs.currentTranscribeModel(),
             wav = audioFile,
             language = row.language.takeIf { it != AUTO_LANGUAGE },
             translate = row.translate,

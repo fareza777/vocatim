@@ -52,6 +52,7 @@ class SettingsViewModel @Inject constructor(
     private val userPrefs: UserPrefs,
     private val backupManager: com.vocatim.app.data.backup.BackupManager,
     private val cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
+    private val cloudTranscribePrefs: com.vocatim.app.data.cloud.CloudTranscribePrefs,
     private val cloudClient: com.vocatim.app.data.cloud.CloudAiClient,
     private val transcriber: com.vocatim.app.data.transcribe.WhisperTranscriber,
     private val parakeetTranscriber: com.vocatim.app.data.transcribe.ParakeetTranscriber,
@@ -128,21 +129,34 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { cloudAiPrefs.clear() }
     }
 
-    val cloudTranscribeModel: StateFlow<String> = cloudAiPrefs.transcribeModel
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            com.vocatim.app.data.cloud.CloudAiPrefs.DEFAULT_TRANSCRIBE_MODEL,
-        )
+    val cloudTx: StateFlow<com.vocatim.app.data.cloud.CloudTranscribeConfig?> =
+        cloudTranscribePrefs.config
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun saveCloudTranscribeModel(model: String) {
-        viewModelScope.launch { cloudAiPrefs.saveTranscribeModel(model) }
+    fun setCloudTxProvider(provider: com.vocatim.app.data.cloud.CloudTranscribeProvider) {
+        viewModelScope.launch { cloudTranscribePrefs.setProvider(provider) }
     }
 
-    /** Selecting the cloud engine only makes sense once a key is configured. */
+    fun setCloudTxApiKey(key: String) {
+        viewModelScope.launch { cloudTranscribePrefs.setApiKey(key) }
+    }
+
+    fun clearCloudTx() {
+        viewModelScope.launch {
+            cloudTranscribePrefs.clear()
+            // Leaving the engine selected with no key would fail every job.
+            if (userPrefs.current().selectedModelId ==
+                com.vocatim.app.data.model.CloudEngine.ID
+            ) {
+                userPrefs.setModel(com.vocatim.app.data.model.WhisperModel.SMALL_Q5)
+            }
+        }
+    }
+
+    /** Selecting the online engine only makes sense once a key is present. */
     fun selectCloudEngine() {
         viewModelScope.launch {
-            if (cloudAiPrefs.current().isConfigured) {
+            if (cloudTranscribePrefs.current().isConfigured) {
                 userPrefs.setModelId(com.vocatim.app.data.model.CloudEngine.ID)
             }
         }

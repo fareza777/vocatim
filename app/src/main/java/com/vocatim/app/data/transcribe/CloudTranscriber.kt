@@ -3,7 +3,7 @@ package com.vocatim.app.data.transcribe
 import com.vocatim.app.data.audio.AudioCompressor
 import com.vocatim.app.data.audio.WavFileWriter
 import com.vocatim.app.data.audio.WavStreamReader
-import com.vocatim.app.data.cloud.CloudAiConfig
+import com.vocatim.app.data.cloud.CloudTranscribeConfig
 import com.vocatim.whisper.WhisperSegment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,8 +40,7 @@ class CloudTranscriber(
 ) {
 
     suspend fun transcribe(
-        config: CloudAiConfig,
-        model: String,
+        config: CloudTranscribeConfig,
         wav: File,
         language: String?,
         translate: Boolean,
@@ -58,7 +57,7 @@ class CloudTranscriber(
             try {
                 val compressed = AudioCompressor.compressWavToM4a(slice, encoded)
                 val upload = if (compressed) encoded else slice
-                val segments = uploadOne(config, model, upload, language, translate)
+                val segments = uploadOne(config, upload, language, translate)
                 // Every part after the first carries its own clock; shift it
                 // onto the recording's timeline or playback lands nowhere.
                 all += segments.map {
@@ -115,8 +114,7 @@ class CloudTranscriber(
     }
 
     private fun uploadOne(
-        config: CloudAiConfig,
-        model: String,
+        config: CloudTranscribeConfig,
         audio: File,
         language: String?,
         translate: Boolean,
@@ -131,7 +129,7 @@ class CloudTranscriber(
                 audio.name,
                 audio.asRequestBody("audio/m4a".toMediaType()),
             )
-            .addFormDataPart("model", model)
+            .addFormDataPart("model", config.model)
             .addFormDataPart("response_format", "verbose_json")
             .apply {
                 // "auto" means let the provider detect; sending it as a

@@ -209,7 +209,7 @@ object AppModule {
         userPrefs: UserPrefs,
         modelManager: com.vocatim.app.data.model.ModelManager,
         adFreeStore: com.vocatim.app.data.billing.AdFreeStore,
-        cloudAiPrefs: com.vocatim.app.data.cloud.CloudAiPrefs,
+        cloudTranscribePrefs: com.vocatim.app.data.cloud.CloudTranscribePrefs,
         cloudTranscriber: com.vocatim.app.data.transcribe.CloudTranscriber,
         client: OkHttpClient,
         parakeetTranscriber: com.vocatim.app.data.transcribe.ParakeetTranscriber,
@@ -224,7 +224,7 @@ object AppModule {
         modelManager = modelManager,
         threadPolicy = ThreadPolicy(context),
         adFreeStore = adFreeStore,
-        cloudAiPrefs = cloudAiPrefs,
+        cloudTranscribePrefs = cloudTranscribePrefs,
         cloudTranscriber = cloudTranscriber,
         importDir = File(context.filesDir, "imports"),
         modelsDir = File(context.filesDir, "models"),
@@ -273,6 +273,13 @@ object AppModule {
                 kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default
             ),
         )
+
+    @Provides
+    @Singleton
+    fun provideCloudTranscribePrefs(
+        @ApplicationContext context: Context,
+    ): com.vocatim.app.data.cloud.CloudTranscribePrefs =
+        com.vocatim.app.data.cloud.CloudTranscribePrefs(context)
 
     @Provides
     @Singleton

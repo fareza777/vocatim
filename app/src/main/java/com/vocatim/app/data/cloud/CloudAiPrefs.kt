@@ -48,26 +48,6 @@ class CloudAiPrefs(private val context: Context) {
             prefs.remove(BASE_URL_KEY)
             prefs.remove(API_KEY_KEY)
             prefs.remove(MODEL_KEY)
-            prefs.remove(TRANSCRIBE_MODEL_KEY)
-        }
-    }
-
-    /**
-     * Speech model for cloud transcription. Separate from [CloudAiConfig.model],
-     * which names a chat model — the same provider and key serve both, but a
-     * chat model cannot transcribe and vice versa.
-     */
-    val transcribeModel: Flow<String> = context.secretsDataStore.data.map {
-        it[TRANSCRIBE_MODEL_KEY] ?: DEFAULT_TRANSCRIBE_MODEL
-    }
-
-    suspend fun currentTranscribeModel(): String = transcribeModel.first()
-
-    suspend fun saveTranscribeModel(model: String) {
-        context.secretsDataStore.edit { prefs ->
-            val trimmed = model.trim()
-            if (trimmed.isEmpty()) prefs.remove(TRANSCRIBE_MODEL_KEY)
-            else prefs[TRANSCRIBE_MODEL_KEY] = trimmed
         }
     }
 
@@ -83,9 +63,5 @@ class CloudAiPrefs(private val context: Context) {
         private val BASE_URL_KEY = stringPreferencesKey("cloud_ai_base_url")
         private val API_KEY_KEY = stringPreferencesKey("cloud_ai_api_key")
         private val MODEL_KEY = stringPreferencesKey("cloud_ai_model")
-        private val TRANSCRIBE_MODEL_KEY = stringPreferencesKey("cloud_transcribe_model")
-
-        /** Groq's turbo Whisper: multilingual, and the cheapest fast option. */
-        const val DEFAULT_TRANSCRIBE_MODEL = "whisper-large-v3-turbo"
     }
 }
