@@ -47,6 +47,7 @@ object AudioCompressor {
                         val inIndex = codec.dequeueInputBuffer(TIMEOUT_US)
                         if (inIndex >= 0) {
                             val inBuf = codec.getInputBuffer(inIndex) ?: continue
+                            inBuf.clear()
                             val remaining = (total - samplePos).toInt()
                             if (remaining <= 0) {
                                 codec.queueInputBuffer(
@@ -55,7 +56,15 @@ object AudioCompressor {
                                 )
                                 inputDone = true
                             } else {
-                                val count = minOf(CHUNK_SAMPLES, remaining)
+                                // The encoder decides its own input buffer size
+                                // and is not obliged to give us CHUNK_SAMPLES
+                                // worth. Writing past it throws, and the whole
+                                // compression then fails silently.
+                                val count = minOf(
+                                    CHUNK_SAMPLES,
+                                    remaining,
+                                    inBuf.remaining() / 2,
+                                )
                                 val samples = reader.read(samplePos, count)
                                 val bytes = ByteBuffer.allocate(samples.size * 2)
                                     .order(java.nio.ByteOrder.LITTLE_ENDIAN)
@@ -65,7 +74,6 @@ object AudioCompressor {
                                     )
                                 }
                                 bytes.flip()
-                                inBuf.clear()
                                 inBuf.put(bytes)
                                 val ptsUs = samplePos * 1_000_000L / SAMPLE_RATE
                                 codec.queueInputBuffer(inIndex, 0, samples.size * 2, ptsUs, 0)
