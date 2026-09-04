@@ -32,7 +32,31 @@ class OnboardingViewModel @Inject constructor(
     private val userPrefs: UserPrefs,
     private val modelManager: ModelManager,
     private val parakeetManager: ParakeetModelManager,
+    private val cloudTranscribePrefs: com.vocatim.app.data.cloud.CloudTranscribePrefs,
 ) : ViewModel() {
+
+    /** Which engine the user is setting up. Offline is the safe default. */
+    enum class Mode { OFFLINE, ONLINE }
+
+    private val _mode = MutableStateFlow(Mode.OFFLINE)
+    val mode: StateFlow<Mode> = _mode
+
+    fun selectMode(mode: Mode) {
+        _mode.value = mode
+    }
+
+    private val _cloudKeySaved = MutableStateFlow(false)
+    val cloudKeySaved: StateFlow<Boolean> = _cloudKeySaved
+
+    val cloudProvider = com.vocatim.app.data.cloud.CloudTranscribeProvider.DEFAULT
+
+    fun saveCloudKey(key: String) {
+        viewModelScope.launch {
+            cloudTranscribePrefs.setProvider(cloudProvider)
+            cloudTranscribePrefs.setApiKey(key)
+            _cloudKeySaved.value = cloudTranscribePrefs.current().isConfigured
+        }
+    }
 
     private val isLowRam =
         appContext.getSystemService<ActivityManager>()?.isLowRamDevice == true
@@ -108,7 +132,13 @@ class OnboardingViewModel @Inject constructor(
     fun finish() {
         // Persist the chosen engine even when the download is skipped.
         viewModelScope.launch {
-            persistEngine()
+            if (_mode.value == Mode.ONLINE && cloudTranscribePrefs.current().isConfigured) {
+                userPrefs.setModelId(com.vocatim.app.data.model.CloudEngine.ID)
+            } else {
+                // No key means online cannot work; fall back rather than
+                // leaving a first-run user with an engine that always fails.
+                persistEngine()
+            }
             userPrefs.setOnboardingDone()
         }
     }

@@ -102,7 +102,7 @@
     <string name="debug_benchmark_run">Measure RTF of downloaded models</string>
     <string name="debug_benchmark_running">%1$s: measuring…</string>
     <string name="debug_benchmark_result">%1$s: %2$s× realtime</string>
-    <string name="home_tagline">Offline. Private. Yours.</string>
+    <string name="home_tagline">Private. Fast. Yours.</string>
     <string name="record_title_idle">Ready to record</string>
     <string name="record_live">Recording</string>
 
@@ -131,8 +131,8 @@
 
     <string name="paywall_title">Remove ads</string>
     <string name="paywall_subtitle">Every feature is free. Pay once to switch the ads off — no subscription.</string>
-    <string name="paywall_feat_private_title">Private &amp; offline</string>
-    <string name="paywall_feat_private_desc">Transcription runs entirely on your phone. Your audio never leaves the device.</string>
+    <string name="paywall_feat_private_title">Private by default</string>
+    <string name="paywall_feat_private_desc">Transcription runs on your phone unless you switch on the online engine yourself. Either way, nothing goes through us.</string>
     <string name="paywall_feat_once_title">Pay once, yours forever</string>
     <string name="paywall_feat_once_desc">A single purchase removes ads for good. No subscriptions, no recurring fees.</string>
     <string name="paywall_already_pro">Ads are off. Thank you!</string>
@@ -155,14 +155,27 @@
     <string name="settings_remove_ads_active">Ads removed — thank you!</string>
     <string name="settings_remove_ads_upsell">Remove ads for %1$s · pay once</string>
 
-    <string name="onboarding_privacy_title">Private by design</string>
-    <string name="onboarding_privacy_body">Vocatim transcribes speech to text entirely on your phone. No cloud, no account, no data ever leaves your device.</string>
+    <string name="onboarding_privacy_title">Voice to text, your way</string>
+    <string name="onboarding_privacy_body">Vocatim turns recordings into text. You choose where that happens — on this phone, or on a fast server. Either way, you can switch later.</string>
+    <string name="onboarding_mode_title">Where should transcription run?</string>
+    <string name="onboarding_mode_body">Both work well. Pick what matters more to you today.</string>
+    <string name="onboarding_mode_offline">On this phone</string>
+    <string name="onboarding_mode_offline_desc">Nothing is uploaded, works with no internet. Needs a one-time model download, and long recordings take a while on older phones.</string>
+    <string name="onboarding_mode_online">In the cloud</string>
+    <string name="onboarding_mode_online_desc">An hour of audio in seconds, and more accurate. Needs internet and a free API key — we walk you through it next.</string>
+    <string name="onboarding_online_title">Connect your key</string>
+    <string name="onboarding_online_body">Vocatim uses your own free account, so your audio goes straight to the provider and never through us.</string>
+    <string name="onboarding_online_step1">1. Tap “Get a free key” — no credit card needed.</string>
+    <string name="onboarding_online_step2">2. Sign in, create a key, copy it.</string>
+    <string name="onboarding_online_step3">3. Paste it below.</string>
+    <string name="onboarding_online_ready">Key saved — you’re all set!</string>
+    <string name="settings_offline_section">On-device models</string>
     <string name="onboarding_language_title">Your main language</string>
     <string name="onboarding_language_body">Which language do you speak most? You can change this anytime in Settings.</string>
     <string name="onboarding_lang_id">Indonesia</string>
     <string name="onboarding_lang_en">English</string>
     <string name="onboarding_model_title">Download the engine</string>
-    <string name="onboarding_model_body">Vocatim needs a speech model (%1$s, ±%2$d MB) — a one-time download. After this, everything works offline.</string>
+    <string name="onboarding_model_body">One-time download (%1$s, ±%2$d MB). After this, transcription works with no internet at all.</string>
     <string name="onboarding_model_ready">Model ready — you\'re all set!</string>
     <string name="onboarding_engine_standard_desc">Works in every language. Small download, good accuracy.</string>
     <string name="onboarding_engine_parakeet_desc">Sharpest and fastest on English, but English only — and a much bigger download. You can switch any time in Settings.</string>
@@ -429,7 +442,7 @@
     <string name="settings_wipe_audio_confirm">Delete all recorded and imported audio (%1$s)? Transcript text stays, but playback and re-transcription of old recordings will no longer be possible. This cannot be undone.</string>
     <string name="settings_wipe_audio_action">Delete audio</string>
     <string name="about_version">Vocatim %1$s (build %2$d)</string>
-    <string name="about_tagline">100%% offline voice notes — your audio and transcripts never leave this device.</string>
+    <string name="about_tagline">Voice notes that become text — on your phone by default, or in the cloud when you want speed.</string>
     <string name="about_rate_title">Rate Vocatim</string>
     <string name="about_rate_desc">Enjoying the app? A quick rating on Google Play helps a lot.</string>
     <string name="about_share_title">Share Vocatim</string>

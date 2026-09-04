@@ -109,7 +109,7 @@
     <string name="debug_benchmark_run">Ukur RTF model yang sudah diunduh</string>
     <string name="debug_benchmark_running">%1$s: mengukur…</string>
     <string name="debug_benchmark_result">%1$s: %2$s× realtime</string>
-    <string name="home_tagline">Offline. Privat. Milik Anda.</string>
+    <string name="home_tagline">Privat. Cepat. Milik Anda.</string>
     <string name="record_title_idle">Siap merekam</string>
     <string name="record_live">Merekam</string>
 
@@ -138,8 +138,8 @@
 
     <string name="paywall_title">Hilangkan iklan</string>
     <string name="paywall_subtitle">Semua fitur gratis. Bayar sekali untuk mematikan iklan — tanpa langganan.</string>
-    <string name="paywall_feat_private_title">Privat &amp; offline</string>
-    <string name="paywall_feat_private_desc">Transkripsi berjalan sepenuhnya di HP Anda. Audio tidak pernah keluar dari perangkat.</string>
+    <string name="paywall_feat_private_title">Privat secara bawaan</string>
+    <string name="paywall_feat_private_desc">Transkripsi berjalan di HP Anda kecuali Anda sendiri menyalakan mesin online. Bagaimanapun, tidak ada yang lewat kami.</string>
     <string name="paywall_feat_once_title">Bayar sekali, milik selamanya</string>
     <string name="paywall_feat_once_desc">Satu kali pembelian menghilangkan iklan selamanya. Tanpa langganan, tanpa biaya berulang.</string>
     <string name="paywall_already_pro">Iklan sudah mati. Terima kasih!</string>
@@ -162,14 +162,27 @@
     <string name="settings_remove_ads_active">Iklan sudah dihilangkan — terima kasih!</string>
     <string name="settings_remove_ads_upsell">Hilangkan iklan seharga %1$s · bayar sekali</string>
 
-    <string name="onboarding_privacy_title">Privat sejak awal</string>
-    <string name="onboarding_privacy_body">Vocatim mengubah suara jadi teks sepenuhnya di HP Anda. Tanpa cloud, tanpa akun, tidak ada data yang keluar dari perangkat.</string>
+    <string name="onboarding_privacy_title">Suara jadi teks, sesuai cara Anda</string>
+    <string name="onboarding_privacy_body">Vocatim mengubah rekaman jadi teks. Anda yang menentukan di mana itu dikerjakan — di HP ini, atau di server cepat. Bisa diganti kapan saja.</string>
+    <string name="onboarding_mode_title">Transkripsi dijalankan di mana?</string>
+    <string name="onboarding_mode_body">Keduanya bagus. Pilih yang lebih penting buat Anda sekarang.</string>
+    <string name="onboarding_mode_offline">Di HP ini</string>
+    <string name="onboarding_mode_offline_desc">Tidak ada yang diunggah, jalan tanpa internet. Perlu unduh model sekali, dan rekaman panjang butuh waktu di HP lama.</string>
+    <string name="onboarding_mode_online">Di cloud</string>
+    <string name="onboarding_mode_online_desc">Audio satu jam selesai dalam detik, dan lebih akurat. Butuh internet dan API key gratis — kami pandu langkahnya.</string>
+    <string name="onboarding_online_title">Sambungkan key Anda</string>
+    <string name="onboarding_online_body">Vocatim memakai akun gratis milik Anda sendiri, jadi audio langsung ke penyedia dan tidak pernah lewat kami.</string>
+    <string name="onboarding_online_step1">1. Ketuk “Ambil key gratis” — tanpa kartu kredit.</string>
+    <string name="onboarding_online_step2">2. Masuk, buat key, salin.</string>
+    <string name="onboarding_online_step3">3. Tempel di bawah ini.</string>
+    <string name="onboarding_online_ready">Key tersimpan — semua sudah beres!</string>
+    <string name="settings_offline_section">Model di perangkat</string>
     <string name="onboarding_language_title">Bahasa utama Anda</string>
     <string name="onboarding_language_body">Bahasa apa yang paling sering Anda pakai bicara? Bisa diubah kapan saja di Pengaturan.</string>
     <string name="onboarding_lang_id">Indonesia</string>
     <string name="onboarding_lang_en">Inggris</string>
     <string name="onboarding_model_title">Unduh mesinnya</string>
-    <string name="onboarding_model_body">Vocatim butuh model suara (%1$s, ±%2$d MB) — diunduh sekali saja. Setelah ini, semuanya jalan offline.</string>
+    <string name="onboarding_model_body">Diunduh sekali saja (%1$s, ±%2$d MB). Setelah ini, transkripsi jalan tanpa internet sama sekali.</string>
     <string name="onboarding_model_ready">Model siap — semua sudah beres!</string>
     <string name="onboarding_engine_standard_desc">Bekerja di semua bahasa. Unduhan kecil, akurasi bagus.</string>
     <string name="onboarding_engine_parakeet_desc">Paling tajam dan cepat untuk bahasa Inggris, tapi khusus Inggris — dan unduhannya jauh lebih besar. Bisa diganti kapan saja di Pengaturan.</string>
@@ -436,7 +449,7 @@
     <string name="settings_wipe_audio_confirm">Hapus semua audio rekaman dan impor (%1$s)? Teks transkrip tetap ada, tapi pemutaran dan transkrip ulang rekaman lama tidak lagi bisa dilakukan. Ini tidak bisa dibatalkan.</string>
     <string name="settings_wipe_audio_action">Hapus audio</string>
     <string name="about_version">Vocatim %1$s (build %2$d)</string>
-    <string name="about_tagline">Catatan suara 100%% offline — audio dan transkrip Anda tidak pernah keluar dari perangkat ini.</string>
+    <string name="about_tagline">Catatan suara yang jadi teks — di HP Anda secara bawaan, atau di cloud saat butuh cepat.</string>
     <string name="about_rate_title">Beri rating Vocatim</string>
     <string name="about_rate_desc">Suka aplikasinya? Rating singkat di Google Play sangat membantu.</string>
     <string name="about_share_title">Bagikan Vocatim</string>

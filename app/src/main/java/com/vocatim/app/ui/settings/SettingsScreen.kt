@@ -149,6 +149,13 @@ fun SettingsScreen(
                 icon = Icons.Default.GraphicEq,
                 subtitle = com.vocatim.app.ui.common.modelDisplayName(s.selectedModelId),
             ) {
+            // Two groups, labelled: what runs on the phone, and what runs on a
+            // server. They need different set-up and have different trade-offs,
+            // so mixing them in one unlabelled list read as one long menu.
+            Text(
+                stringResource(R.string.settings_offline_section),
+                style = MaterialTheme.typography.titleSmall,
+            )
             if (viewModel.isLowRamDevice) {
                 Text(
                     stringResource(R.string.settings_low_ram_hint),
