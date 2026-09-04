@@ -131,9 +131,14 @@ class OnboardingViewModel @Inject constructor(
     }
 
     fun finish() {
-        // Persist the chosen engine even when the download is skipped.
+        // Persist the chosen engine even when the download is skipped. Nothing
+        // here may throw: this is the only way out of onboarding, so a failure
+        // reading the cloud key must not cost the user the whole app.
         viewModelScope.launch {
-            if (_mode.value == Mode.ONLINE && cloudTranscribePrefs.current().isConfigured) {
+            val online = _mode.value == Mode.ONLINE &&
+                runCatching { cloudTranscribePrefs.current().isConfigured }
+                    .getOrDefault(false)
+            if (online) {
                 userPrefs.setModelId(com.vocatim.app.data.model.CloudEngine.ID)
             } else {
                 // No key means online cannot work; fall back rather than
@@ -142,8 +147,7 @@ class OnboardingViewModel @Inject constructor(
             }
             // Marker first, flag second: MainActivity re-evaluates the moment
             // the flag flips, and OnboardingGate treats "flag set, no marker"
-            // as a restore. Writing them the other way round leaves a user who
-            // skipped the download stuck on this screen forever.
+            // as a restore.
             onboardingGate.markSetUp()
             userPrefs.setOnboardingDone()
         }

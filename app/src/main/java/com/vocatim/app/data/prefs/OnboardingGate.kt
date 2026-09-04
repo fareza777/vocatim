@@ -33,8 +33,17 @@ class OnboardingGate @Inject constructor(
 ) {
     private val marker = File(context.noBackupFilesDir, "setup_done")
 
+    /** False when the marker can never be written — read-only storage, and so on. */
+    private val markerUsable: Boolean = runCatching {
+        marker.exists() || marker.parentFile?.let { it.exists() || it.mkdirs() } == true
+    }.getOrDefault(false)
+
     suspend fun isSetUp(settings: UserSettings): Boolean {
         if (!settings.onboardingDone) return false
+        // Without a writable marker a restore cannot be told from an update, and
+        // the check would repeat every launch. Trusting the flag risks skipping
+        // setup once; the alternative locks the user out of their own app.
+        if (!markerUsable) return true
         if (marker.exists()) return true
         // Either an update from a build older than this marker, or a restore.
         // A working engine tells the two apart.

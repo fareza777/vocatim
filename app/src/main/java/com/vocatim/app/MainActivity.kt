@@ -44,6 +44,9 @@ class MainActivity : FragmentActivity() {
     private var accent by mutableStateOf("violet")
     private var surfaceStyle by mutableStateOf("linen")
     private var onboardingDone by mutableStateOf<Boolean?>(null)
+    /** The gate decides what a cold start shows; finishing onboarding in this
+     *  process moves on directly, without waiting on a prefs round-trip. */
+    private var onboardingJustFinished by mutableStateOf(false)
     /** Set by the Quick Settings tile: jump straight into recording. */
     private var startRecordRequest by mutableStateOf(false)
     /** Set by app shortcut: open a specific transcript. */
@@ -110,8 +113,10 @@ class MainActivity : FragmentActivity() {
                     when {
                         locked == null || onboardingDone == null -> Unit // prefs loading
                         locked == true -> LockScreen(onUnlockClick = ::authenticate)
-                        onboardingDone == false ->
-                            com.vocatim.app.ui.onboarding.OnboardingScreen(onDone = {})
+                        onboardingDone == false && !onboardingJustFinished ->
+                            com.vocatim.app.ui.onboarding.OnboardingScreen(
+                                onDone = { onboardingJustFinished = true }
+                            )
                         else -> VocatimNavHost(
                             startRecord = startRecordRequest,
                             onStartRecordConsumed = { startRecordRequest = false },
