@@ -587,7 +587,13 @@ class DetailViewModel @Inject constructor(
             // not do the job — so a retry follows the setting as it stands now.
             val current = userPrefs.settings.first().selectedModelId
             repository.getById(transcriptId)?.let { row ->
-                if (row.modelId != current) repository.update(row.copy(modelId = current))
+                if (row.modelId != current) {
+                    // The checkpoint counts units of the old engine — 45-minute
+                    // cloud parts against 30-second whisper chunks — so it means
+                    // nothing to the new one. Start this recording over.
+                    repository.clearSegments(transcriptId)
+                    repository.update(row.copy(modelId = current, completedChunks = 0))
+                }
             }
             repository.updateStatus(transcriptId, TranscriptStatus.PENDING)
             TranscriptionService.enqueue(appContext, transcriptId, sourceUri = null)

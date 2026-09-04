@@ -350,35 +350,48 @@ class TranscriptionRunner(
             }
         }
 
-        repository.clearSegments(transcriptId)
+        // Parts already uploaded stay: a retry after a rate limit resumes
+        // instead of paying for the whole recording again.
+        val fromPart = row.completedChunks
+        val all = mutableListOf<WhisperSegment>()
+        if (fromPart == 0) {
+            repository.clearSegments(transcriptId)
+        } else {
+            all += repository.getSegments(transcriptId).map {
+                WhisperSegment(it.startMs, it.endMs, it.text)
+            }
+        }
         repository.updateStatus(transcriptId, TranscriptStatus.TRANSCRIBING)
         val startedAt = SystemClock.elapsedRealtime()
         progressHolder.update(TranscriptionProgress(transcriptId, uploading = true))
 
-        val segments = cloudTranscriber.transcribe(
+        cloudTranscriber.transcribe(
             config = config,
             wav = audioFile,
             language = row.language.takeIf { it != AUTO_LANGUAGE },
             translate = row.translate,
+            fromPart = fromPart,
             onProgress = { fraction ->
                 progressHolder.update(
                     TranscriptionProgress(transcriptId, uploading = true, fraction = fraction)
                 )
             },
-        )
-
-        repository.commitChunk(
-            transcriptId = transcriptId,
-            segments = segments.map {
-                SegmentEntity(
+            onPart = { index, segments ->
+                all += segments
+                repository.commitChunk(
                     transcriptId = transcriptId,
-                    startMs = it.startMs,
-                    endMs = it.endMs,
-                    text = it.text,
+                    segments = segments.map {
+                        SegmentEntity(
+                            transcriptId = transcriptId,
+                            startMs = it.startMs,
+                            endMs = it.endMs,
+                            text = it.text,
+                        )
+                    },
+                    text = SegmentMerger.mergeText(all),
+                    completedChunks = index + 1,
                 )
             },
-            text = SegmentMerger.mergeText(segments),
-            completedChunks = 1,
         )
         finalizeTranscript(transcriptId, SystemClock.elapsedRealtime() - startedAt, null)
     }

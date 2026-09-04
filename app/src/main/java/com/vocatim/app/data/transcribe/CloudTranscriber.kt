@@ -1,7 +1,6 @@
 package com.vocatim.app.data.transcribe
 
 import com.vocatim.app.data.audio.AudioCompressor
-import com.vocatim.app.data.audio.WavFileWriter
 import com.vocatim.app.data.audio.WavStreamReader
 import com.vocatim.app.data.cloud.CloudTranscribeConfig
 import com.vocatim.whisper.WhisperSegment
@@ -39,50 +38,70 @@ class CloudTranscriber(
     private val cacheDir: File,
 ) {
 
+    /**
+     * @param fromPart first part to upload; earlier parts are already
+     *   committed and are skipped on a retry.
+     * @param onPart called with each finished part's segments, already on the
+     *   recording's timeline. The caller persists it before the next upload
+     *   starts, so a rate limit two hours in does not throw away the first
+     *   ninety minutes — and does not spend the quota again to redo them.
+     */
     suspend fun transcribe(
         config: CloudTranscribeConfig,
         wav: File,
         language: String?,
         translate: Boolean,
+        fromPart: Int = 0,
         onProgress: (Float) -> Unit,
-    ): List<WhisperSegment> = withContext(Dispatchers.IO) {
+        onPart: suspend (index: Int, segments: List<WhisperSegment>) -> Unit,
+    ) = withContext(Dispatchers.IO) {
         if (!config.isConfigured) throw CloudTranscribeException("CLOUD_NOT_CONFIGURED")
 
         val parts = planParts(wav)
-        val all = mutableListOf<WhisperSegment>()
 
         parts.forEachIndexed { index, part ->
-            val slice = if (parts.size == 1) wav else sliceWav(wav, part)
+            if (index < fromPart) {
+                onProgress((index + 1).toFloat() / parts.size)
+                return@forEachIndexed
+            }
             val encoded = File(cacheDir, "cloud_upload_$index.m4a")
             try {
-                // Falling back to the raw WAV here was wrong: 16 kHz mono PCM
+                // Encoded straight from the source range: writing a WAV slice
+                // first cost ~86 MB of cache per 45-minute part.
+                //
+                // Falling back to the raw WAV was wrong too: 16 kHz mono PCM
                 // runs ~110 MB/hour, so the upload is certain to be rejected
                 // after burning the user's data allowance getting there. Say
                 // the encoder failed instead.
-                if (!AudioCompressor.compressWavToM4a(slice, encoded)) {
-                    throw CloudTranscribeException("CLOUD_ENCODE_FAILED")
-                }
+                val ok = AudioCompressor.compressWavToM4a(
+                    wav = wav,
+                    out = encoded,
+                    startSample = part.startSample,
+                    sampleCount = part.sampleCount,
+                )
+                if (!ok) throw CloudTranscribeException("CLOUD_ENCODE_FAILED")
                 if (encoded.length() > MAX_UPLOAD_BYTES) {
                     throw CloudTranscribeException(tooLarge(encoded.length()))
                 }
                 val segments = uploadOne(config, encoded, language, translate)
                 // Every part after the first carries its own clock; shift it
                 // onto the recording's timeline or playback lands nowhere.
-                all += segments.map {
-                    if (part.startMs == 0L) it
-                    else WhisperSegment(
-                        it.startMs + part.startMs,
-                        it.endMs + part.startMs,
-                        it.text,
-                    )
-                }
+                onPart(
+                    index,
+                    segments.map {
+                        if (part.startMs == 0L) it
+                        else WhisperSegment(
+                            it.startMs + part.startMs,
+                            it.endMs + part.startMs,
+                            it.text,
+                        )
+                    },
+                )
             } finally {
                 encoded.delete()
-                if (slice !== wav) slice.delete()
             }
             onProgress((index + 1).toFloat() / parts.size)
         }
-        all
     }
 
     private data class Part(val startSample: Long, val sampleCount: Long, val startMs: Long)
@@ -99,26 +118,6 @@ class CloudTranscriber(
                 start += count
             }
         }
-    }
-
-    private fun sliceWav(source: File, part: Part): File {
-        val out = File(cacheDir, "cloud_slice_${part.startSample}.wav")
-        WavStreamReader(source).use { reader ->
-            WavFileWriter(out).use { writer ->
-                var written = 0L
-                while (written < part.sampleCount) {
-                    val n = minOf(READ_CHUNK.toLong(), part.sampleCount - written).toInt()
-                    val floats = reader.read(part.startSample + written, n)
-                    if (floats.isEmpty()) break
-                    val shorts = ShortArray(floats.size) { i ->
-                        (floats[i].coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt().toShort()
-                    }
-                    writer.write(shorts)
-                    written += floats.size
-                }
-            }
-        }
-        return out
     }
 
     private fun uploadOne(
@@ -217,7 +216,6 @@ class CloudTranscriber(
 
         /** Below the 25 MB cap the common providers use, with room to spare. */
         const val MAX_UPLOAD_BYTES = 24L * 1024 * 1024
-        const val READ_CHUNK = 1 shl 16
 
         /**
          * 45 minutes ≈ 16 MB at 48 kbps, comfortably inside the 25 MB cap the

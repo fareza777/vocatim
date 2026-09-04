@@ -17,8 +17,20 @@ object AudioCompressor {
     private const val CHUNK_SAMPLES = 4096
     private const val TIMEOUT_US = 10_000L
 
-    /** @return true when [out] was fully written. */
-    fun compressWavToM4a(wav: File, out: File): Boolean = runCatching {
+    /**
+     * Encodes [wav] to [out], optionally only the range starting at
+     * [startSample] for [sampleCount] samples ([sampleCount] < 0 means to the
+     * end). Encoding a range directly avoids writing a multi-hundred-megabyte
+     * WAV slice to disk first.
+     *
+     * @return true when [out] was fully written.
+     */
+    fun compressWavToM4a(
+        wav: File,
+        out: File,
+        startSample: Long = 0L,
+        sampleCount: Long = -1L,
+    ): Boolean = runCatching {
         WavStreamReader(wav).use { reader ->
             val format = MediaFormat.createAudioFormat(
                 MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, 1
@@ -38,7 +50,8 @@ object AudioCompressor {
             var muxerStarted = false
             var inputDone = false
             var samplePos = 0L
-            val total = reader.totalSamples
+            val available = reader.totalSamples - startSample
+            val total = if (sampleCount < 0) available else minOf(sampleCount, available)
             val info = MediaCodec.BufferInfo()
 
             try {
@@ -65,7 +78,7 @@ object AudioCompressor {
                                     remaining,
                                     inBuf.remaining() / 2,
                                 )
-                                val samples = reader.read(samplePos, count)
+                                val samples = reader.read(startSample + samplePos, count)
                                 val bytes = ByteBuffer.allocate(samples.size * 2)
                                     .order(java.nio.ByteOrder.LITTLE_ENDIAN)
                                 samples.forEach { f ->
