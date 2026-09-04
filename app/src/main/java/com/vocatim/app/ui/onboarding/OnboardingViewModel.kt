@@ -140,10 +140,12 @@ class OnboardingViewModel @Inject constructor(
                 // leaving a first-run user with an engine that always fails.
                 persistEngine()
             }
-            userPrefs.setOnboardingDone()
-            // Records setup on this install so a skipped download does not
-            // send the user back through onboarding on the next launch.
+            // Marker first, flag second: MainActivity re-evaluates the moment
+            // the flag flips, and OnboardingGate treats "flag set, no marker"
+            // as a restore. Writing them the other way round leaves a user who
+            // skipped the download stuck on this screen forever.
             onboardingGate.markSetUp()
+            userPrefs.setOnboardingDone()
         }
     }
 
