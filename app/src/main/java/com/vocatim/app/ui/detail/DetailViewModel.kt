@@ -582,6 +582,13 @@ class DetailViewModel @Inject constructor(
 
     fun retry() {
         viewModelScope.launch {
+            // The engine is recorded on the row when the transcript is created,
+            // but the usual reason to retry is that the previous engine could
+            // not do the job — so a retry follows the setting as it stands now.
+            val current = userPrefs.settings.first().selectedModelId
+            repository.getById(transcriptId)?.let { row ->
+                if (row.modelId != current) repository.update(row.copy(modelId = current))
+            }
             repository.updateStatus(transcriptId, TranscriptStatus.PENDING)
             TranscriptionService.enqueue(appContext, transcriptId, sourceUri = null)
         }

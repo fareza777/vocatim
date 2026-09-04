@@ -832,20 +832,29 @@ fun DetailScreen(
                 }
                 TranscriptStatus.FAILED -> {
                     StatusCard {
-                        when (t.errorMessage) {
+                        // Some cloud errors carry a detail after a colon
+                        // (the uploaded size, a provider message); branch on
+                        // the code and keep the detail for the text.
+                        val errorCode = t.errorMessage?.substringBefore(':')
+                        val errorDetail = t.errorMessage?.substringAfter(':', "").orEmpty()
+                        when (errorCode) {
                             "CLOUD_NOT_CONFIGURED", "CLOUD_BAD_KEY", "CLOUD_BAD_MODEL",
-                            "CLOUD_TOO_LARGE", "CLOUD_RATE_LIMIT" -> {
+                            "CLOUD_TOO_LARGE", "CLOUD_RATE_LIMIT", "CLOUD_ENCODE_FAILED" -> {
+                                val message = stringResource(
+                                    when (errorCode) {
+                                        "CLOUD_NOT_CONFIGURED" ->
+                                            R.string.detail_cloud_not_configured
+                                        "CLOUD_BAD_KEY" -> R.string.detail_cloud_bad_key
+                                        "CLOUD_BAD_MODEL" -> R.string.detail_cloud_bad_model
+                                        "CLOUD_TOO_LARGE" -> R.string.detail_cloud_too_large
+                                        "CLOUD_ENCODE_FAILED" ->
+                                            R.string.detail_cloud_encode_failed
+                                        else -> R.string.detail_cloud_rate_limit
+                                    }
+                                )
                                 Text(
-                                    stringResource(
-                                        when (t.errorMessage) {
-                                            "CLOUD_NOT_CONFIGURED" ->
-                                                R.string.detail_cloud_not_configured
-                                            "CLOUD_BAD_KEY" -> R.string.detail_cloud_bad_key
-                                            "CLOUD_BAD_MODEL" -> R.string.detail_cloud_bad_model
-                                            "CLOUD_TOO_LARGE" -> R.string.detail_cloud_too_large
-                                            else -> R.string.detail_cloud_rate_limit
-                                        }
-                                    ),
+                                    if (errorDetail.isBlank()) message
+                                    else message + " (" + errorDetail + ")",
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Button(onClick = viewModel::retry, enabled = t.audioPath != null) {

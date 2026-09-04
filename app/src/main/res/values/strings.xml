@@ -398,6 +398,7 @@
     <string name="detail_cloud_bad_key">Your cloud API key was rejected. Check it in Settings → Cloud AI.</string>
     <string name="detail_cloud_bad_model">Your provider does not know that speech model. Check the model name in Settings.</string>
     <string name="detail_cloud_too_large">This recording is too large for your provider. Try an on-device model instead.</string>
+    <string name="detail_cloud_encode_failed">Could not compress this recording for upload. Use an on-device model instead.</string>
     <string name="detail_cloud_rate_limit">Your provider is rate-limiting you. Wait a moment and tap Retry.</string>
     <string name="live_model_name">Live captions</string>
     <string name="live_model_note">Streaming word-by-word captions for the Live recording mode · English</string>

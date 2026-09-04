@@ -55,9 +55,17 @@ class CloudTranscriber(
             val slice = if (parts.size == 1) wav else sliceWav(wav, part)
             val encoded = File(cacheDir, "cloud_upload_$index.m4a")
             try {
-                val compressed = AudioCompressor.compressWavToM4a(slice, encoded)
-                val upload = if (compressed) encoded else slice
-                val segments = uploadOne(config, upload, language, translate)
+                // Falling back to the raw WAV here was wrong: 16 kHz mono PCM
+                // runs ~110 MB/hour, so the upload is certain to be rejected
+                // after burning the user's data allowance getting there. Say
+                // the encoder failed instead.
+                if (!AudioCompressor.compressWavToM4a(slice, encoded)) {
+                    throw CloudTranscribeException("CLOUD_ENCODE_FAILED")
+                }
+                if (encoded.length() > MAX_UPLOAD_BYTES) {
+                    throw CloudTranscribeException(tooLarge(encoded.length()))
+                }
+                val segments = uploadOne(config, encoded, language, translate)
                 // Every part after the first carries its own clock; shift it
                 // onto the recording's timeline or playback lands nowhere.
                 all += segments.map {
@@ -149,17 +157,21 @@ class CloudTranscriber(
         client.newCall(request).execute().use { response ->
             val text = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw CloudTranscribeException(errorFor(response.code, text))
+                throw CloudTranscribeException(
+                    errorFor(response.code, text, audio.length())
+                )
             }
             return parseSegments(text)
         }
     }
 
     /** Maps provider errors onto something a person can act on. */
-    private fun errorFor(code: Int, body: String): String = when (code) {
+    private fun errorFor(code: Int, body: String, uploadedBytes: Long): String = when (code) {
         401, 403 -> "CLOUD_BAD_KEY"
         404 -> "CLOUD_BAD_MODEL"
-        413 -> "CLOUD_TOO_LARGE"
+        // Carry the size that was actually sent: "too large" with no number
+        // is impossible to act on and impossible to diagnose from a report.
+        413 -> tooLarge(uploadedBytes)
         429 -> "CLOUD_RATE_LIMIT"
         else -> {
             val detail = runCatching {
@@ -197,8 +209,14 @@ class CloudTranscriber(
         }
     }
 
+    private fun tooLarge(bytes: Long): String =
+        "CLOUD_TOO_LARGE:" + (bytes / 1_000_000) + " MB"
+
     private companion object {
         const val SAMPLE_RATE = 16_000
+
+        /** Below the 25 MB cap the common providers use, with room to spare. */
+        const val MAX_UPLOAD_BYTES = 24L * 1024 * 1024
         const val READ_CHUNK = 1 shl 16
 
         /**
