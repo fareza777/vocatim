@@ -79,7 +79,6 @@
     <string name="detail_cancelled">Transcription was interrupted. Tap retry to run it again.</string>
 
     <string name="settings_title">Settings</string>
-    <string name="settings_model">Model</string>
     <string name="settings_low_ram_hint">This device has limited memory — the tiny model is recommended.</string>
     <string name="settings_language">Transcription language</string>
     <string name="settings_change">Change</string>
@@ -170,6 +169,9 @@
     <string name="onboarding_online_step3">3. Paste it below.</string>
     <string name="onboarding_online_ready">Key saved — you’re all set!</string>
     <string name="settings_offline_section">On-device models</string>
+    <string name="settings_cloud_preset_custom">Custom</string>
+    <string name="settings_engine_not_set">Not set up</string>
+    <string name="settings_engine_inactive">Not in use</string>
     <string name="onboarding_language_title">Your main language</string>
     <string name="onboarding_language_body">Which language do you speak most? You can change this anytime in Settings.</string>
     <string name="onboarding_lang_id">Indonesia</string>

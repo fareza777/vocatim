@@ -86,7 +86,6 @@
     <string name="detail_cancelled">Transkripsi terputus. Ketuk coba lagi untuk mengulang.</string>
 
     <string name="settings_title">Pengaturan</string>
-    <string name="settings_model">Model</string>
     <string name="settings_low_ram_hint">Memori perangkat ini terbatas — model tiny disarankan.</string>
     <string name="settings_language">Bahasa transkripsi</string>
     <string name="settings_change">Ubah</string>
@@ -177,6 +176,9 @@
     <string name="onboarding_online_step3">3. Tempel di bawah ini.</string>
     <string name="onboarding_online_ready">Key tersimpan — semua sudah beres!</string>
     <string name="settings_offline_section">Model di perangkat</string>
+    <string name="settings_cloud_preset_custom">Lainnya</string>
+    <string name="settings_engine_not_set">Belum diatur</string>
+    <string name="settings_engine_inactive">Tidak dipakai</string>
     <string name="onboarding_language_title">Bahasa utama Anda</string>
     <string name="onboarding_language_body">Bahasa apa yang paling sering Anda pakai bicara? Bisa diubah kapan saja di Pengaturan.</string>
     <string name="onboarding_lang_id">Indonesia</string>

@@ -22,6 +22,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
@@ -144,18 +145,21 @@ fun SettingsScreen(
                 }
             }
 
+            // On-device and online are two separate cards, not two groups in
+            // one list: they need different set-up, have opposite trade-offs,
+            // and only one of them is ever in use.
+            val cloudTx by viewModel.cloudTx.collectAsStateWithLifecycle()
+            val cloudSelected = s.selectedModelId == com.vocatim.app.data.model.CloudEngine.ID
+
             com.vocatim.app.ui.common.ExpandableSection(
-                title = stringResource(R.string.settings_model),
+                title = stringResource(R.string.settings_offline_section),
                 icon = Icons.Default.GraphicEq,
-                subtitle = com.vocatim.app.ui.common.modelDisplayName(s.selectedModelId),
+                subtitle = if (cloudSelected) {
+                    stringResource(R.string.settings_engine_inactive)
+                } else {
+                    com.vocatim.app.ui.common.modelDisplayName(s.selectedModelId)
+                },
             ) {
-            // Two groups, labelled: what runs on the phone, and what runs on a
-            // server. They need different set-up and have different trade-offs,
-            // so mixing them in one unlabelled list read as one long menu.
-            Text(
-                stringResource(R.string.settings_offline_section),
-                style = MaterialTheme.typography.titleSmall,
-            )
             if (viewModel.isLowRamDevice) {
                 Text(
                     stringResource(R.string.settings_low_ram_hint),
@@ -215,22 +219,6 @@ fun SettingsScreen(
                     onBenchmark = viewModel::benchmarkParakeet,
                 )
             }
-            Text(
-                stringResource(R.string.settings_cloud_engine),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            val cloudTx by viewModel.cloudTx.collectAsStateWithLifecycle()
-            Card {
-                OnlineTranscriptionRow(
-                    config = cloudTx,
-                    selected = s.selectedModelId == com.vocatim.app.data.model.CloudEngine.ID,
-                    onProvider = viewModel::setCloudTxProvider,
-                    onApiKey = viewModel::setCloudTxApiKey,
-                    onUse = viewModel::selectCloudEngine,
-                    onClear = viewModel::clearCloudTx,
-                )
-            }
-
             val liveState by viewModel.liveCaptionState.collectAsStateWithLifecycle()
             Card {
                 LiveCaptionRow(
@@ -251,6 +239,26 @@ fun SettingsScreen(
                     onDownload = viewModel::downloadDiarization,
                     onCancel = viewModel::cancelDiarizationDownload,
                     onDelete = viewModel::deleteDiarization,
+                )
+            }
+            }
+
+            com.vocatim.app.ui.common.ExpandableSection(
+                title = stringResource(R.string.settings_cloud_engine),
+                icon = Icons.Default.Cloud,
+                subtitle = when {
+                    cloudTx?.isConfigured == true -> cloudTx!!.provider.label
+                    else -> stringResource(R.string.settings_engine_not_set)
+                },
+            ) {
+            Card {
+                OnlineTranscriptionRow(
+                    config = cloudTx,
+                    selected = cloudSelected,
+                    onProvider = viewModel::setCloudTxProvider,
+                    onApiKey = viewModel::setCloudTxApiKey,
+                    onUse = viewModel::selectCloudEngine,
+                    onClear = viewModel::clearCloudTx,
                 )
             }
             }
@@ -807,6 +815,15 @@ private fun CloudAiSection(viewModel: SettingsViewModel) {
                     label = { Text(name) },
                 )
             }
+            // Anything OpenAI-compatible works; this empties the fields so a
+            // provider that is not on the list can be typed in from scratch.
+            androidx.compose.material3.AssistChip(
+                onClick = {
+                    baseUrl = ""
+                    model = ""
+                },
+                label = { Text(stringResource(R.string.settings_cloud_preset_custom)) },
+            )
         }
         androidx.compose.material3.OutlinedTextField(
             value = baseUrl,
