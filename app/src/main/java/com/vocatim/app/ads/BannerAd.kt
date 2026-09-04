@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -44,10 +45,17 @@ fun MonetizedBanner(
     if (!showAds) return
 
     if (adsReady) {
+        // The app draws edge to edge, and Scaffold does not inset a bottomBar
+        // for you: without this the strip sits under the gesture bar or the
+        // back/home/recents buttons. A partly covered ad is also an accidental
+        // click waiting to happen, which AdMob does not allow.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (hidden) Modifier.height(0.dp).clipToBounds() else Modifier)
+                .then(
+                    if (hidden) Modifier.height(0.dp).clipToBounds()
+                    else Modifier.navigationBarsPadding()
+                )
         ) {
             BannerAd(
                 modifier = Modifier.fillMaxWidth(),
