@@ -33,6 +33,7 @@ class OnboardingViewModel @Inject constructor(
     private val modelManager: ModelManager,
     private val parakeetManager: ParakeetModelManager,
     private val cloudTranscribePrefs: com.vocatim.app.data.cloud.CloudTranscribePrefs,
+    private val onboardingGate: com.vocatim.app.data.prefs.OnboardingGate,
 ) : ViewModel() {
 
     /** Which engine the user is setting up. Offline is the safe default. */
@@ -140,6 +141,9 @@ class OnboardingViewModel @Inject constructor(
                 persistEngine()
             }
             userPrefs.setOnboardingDone()
+            // Records setup on this install so a skipped download does not
+            // send the user back through onboarding on the next launch.
+            onboardingGate.markSetUp()
         }
     }
 

@@ -33,6 +33,7 @@ class MainActivity : FragmentActivity() {
 
     @Inject lateinit var importCoordinator: ImportCoordinator
     @Inject lateinit var userPrefs: UserPrefs
+    @Inject lateinit var onboardingGate: com.vocatim.app.data.prefs.OnboardingGate
     @Inject lateinit var adsController: com.vocatim.app.ads.AdsController
     @Inject lateinit var adEvents: com.vocatim.app.ads.AdEvents
 
@@ -69,7 +70,7 @@ class MainActivity : FragmentActivity() {
                 themeMode = settings.themeMode
                 accent = settings.accent
                 surfaceStyle = settings.surfaceStyle
-                onboardingDone = settings.onboardingDone
+                onboardingDone = onboardingGate.isSetUp(settings)
                 if (locked == null) {
                     locked = settings.appLock
                     if (settings.appLock) authenticate()
