@@ -61,6 +61,8 @@
     <string name="record_paused">Dijeda</string>
     <string name="record_error">Kesalahan perekaman: %1$s</string>
     <string name="record_error_mic">Tidak bisa mengakses mikrofon</string>
+    <string name="record_error_no_space">Penyimpanan tidak cukup untuk merekam — hanya muat sekitar %1$d menit. Kosongkan ruang lalu coba lagi.</string>
+    <string name="record_low_space">Penyimpanan hampir penuh: sisa sekitar %1$d menit rekaman</string>
     <string name="record_error_generic">Perekaman gagal</string>
     <string name="record_default_title">Rekaman %1$s</string>
 

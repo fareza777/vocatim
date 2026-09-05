@@ -257,6 +257,14 @@ fun RecordScreen(
                             formatClock(s.elapsedMs),
                             style = MaterialTheme.typography.displayLarge,
                         )
+                        s.minutesLeft?.let { minutes ->
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                stringResource(R.string.record_low_space, minutes),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
                         Spacer(Modifier.height(8.dp))
                         Pill(
                             stringResource(

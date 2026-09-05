@@ -22,6 +22,7 @@ import androidx.core.content.getSystemService
 import com.vocatim.app.MainActivity
 import com.vocatim.app.R
 import com.vocatim.app.data.audio.WavDecoder
+import com.vocatim.app.data.audio.RecordingStorage
 import com.vocatim.app.data.audio.WavFileWriter
 import com.vocatim.app.data.db.TranscriptEntity
 import com.vocatim.app.data.db.TranscriptStatus
@@ -102,6 +103,14 @@ class RecordingService : Service() {
             stateHolder.set(
                 RecordingState.Active(paused = false, elapsedMs = 0, amplitude = 0f)
             )
+
+            // Before the mic, before anything: a recording that runs out of
+            // disk halfway is lost silently, and nothing used to check.
+            val startMinutes = RecordingStorage.minutesLeft(filesDir)
+            if (startMinutes < RecordingStorage.MIN_START_MINUTES) {
+                fail(getString(R.string.record_error_no_space, startMinutes))
+                return@launch
+            }
 
             awaitPreviousSessionGone()
             if (gen != sessionGen) return@launch
@@ -310,12 +319,33 @@ class RecordingService : Service() {
     private fun startTicker(gen: Int) {
         tickJob?.cancel()
         tickJob = scope.launch {
+            // usableSpace is a syscall; the UI ticks five times a second, so
+            // sample the disk on its own slower clock.
+            var sinceSpaceCheck = SPACE_CHECK_MS
+            var minutesLeft: Int? = null
+            var warned: Int? = null
             while (gen == sessionGen && isActive) {
                 kotlinx.coroutines.delay(TICK_UI_MS)
                 if (gen != sessionGen || stopping) break
                 val current = stateHolder.state.value
                 if (current is RecordingState.Active && !current.paused) {
-                    stateHolder.set(current.copy(elapsedMs = currentElapsed()))
+                    sinceSpaceCheck += TICK_UI_MS
+                    if (sinceSpaceCheck >= SPACE_CHECK_MS) {
+                        sinceSpaceCheck = 0
+                        val left = RecordingStorage.minutesLeft(filesDir)
+                        minutesLeft = left.takeIf { it <= RecordingStorage.LOW_MINUTES }
+                        // The screen is often off during a long recording, so
+                        // the notification has to carry the warning too.
+                        if (minutesLeft != null && minutesLeft != warned) {
+                            warned = minutesLeft
+                            updateNotification(
+                                buildNotification(paused = false, minutesLeft = minutesLeft)
+                            )
+                        }
+                    }
+                    stateHolder.set(
+                        current.copy(elapsedMs = currentElapsed(), minutesLeft = minutesLeft)
+                    )
                 }
             }
         }
@@ -422,7 +452,7 @@ class RecordingService : Service() {
         stopSelf()
     }
 
-    private fun buildNotification(paused: Boolean): Notification {
+    private fun buildNotification(paused: Boolean, minutesLeft: Int? = null): Notification {
         val openIntent = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),
@@ -443,9 +473,13 @@ class RecordingService : Service() {
             .setSmallIcon(R.drawable.ic_stat_mic)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(
-                getString(
-                    if (paused) R.string.notif_recording_paused else R.string.notif_recording
-                )
+                if (minutesLeft != null) {
+                    getString(R.string.record_low_space, minutesLeft)
+                } else {
+                    getString(
+                        if (paused) R.string.notif_recording_paused else R.string.notif_recording
+                    )
+                }
             )
             .setOngoing(true)
             .setContentIntent(openIntent)
@@ -485,6 +519,9 @@ class RecordingService : Service() {
         private const val WATCHDOG_TICK_MS = 2_000L
         private const val TEARDOWN_TIMEOUT_MS = 2_000L
         private const val TICK_UI_MS = 200L
+
+        /** How often the remaining disk space is sampled while recording. */
+        private const val SPACE_CHECK_MS = 10_000L
 
         fun start(context: Context) = command(context, ACTION_START)
         fun pause(context: Context) = command(context, ACTION_PAUSE)

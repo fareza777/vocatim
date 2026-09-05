@@ -14,6 +14,9 @@ sealed interface RecordingState {
         val elapsedMs: Long,
         /** RMS level of the latest buffer, 0..1 (speech sits around 0.02-0.2). */
         val amplitude: Float,
+        /** Minutes of recording the free space still allows, once that drops
+         *  low enough to be worth saying. Null while there is plenty. */
+        val minutesLeft: Int? = null,
     ) : RecordingState
     data class Error(val message: String) : RecordingState
 }

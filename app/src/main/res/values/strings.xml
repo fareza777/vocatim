@@ -54,6 +54,8 @@
     <string name="record_paused">Paused</string>
     <string name="record_error">Recording error: %1$s</string>
     <string name="record_error_mic">Couldn\'t access the microphone</string>
+    <string name="record_error_no_space">Not enough storage to record — only about %1$d minutes fit. Free up some space and try again.</string>
+    <string name="record_low_space">Storage almost full: about %1$d minutes of recording left</string>
     <string name="record_error_generic">Recording failed</string>
     <string name="record_default_title">Recording %1$s</string>
 
