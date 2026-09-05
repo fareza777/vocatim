@@ -158,12 +158,16 @@ object PdfExporter {
             }
             var start = 0
             while (start < paragraph.length) {
-                var end = paragraph.length
-                while (end > start && paint.measureText(paragraph, start, end) > maxWidth) {
-                    end--
-                }
-                if (end == start) end = minOf(start + 1, paragraph.length)
-                result.add(paragraph.substring(start, end))
+                // breakText finds the fitting length in a single pass. Walking
+                // back one character at a time from the paragraph end was
+                // quadratic, and a transcript arrives as one unbroken
+                // paragraph: a two-hour one needed hundreds of millions of
+                // measureText calls and never finished.
+                val fits = paint.breakText(
+                    paragraph, start, paragraph.length, true, maxWidth.toFloat(), null
+                )
+                val end = start + fits.coerceAtLeast(1)
+                result.add(paragraph.substring(start, minOf(end, paragraph.length)))
                 start = end
             }
         }

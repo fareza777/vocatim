@@ -179,7 +179,10 @@ class Summarizer(
             minutes -> engine.chat(
                 system = system,
                 user = minutesInstruction(indonesian, language, fromTranscript = false) +
-                    "\n\n" + partials.joinToString("\n\n"),
+                    "\n\n" + condenseToFit(
+                        engine, system, partials, nCtx, MINUTES_TOKENS,
+                        indonesian, language,
+                    ),
                 maxTokens = MINUTES_TOKENS,
                 format = model.promptFormat,
                 temperature = model.temperature,
@@ -197,7 +200,10 @@ class Summarizer(
                 }
                 engine.chat(
                     system = system,
-                    user = "$reduceInstruction\n\n" + partials.joinToString("\n\n"),
+                    user = "$reduceInstruction\n\n" + condenseToFit(
+                        engine, system, partials, nCtx, REDUCE_TOKENS,
+                        indonesian, language,
+                    ),
                     maxTokens = REDUCE_TOKENS,
                     format = model.promptFormat,
                     temperature = model.temperature,
@@ -206,6 +212,54 @@ class Summarizer(
                 )
             }
         }
+    }
+
+    /**
+     * Shrinks the partial summaries until they fit the context the final pass
+     * has to run in.
+     *
+     * A long recording on a device with a small context budget makes more
+     * partials than the reduce prompt can hold - about ninety minutes of
+     * speech at a 4k context. Handing the model more than it can take gave an
+     * empty or truncated summary, which is what "summary doesn't work on long
+     * ones" looks like from outside. Each round condenses batches that do fit,
+     * so the text shrinks roughly eightfold per pass.
+     */
+    private suspend fun condenseToFit(
+        engine: LlamaSummarizer,
+        system: String,
+        partials: List<String>,
+        nCtx: Int,
+        outBudget: Int,
+        indonesian: Boolean,
+        language: String,
+    ): String {
+        val budgetChars = (nCtx - outBudget - PROMPT_OVERHEAD_TOKENS) * CHARS_PER_TOKEN
+        var text = partials.joinToString(SEPARATOR)
+        // A context too small for a round to shrink below would loop forever;
+        // truncating is the lesser failure.
+        if (budgetChars <= MAP_TOKENS * CHARS_PER_TOKEN * 2) {
+            return text.take(budgetChars.coerceAtLeast(1))
+        }
+        while (text.length > budgetChars) {
+            diag("condense round: chars=" + text.length + " budget=" + budgetChars)
+            // joinToString is not inline, so its lambda cannot suspend.
+            val condensed = mutableListOf<String>()
+            for (piece in chunk(text, budgetChars)) {
+                condensed += stripThink(
+                    engine.chat(
+                        system = system,
+                        user = piece + SEPARATOR + summaryLabel(indonesian, language),
+                        maxTokens = MAP_TOKENS,
+                        format = model.promptFormat,
+                        temperature = model.temperature,
+                        repeatPenalty = model.repeatPenalty,
+                    )
+                )
+            }
+            text = condensed.joinToString(SEPARATOR)
+        }
+        return text
     }
 
     /** Context size for this run: fit the transcript when the model and the
@@ -298,6 +352,7 @@ class Summarizer(
 
     private companion object {
         const val MIN_CHARS = 200
+        const val SEPARATOR = "\n\n"
         const val MIN_CTX = 4_096
         // Indonesian averages ~3.2 chars/token on these tokenizers; 3 is the
         // safe (overestimating) side.
